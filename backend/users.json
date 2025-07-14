@@ -7,21 +7,22 @@
       "fat": 70
     },
     "nutrients_eaten": {
-      "protein": 0,
-      "carbohydrates": 0,
-      "fat": 0
+      "protein": 11.52,
+      "carbohydrates": 1.07,
+      "fat": 5.01
     },
     "meals": {
       "breakfast": {
         "calories_allocated": 500,
-        "calories_eaten": 0,
+        "calories_eaten": 198,
         "protein": 0,
         "carbohydrates": 0,
         "fat": 0,
         "liked": [
           "Breakfast tart",
           "Breakfast bar, NFS",
-          "Cereal or granola bar, peanuts , oats, sugar, wheat germ"
+          "Cereal or granola bar, peanuts , oats, sugar, wheat germ",
+          "Egg omelet or scrambled egg, no added fat"
         ],
         "disliked": [
           "Crackers, breakfast biscuit",
@@ -30,11 +31,14 @@
           "Cereal or granola bar, peanuts , oats, sugar, wheat germ",
           "Cereal or granola bar, oats, nuts, coated with non-chocolate coating",
           "Cereal, cinnamon toast",
-          "Egg sandwich on griddle/pancake"
+          "Egg sandwich on griddle/pancake",
+          "Cereal, oat bunches",
+          "Bread, oat bran, toasted",
+          "Peppers, banana, raw"
         ],
-        "protein_eaten": 0,
-        "carbohydrates_eaten": 0,
-        "fat_eaten": 0
+        "protein_eaten": 11.52,
+        "carbohydrates_eaten": 1.07,
+        "fat_eaten": 5.01
       },
       "lunch": {
         "calories_allocated": 600,
@@ -47,7 +51,9 @@
           "Chicken nuggets, from school lunch",
           "Pretzels, soft, from school lunch",
           "Turkey, prepackaged or deli, luncheon meat",
-          "Ham, prepackaged or deli, luncheon meat"
+          "Ham, prepackaged or deli, luncheon meat",
+          "Chicken fillet wrap sandwich, fried, from fast food",
+          "Crackers, sandwich"
         ],
         "protein_eaten": 0,
         "carbohydrates_eaten": 0,
@@ -59,10 +65,13 @@
         "protein": 0,
         "carbohydrates": 0,
         "fat": 0,
-        "liked": [],
+        "liked": [
+          "Macaroni or pasta salad with chicken"
+        ],
         "disliked": [
           "Roll, white, soft",
-          "Chicken wing, stewed"
+          "Chicken wing, stewed",
+          "Fish, shark"
         ],
         "protein_eaten": 0,
         "carbohydrates_eaten": 0,
@@ -75,7 +84,12 @@
         "carbohydrates": 0,
         "fat": 0,
         "liked": [],
-        "disliked": [],
+        "disliked": [
+          "Banana split",
+          "Crisp, apple",
+          "Cobbler, apple",
+          "Carrots, raw, salad with apples"
+        ],
         "protein_eaten": 0,
         "carbohydrates_eaten": 0,
         "fat_eaten": 0
