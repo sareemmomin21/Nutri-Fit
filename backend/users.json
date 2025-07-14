@@ -1,0 +1,85 @@
+{
+  "user_123": {
+    "calorie_goal": 2000,
+    "nutrient_goals": {
+      "protein": 150,
+      "carbohydrates": 250,
+      "fat": 70
+    },
+    "nutrients_eaten": {
+      "protein": 0,
+      "carbohydrates": 0,
+      "fat": 0
+    },
+    "meals": {
+      "breakfast": {
+        "calories_allocated": 500,
+        "calories_eaten": 0,
+        "protein": 0,
+        "carbohydrates": 0,
+        "fat": 0,
+        "liked": [
+          "Breakfast tart",
+          "Breakfast bar, NFS",
+          "Cereal or granola bar, peanuts , oats, sugar, wheat germ"
+        ],
+        "disliked": [
+          "Crackers, breakfast biscuit",
+          "Breakfast tart",
+          "Sausage, turkey, breakfast links, mild, raw",
+          "Cereal or granola bar, peanuts , oats, sugar, wheat germ",
+          "Cereal or granola bar, oats, nuts, coated with non-chocolate coating",
+          "Cereal, cinnamon toast",
+          "Egg sandwich on griddle/pancake"
+        ],
+        "protein_eaten": 0,
+        "carbohydrates_eaten": 0,
+        "fat_eaten": 0
+      },
+      "lunch": {
+        "calories_allocated": 600,
+        "calories_eaten": 0,
+        "protein": 0,
+        "carbohydrates": 0,
+        "fat": 0,
+        "liked": [],
+        "disliked": [
+          "Chicken nuggets, from school lunch",
+          "Pretzels, soft, from school lunch",
+          "Turkey, prepackaged or deli, luncheon meat",
+          "Ham, prepackaged or deli, luncheon meat"
+        ],
+        "protein_eaten": 0,
+        "carbohydrates_eaten": 0,
+        "fat_eaten": 0
+      },
+      "dinner": {
+        "calories_allocated": 700,
+        "calories_eaten": 0,
+        "protein": 0,
+        "carbohydrates": 0,
+        "fat": 0,
+        "liked": [],
+        "disliked": [
+          "Roll, white, soft",
+          "Chicken wing, stewed"
+        ],
+        "protein_eaten": 0,
+        "carbohydrates_eaten": 0,
+        "fat_eaten": 0
+      },
+      "snacks": {
+        "calories_allocated": 200,
+        "calories_eaten": 0,
+        "protein": 0,
+        "carbohydrates": 0,
+        "fat": 0,
+        "liked": [],
+        "disliked": [],
+        "protein_eaten": 0,
+        "carbohydrates_eaten": 0,
+        "fat_eaten": 0
+      }
+    }
+  }
+}

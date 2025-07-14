@@ -1,12 +1,18 @@
 import "./App.css";
-import BackendConnect from "./components/BackendConnect";
+import NutritionPage from "./pages/NutritionPage";
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
 
 function App() {
   return (
-    <div className="App">
-      <h1>NutriFit</h1>
-      <BackendConnect />
-    </div>
+    <Router>
+      <div className="App">
+        <Link to="/nutrition">Nutrition</Link>
+
+        <Routes>
+          <Route path="/nutrition" element={<NutritionPage />} />
+        </Routes>
+      </div>
+    </Router>
   );
 }
 
