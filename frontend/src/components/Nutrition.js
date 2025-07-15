@@ -277,27 +277,6 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
         >
           {getMealDisplayName(meal)} Suggestions
         </h2>
-
-        {!loading && (
-          <button
-            onClick={() => getSuggestion(true)}
-            disabled={refreshing}
-            style={{
-              background: refreshing ? "#ccc" : "#FF9800",
-              color: "white",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "6px",
-              cursor: refreshing ? "not-allowed" : "pointer",
-              fontSize: "0.9rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            {refreshing ? "Refreshing..." : "Get New Suggestions"}
-          </button>
-        )}
       </div>
 
       {loading ? (
@@ -366,24 +345,6 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
             color: "#666",
           }}
         >
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              backgroundColor: "#f0f0f0",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 1rem",
-              fontSize: "20px",
-              fontWeight: "bold",
-              border: "2px solid #ddd",
-              color: "#999",
-            }}
-          >
-            ∅
-          </div>
           <p>No suggestions available right now.</p>
           <p style={{ fontSize: "0.9rem" }}>
             You might be close to your calorie limit for this meal.

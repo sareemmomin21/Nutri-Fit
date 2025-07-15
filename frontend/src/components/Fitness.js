@@ -1,5 +1,10 @@
 import React from "react";
-
+import BackendConnect from "./BackendConnect";
 export default function Fitness() {
-  return <div>Fitness</div>;
+  return (
+    <div>
+      Fitness
+      <BackendConnect />
+    </div>
+  );
 }

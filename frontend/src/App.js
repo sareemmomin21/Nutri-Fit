@@ -1,10 +1,10 @@
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import LandingPage   from "./pages/LandingPage";
+import LandingPage from "./pages/LandingPage";
 import QuestionsPage from "./pages/QuestionsPage";
 import NutritionPage from "./pages/NutritionPage";
-import FitnessPage   from "./pages/FitnessPage";
-import SettingsPage  from "./pages/SettingsPage";
-import Navbar        from "./components/Navbar";
+import FitnessPage from "./pages/FitnessPage";
+import SettingsPage from "./pages/SettingsPage";
+import Navbar from "./components/Navbar";
 
 function App() {
   return (
@@ -20,8 +20,8 @@ function App() {
 
           {/* Main app screens */}
           <Route path="/nutrition" element={<NutritionPage />} />
-          <Route path="/fitness"   element={<FitnessPage />} />
-          <Route path="/settings"  element={<SettingsPage />} />
+          <Route path="/fitness" element={<FitnessPage />} />
+          <Route path="/settings" element={<SettingsPage />} />
 
           {/* Fallback: redirect unknown URLs to landing */}
           <Route path="*" element={<LandingPage />} />
