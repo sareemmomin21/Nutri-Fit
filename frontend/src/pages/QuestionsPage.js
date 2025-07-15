@@ -1,11 +1,11 @@
-// src/pages/QuestionsPage.js
+
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 export default function QuestionsPage() {
   const navigate = useNavigate();
 
-  // Form state
+ 
   const [age, setAge] = useState("");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
