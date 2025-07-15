@@ -155,7 +155,6 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
             marginBottom: "0.5rem",
           }}
         >
-          <span style={{ fontSize: "1.5rem", marginRight: "0.5rem" }}></span>
           <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#333" }}>
             {food.name}
           </h3>
@@ -198,6 +197,9 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
               cursor: isProcessing ? "not-allowed" : "pointer",
               fontSize: "0.9rem",
               transition: "background 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
             }}
           >
             Like
@@ -214,6 +216,9 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
               cursor: isProcessing ? "not-allowed" : "pointer",
               fontSize: "0.9rem",
               transition: "background 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
             }}
           >
             Dislike
@@ -230,6 +235,9 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
               cursor: isProcessing ? "not-allowed" : "pointer",
               fontSize: "0.9rem",
               transition: "background 0.2s",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
             }}
           >
             Ate This
@@ -258,7 +266,15 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
           marginBottom: "1rem",
         }}
       >
-        <h2 style={{ margin: 0, color: "#333" }}>
+        <h2
+          style={{
+            margin: 0,
+            color: "#333",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
           {getMealDisplayName(meal)} Suggestions
         </h2>
 
@@ -274,6 +290,9 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
               borderRadius: "6px",
               cursor: refreshing ? "not-allowed" : "pointer",
               fontSize: "0.9rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
             }}
           >
             {refreshing ? "Refreshing..." : "Get New Suggestions"}
@@ -289,7 +308,23 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
             color: "#666",
           }}
         >
-          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>🍽️</div>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              backgroundColor: "#f0f0f0",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1rem",
+              fontSize: "20px",
+              fontWeight: "bold",
+              border: "2px solid #ddd",
+            }}
+          >
+            ⋯
+          </div>
           <p>Finding perfect {meal} suggestions for you...</p>
         </div>
       ) : suggestions.length > 0 ? (
@@ -311,22 +346,16 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
               backgroundColor: "#f0f8ff",
               borderRadius: "8px",
               border: "1px solid #e0e0e0",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
             }}
           >
-            <strong style={{ color: "#333", fontSize: "1.1rem" }}>
-              Total Meal Calories: {Math.round(totalCalories)}
-            </strong>
-            {suggestions.length > 1 && (
-              <p
-                style={{
-                  margin: "0.5rem 0 0 0",
-                  fontSize: "0.9rem",
-                  color: "#666",
-                }}
-              >
-                This is a balanced {meal} with {suggestions.length} components
-              </p>
-            )}
+            <div>
+              <strong style={{ color: "#333", fontSize: "1.1rem" }}>
+                Total Meal Calories: {Math.round(totalCalories)}
+              </strong>
+            </div>
           </div>
         </div>
       ) : (
@@ -337,7 +366,24 @@ export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
             color: "#666",
           }}
         >
-          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>😔</div>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              backgroundColor: "#f0f0f0",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              margin: "0 auto 1rem",
+              fontSize: "20px",
+              fontWeight: "bold",
+              border: "2px solid #ddd",
+              color: "#999",
+            }}
+          >
+            ∅
+          </div>
           <p>No suggestions available right now.</p>
           <p style={{ fontSize: "0.9rem" }}>
             You might be close to your calorie limit for this meal.

@@ -2,11 +2,13 @@ import React, { useEffect, useState } from "react";
 import Nutrition from "../components/Nutrition";
 
 export default function NutritionPage() {
-  const [totalEaten, setTotalEaten] = useState(0);
-  const [nutrientTotals, setNutrientTotals] = useState({
-    protein: 0,
-    carbohydrates: 0,
-    fat: 0,
+  const [dailySummary, setDailySummary] = useState({
+    total_eaten: 0,
+    nutrients: {
+      protein: 0,
+      carbohydrates: 0,
+      fat: 0,
+    },
   });
   const [mealProgress, setMealProgress] = useState({});
   const [goals, setGoals] = useState({
@@ -17,34 +19,18 @@ export default function NutritionPage() {
   });
   const userId = "user_123";
 
-  const fetchTotal = async () => {
+  // Combined fetch for daily totals and nutrients
+  const fetchDailySummary = async () => {
     try {
-      const response = await fetch("http://localhost:5000/get_daily_total", {
+      const response = await fetch("http://localhost:5000/get_daily_summary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
       });
       const data = await response.json();
-      setTotalEaten(data.total_eaten);
+      setDailySummary(data);
     } catch (error) {
-      console.error("Error fetching total:", error);
-    }
-  };
-
-  const fetchNutrients = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/get_daily_nutrients",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      );
-      const data = await response.json();
-      setNutrientTotals(data);
-    } catch (error) {
-      console.error("Error fetching nutrients:", error);
+      console.error("Error fetching daily summary:", error);
     }
   };
 
@@ -63,14 +49,12 @@ export default function NutritionPage() {
   };
 
   useEffect(() => {
-    fetchTotal();
-    fetchNutrients();
+    fetchDailySummary();
     fetchMealProgress();
   }, []);
 
   const refreshData = () => {
-    fetchTotal();
-    fetchNutrients();
+    fetchDailySummary();
     fetchMealProgress();
   };
 
@@ -156,8 +140,12 @@ export default function NutritionPage() {
             margin: "0 0 0.5rem 0",
             textTransform: "capitalize",
             color: "#333",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
           }}
         >
+          <span style={{ fontSize: "16px" }}></span>
           {mealName}
         </h4>
 
@@ -256,7 +244,15 @@ export default function NutritionPage() {
           border: "1px solid #ddd",
         }}
       >
-        <h1 style={{ margin: "0 0 1rem 0", color: "#333" }}>
+        <h1
+          style={{
+            margin: "0 0 1rem 0",
+            color: "#333",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
           Daily Nutrition Dashboard
         </h1>
 
@@ -276,27 +272,33 @@ export default function NutritionPage() {
               border: "1px solid #e0e0e0",
             }}
           >
-            <h3 style={{ margin: "0 0 1rem 0", color: "#333" }}>
-              Daily Progress
-            </h3>
+            <h3
+              style={{
+                margin: "0 0 1rem 0",
+                color: "#333",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            ></h3>
             <ProgressBar
-              current={totalEaten}
+              current={dailySummary.total_eaten}
               goal={goals.calorie_goal}
               label="Calories"
               unit=""
             />
             <ProgressBar
-              current={nutrientTotals.protein}
+              current={dailySummary.nutrients.protein}
               goal={goals.protein}
               label="Protein"
             />
             <ProgressBar
-              current={nutrientTotals.carbohydrates}
+              current={dailySummary.nutrients.carbohydrates}
               goal={goals.carbohydrates}
               label="Carbs"
             />
             <ProgressBar
-              current={nutrientTotals.fat}
+              current={dailySummary.nutrients.fat}
               goal={goals.fat}
               label="Fat"
             />
@@ -310,7 +312,15 @@ export default function NutritionPage() {
               border: "1px solid #e0e0e0",
             }}
           >
-            <h3 style={{ margin: "0 0 1rem 0", color: "#333" }}>
+            <h3
+              style={{
+                margin: "0 0 1rem 0",
+                color: "#333",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
               Meal Progress
             </h3>
             {Object.entries(mealProgress).map(([mealName, progress]) => (
@@ -359,6 +369,9 @@ export default function NutritionPage() {
             borderRadius: "8px",
             cursor: "pointer",
             transition: "background 0.2s",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
           }}
           onMouseOver={(e) => (e.target.style.backgroundColor = "#45a049")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#4CAF50")}
@@ -377,6 +390,9 @@ export default function NutritionPage() {
             borderRadius: "8px",
             cursor: "pointer",
             transition: "background 0.2s",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
           }}
           onMouseOver={(e) => (e.target.style.backgroundColor = "#0056b3")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}

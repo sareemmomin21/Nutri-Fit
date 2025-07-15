@@ -1,52 +1,62 @@
-from flask import Flask, request, jsonify
-import json
-import os
+from database import (
+    get_user_data, 
+    get_remaining_calories as db_get_remaining_calories,
+    update_meal_nutrition,
+    update_food_preference
+)
 
-USER_FILE = os.path.join(os.path.dirname(__file__), "users.json")
+# Keep these functions for backward compatibility but use database
 def load_users():
-    try:
-        with open(USER_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    
+    """Legacy function - now returns empty dict since we use database"""
+    return {}
 
 def save_users(data):
-    with open(USER_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    """Legacy function - no longer needed since we use database directly"""
+    pass
 
 def get_remaining_calories(user, meal):
-    meal_info = user["meals"].get(meal, {})
-    return meal_info.get("calories_allocated", 0) - meal_info.get("calories_eaten", 0)
+    """Get remaining calories for a meal - now uses database"""
+    # Extract user_id from user dict or assume it's passed directly
+    user_id = user.get("id") if isinstance(user, dict) else "user_123"
+    return db_get_remaining_calories(user_id, meal)
 
 def update_meal_calories(user, meal, food):
-    user["meals"][meal]["calories_eaten"] += food["calories"]
-    user["meals"][meal]["protein_eaten"] += food.get("protein", 0)
-    user["meals"][meal]["carbohydrates_eaten"] += food.get("carbohydrates", 0)
-    user["meals"][meal]["fat_eaten"] += food.get("fat", 0)
-    user["nutrients_eaten"]["protein"] += food.get("protein", 0)
-    user["nutrients_eaten"]["carbohydrates"] += food.get("carbohydrates", 0)
-    user["nutrients_eaten"]["fat"] += food.get("fat", 0)
+    """Update meal calories - now uses database"""
+    user_id = user.get("id") if isinstance(user, dict) else "user_123"
+    update_meal_nutrition(user_id, meal, food)
 
 def get_meal_context(user, meal):
     """Get context about what the user has eaten and preferences"""
-    meal_data = user["meals"][meal]
+    user_id = user.get("id") if isinstance(user, dict) else "user_123"
+    
+    # Get fresh user data from database
+    user_data = get_user_data(user_id)
+    if not user_data:
+        return {
+            "remaining_calories": 0,
+            "liked_foods": set(),
+            "disliked_foods": set(),
+            "macro_needs": {"protein": True, "carbs": True, "fat": True},
+            "macro_ratios": {"protein": 0, "carbs": 0, "fat": 0}
+        }
+    
+    meal_data = user_data["meals"].get(meal, {})
     
     # Calculate remaining macros
-    remaining_calories = get_remaining_calories(user, meal)
+    remaining_calories = db_get_remaining_calories(user_id, meal)
     
     # Get preference patterns
     liked_foods = set(meal_data.get("liked", []))
     disliked_foods = set(meal_data.get("disliked", []))
     
     # Analyze what they've eaten today across all meals
-    total_protein_eaten = user["nutrients_eaten"]["protein"]
-    total_carbs_eaten = user["nutrients_eaten"]["carbohydrates"]
-    total_fat_eaten = user["nutrients_eaten"]["fat"]
+    total_protein_eaten = user_data["nutrients_eaten"]["protein"]
+    total_carbs_eaten = user_data["nutrients_eaten"]["carbohydrates"]
+    total_fat_eaten = user_data["nutrients_eaten"]["fat"]
     
-    protein_goal = user["nutrient_goals"]["protein"]
-    carbs_goal = user["nutrient_goals"]["carbohydrates"]
-    fat_goal = user["nutrient_goals"]["fat"]
+    protein_goal = user_data["nutrient_goals"]["protein"]
+    carbs_goal = user_data["nutrient_goals"]["carbohydrates"]
+    fat_goal = user_data["nutrient_goals"]["fat"]
     
     # Calculate what macros they need more of
     protein_ratio = total_protein_eaten / protein_goal if protein_goal > 0 else 0
