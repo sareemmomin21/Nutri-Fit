@@ -1,149 +1,916 @@
 // src/pages/QuestionsPage.js
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 export default function QuestionsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const userId = location.state?.userId;
+
+  // Redirect if no user ID
+  React.useEffect(() => {
+    if (!userId) {
+      navigate("/");
+    }
+  }, [userId, navigate]);
 
   // Form state
-  const [age, setAge] = useState("");
-  const [weight, setWeight] = useState("");
-  const [height, setHeight] = useState("");
-  const [gender, setGender] = useState("");
-  const [gymMembership, setGymMembership] = useState("");
-  const [equipment, setEquipment] = useState("");
-  const [focus, setFocus] = useState("");
-  const [goals, setGoals] = useState({ gain: false, loss: false, muscle: false, other: false });
-  const [otherGoal, setOtherGoal] = useState("");
-  const [restrictions, setRestrictions] = useState({ vegetarian: false, vegan: false, glutenFree: false, lactoseIntolerant: false, other: false });
-  const [otherRestriction, setOtherRestriction] = useState("");
-  const [trainingStyles, setTrainingStyles] = useState({ weightlifting: false, calisthenics: false, hiit: false, cardio: false, other: false });
-  const [otherTraining, setOtherTraining] = useState("");
+  const [currentStep, setCurrentStep] = useState(1);
+  const [errors, setErrors] = useState({});
+  const [formData, setFormData] = useState({
+    // Personal Information
+    first_name: "",
+    last_name: "",
+    date_of_birth: "",
+    gender: "",
+    height_cm: "",
+    weight_lb: "",
 
-  const handleCheckboxChange = (setter, state, name) => {
-    setter({ ...state, [name]: !state[name] });
+    // Activity & Goals
+    activity_level: "",
+    fitness_experience: "",
+    workout_frequency: "",
+    workout_duration: "",
+
+    // Equipment & Access
+    has_gym_membership: null,
+    available_equipment: "",
+
+    // Goals & Focus
+    primary_focus: "",
+    fitness_goals: [],
+
+    // Dietary Information
+    dietary_restrictions: [],
+    meal_prep_time: "",
+    cooking_skill: "",
+    budget_preference: "",
+
+    // Training Preferences
+    training_styles: [],
+  });
+
+  const totalSteps = 6;
+
+  const validateStep = (step) => {
+    const newErrors = {};
+
+    switch (step) {
+      case 1: // Personal Information
+        if (!formData.first_name.trim())
+          newErrors.first_name = "First name is required";
+        if (!formData.last_name.trim())
+          newErrors.last_name = "Last name is required";
+        if (!formData.date_of_birth)
+          newErrors.date_of_birth = "Date of birth is required";
+        if (!formData.gender) newErrors.gender = "Gender is required";
+        break;
+
+      case 2: // Physical Stats
+        if (
+          !formData.height_cm ||
+          formData.height_cm < 100 ||
+          formData.height_cm > 250
+        ) {
+          newErrors.height_cm = "Please enter a valid height (100-250 cm)";
+        }
+        if (
+          !formData.weight_lb ||
+          formData.weight_lb < 50 ||
+          formData.weight_lb > 500
+        ) {
+          newErrors.weight_lb = "Please enter a valid weight (50-500 lbs)";
+        }
+        if (!formData.activity_level)
+          newErrors.activity_level = "Activity level is required";
+        break;
+
+      case 3: // Fitness Experience
+        if (!formData.fitness_experience)
+          newErrors.fitness_experience = "Fitness experience is required";
+        if (
+          !formData.workout_frequency ||
+          formData.workout_frequency < 0 ||
+          formData.workout_frequency > 7
+        ) {
+          newErrors.workout_frequency =
+            "Please enter workout frequency (0-7 days per week)";
+        }
+        if (
+          !formData.workout_duration ||
+          formData.workout_duration < 15 ||
+          formData.workout_duration > 180
+        ) {
+          newErrors.workout_duration =
+            "Please enter workout duration (15-180 minutes)";
+        }
+        break;
+
+      case 4: // Equipment & Goals
+        if (formData.has_gym_membership === null)
+          newErrors.has_gym_membership = "Please select an option";
+        if (!formData.primary_focus)
+          newErrors.primary_focus = "Primary focus is required";
+        if (formData.fitness_goals.length === 0)
+          newErrors.fitness_goals = "Please select at least one goal";
+        break;
+
+      case 5: // Dietary Preferences
+        if (!formData.meal_prep_time)
+          newErrors.meal_prep_time = "Meal prep preference is required";
+        if (!formData.cooking_skill)
+          newErrors.cooking_skill = "Cooking skill level is required";
+        if (!formData.budget_preference)
+          newErrors.budget_preference = "Budget preference is required";
+        break;
+
+      case 6: // Training Styles
+        if (formData.training_styles.length === 0)
+          newErrors.training_styles =
+            "Please select at least one training style";
+        break;
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const payload = {
-      age: Number(age),
-      weight: Number(weight),
-      height: Number(height),
-      gender,
-      gymMembership,
-      equipment: gymMembership === 'yes' ? equipment : '',
-      focus,
-      goals: Object.keys(goals).filter(k => goals[k]).map(k => k === 'other' ? otherGoal : k),
-      restrictions: Object.keys(restrictions).filter(k => restrictions[k]).map(k => k === 'other' ? otherRestriction : k),
-      trainingStyles: Object.keys(trainingStyles).filter(k => trainingStyles[k]).map(k => k === 'other' ? otherTraining : k),
-    };
-
-    console.log("Questionnaire payload:", payload);
-    // TODO: send payload to backend
-    navigate("/nutrition");
+  const handleNext = () => {
+    if (validateStep(currentStep)) {
+      setCurrentStep(currentStep + 1);
+    }
   };
+
+  const handlePrevious = () => {
+    setCurrentStep(currentStep - 1);
+    setErrors({});
+  };
+
+  const handleInputChange = (field, value) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: undefined }));
+    }
+  };
+
+  const handleArrayChange = (field, value, checked) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: checked
+        ? [...prev[field], value]
+        : prev[field].filter((item) => item !== value),
+    }));
+  };
+
+  const handleSubmit = async () => {
+    if (!validateStep(currentStep)) return;
+
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/complete_profile",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, ...formData }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store user ID for the app
+        localStorage.setItem("nutrifit_user_id", userId);
+        navigate("/nutrition");
+      } else {
+        alert(data.error || "Failed to complete profile");
+      }
+    } catch (error) {
+      console.error("Error submitting profile:", error);
+      alert("Failed to submit profile. Please try again.");
+    }
+  };
+
+  const inputStyle = {
+    width: "100%",
+    padding: "12px",
+    border: "2px solid #ddd",
+    borderRadius: "8px",
+    fontSize: "16px",
+    marginBottom: "8px",
+  };
+
+  const errorStyle = {
+    color: "#e53e3e",
+    fontSize: "14px",
+    marginBottom: "8px",
+  };
+
+  const buttonStyle = {
+    padding: "12px 24px",
+    fontSize: "16px",
+    borderRadius: "8px",
+    border: "none",
+    cursor: "pointer",
+    fontWeight: "bold",
+  };
+
+  const renderStep1 = () => (
+    <div>
+      <h3>Personal Information</h3>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          First Name *
+        </label>
+        <input
+          type="text"
+          value={formData.first_name}
+          onChange={(e) => handleInputChange("first_name", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.first_name ? "#e53e3e" : "#ddd",
+          }}
+          placeholder="Enter your first name"
+        />
+        {errors.first_name && <div style={errorStyle}>{errors.first_name}</div>}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Last Name *
+        </label>
+        <input
+          type="text"
+          value={formData.last_name}
+          onChange={(e) => handleInputChange("last_name", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.last_name ? "#e53e3e" : "#ddd",
+          }}
+          placeholder="Enter your last name"
+        />
+        {errors.last_name && <div style={errorStyle}>{errors.last_name}</div>}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Date of Birth *
+        </label>
+        <input
+          type="date"
+          value={formData.date_of_birth}
+          onChange={(e) => handleInputChange("date_of_birth", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.date_of_birth ? "#e53e3e" : "#ddd",
+          }}
+          max={new Date().toISOString().split("T")[0]}
+        />
+        {errors.date_of_birth && (
+          <div style={errorStyle}>{errors.date_of_birth}</div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Gender *
+        </label>
+        <select
+          value={formData.gender}
+          onChange={(e) => handleInputChange("gender", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.gender ? "#e53e3e" : "#ddd",
+          }}
+        >
+          <option value="">Select your gender</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+          <option value="prefer_not_to_say">Prefer not to say</option>
+        </select>
+        {errors.gender && <div style={errorStyle}>{errors.gender}</div>}
+      </div>
+    </div>
+  );
+
+  const renderStep2 = () => (
+    <div>
+      <h3>Physical Stats & Activity</h3>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Height (cm) *
+        </label>
+        <input
+          type="number"
+          value={formData.height_cm}
+          onChange={(e) => handleInputChange("height_cm", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.height_cm ? "#e53e3e" : "#ddd",
+          }}
+          placeholder="e.g., 175"
+          min="100"
+          max="250"
+        />
+        {errors.height_cm && <div style={errorStyle}>{errors.height_cm}</div>}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Weight (lbs) *
+        </label>
+        <input
+          type="number"
+          value={formData.weight_lb}
+          onChange={(e) => handleInputChange("weight_lb", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.weight_lb ? "#e53e3e" : "#ddd",
+          }}
+          placeholder="e.g., 150"
+          min="50"
+          max="500"
+        />
+        {errors.weight_lb && <div style={errorStyle}>{errors.weight_lb}</div>}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Activity Level *
+        </label>
+        <select
+          value={formData.activity_level}
+          onChange={(e) => handleInputChange("activity_level", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.activity_level ? "#e53e3e" : "#ddd",
+          }}
+        >
+          <option value="">Select your activity level</option>
+          <option value="sedentary">Sedentary (little/no exercise)</option>
+          <option value="lightly_active">
+            Lightly Active (light exercise 1-3 days/week)
+          </option>
+          <option value="moderately_active">
+            Moderately Active (moderate exercise 3-5 days/week)
+          </option>
+          <option value="very_active">
+            Very Active (hard exercise 6-7 days/week)
+          </option>
+          <option value="extremely_active">
+            Extremely Active (very hard exercise & physical job)
+          </option>
+        </select>
+        {errors.activity_level && (
+          <div style={errorStyle}>{errors.activity_level}</div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep3 = () => (
+    <div>
+      <h3>Fitness Experience</h3>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Fitness Experience Level *
+        </label>
+        <select
+          value={formData.fitness_experience}
+          onChange={(e) =>
+            handleInputChange("fitness_experience", e.target.value)
+          }
+          style={{
+            ...inputStyle,
+            borderColor: errors.fitness_experience ? "#e53e3e" : "#ddd",
+          }}
+        >
+          <option value="">Select your experience level</option>
+          <option value="beginner">Beginner (0-6 months)</option>
+          <option value="intermediate">
+            Intermediate (6 months - 2 years)
+          </option>
+          <option value="advanced">Advanced (2+ years)</option>
+        </select>
+        {errors.fitness_experience && (
+          <div style={errorStyle}>{errors.fitness_experience}</div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          How many days per week do you currently workout? *
+        </label>
+        <input
+          type="number"
+          value={formData.workout_frequency}
+          onChange={(e) =>
+            handleInputChange("workout_frequency", e.target.value)
+          }
+          style={{
+            ...inputStyle,
+            borderColor: errors.workout_frequency ? "#e53e3e" : "#ddd",
+          }}
+          placeholder="e.g., 3"
+          min="0"
+          max="7"
+        />
+        {errors.workout_frequency && (
+          <div style={errorStyle}>{errors.workout_frequency}</div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          How long is your typical workout? (minutes) *
+        </label>
+        <input
+          type="number"
+          value={formData.workout_duration}
+          onChange={(e) =>
+            handleInputChange("workout_duration", e.target.value)
+          }
+          style={{
+            ...inputStyle,
+            borderColor: errors.workout_duration ? "#e53e3e" : "#ddd",
+          }}
+          placeholder="e.g., 60"
+          min="15"
+          max="180"
+        />
+        {errors.workout_duration && (
+          <div style={errorStyle}>{errors.workout_duration}</div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep4 = () => (
+    <div>
+      <h3>Equipment & Goals</h3>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Do you have access to a gym or workout equipment? *
+        </label>
+        <div style={{ display: "flex", gap: "20px", marginBottom: "10px" }}>
+          <label
+            style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+          >
+            <input
+              type="radio"
+              name="gym_access"
+              checked={formData.has_gym_membership === true}
+              onChange={() => handleInputChange("has_gym_membership", true)}
+              style={{ marginRight: "8px" }}
+            />
+            Yes
+          </label>
+          <label
+            style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
+          >
+            <input
+              type="radio"
+              name="gym_access"
+              checked={formData.has_gym_membership === false}
+              onChange={() => handleInputChange("has_gym_membership", false)}
+              style={{ marginRight: "8px" }}
+            />
+            No
+          </label>
+        </div>
+        {errors.has_gym_membership && (
+          <div style={errorStyle}>{errors.has_gym_membership}</div>
+        )}
+      </div>
+
+      {formData.has_gym_membership && (
+        <div style={{ marginBottom: "20px" }}>
+          <label
+            style={{
+              display: "block",
+              marginBottom: "8px",
+              fontWeight: "bold",
+            }}
+          >
+            What equipment do you have access to?
+          </label>
+          <textarea
+            value={formData.available_equipment}
+            onChange={(e) =>
+              handleInputChange("available_equipment", e.target.value)
+            }
+            style={{ ...inputStyle, minHeight: "80px" }}
+            placeholder="e.g., dumbbells, treadmill, resistance bands..."
+          />
+        </div>
+      )}
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Primary Focus *
+        </label>
+        <select
+          value={formData.primary_focus}
+          onChange={(e) => handleInputChange("primary_focus", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.primary_focus ? "#e53e3e" : "#ddd",
+          }}
+        >
+          <option value="">Select your primary focus</option>
+          <option value="nutrition">Nutrition</option>
+          <option value="fitness">Fitness</option>
+          <option value="both">Both Nutrition & Fitness</option>
+        </select>
+        {errors.primary_focus && (
+          <div style={errorStyle}>{errors.primary_focus}</div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          What are your fitness goals? (Select all that apply) *
+        </label>
+        {[
+          "weight_loss",
+          "weight_gain",
+          "muscle_building",
+          "strength_training",
+          "endurance",
+          "general_health",
+        ].map((goal) => (
+          <label
+            key={goal}
+            style={{ display: "block", marginBottom: "8px", cursor: "pointer" }}
+          >
+            <input
+              type="checkbox"
+              checked={formData.fitness_goals.includes(goal)}
+              onChange={(e) =>
+                handleArrayChange("fitness_goals", goal, e.target.checked)
+              }
+              style={{ marginRight: "8px" }}
+            />
+            {goal.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+          </label>
+        ))}
+        {errors.fitness_goals && (
+          <div style={errorStyle}>{errors.fitness_goals}</div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep5 = () => (
+    <div>
+      <h3>Dietary Preferences</h3>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Dietary Restrictions/Preferences (Select all that apply)
+        </label>
+        {[
+          "vegetarian",
+          "vegan",
+          "gluten_free",
+          "dairy_free",
+          "keto",
+          "paleo",
+          "halal",
+          "kosher",
+        ].map((restriction) => (
+          <label
+            key={restriction}
+            style={{ display: "block", marginBottom: "8px", cursor: "pointer" }}
+          >
+            <input
+              type="checkbox"
+              checked={formData.dietary_restrictions.includes(restriction)}
+              onChange={(e) =>
+                handleArrayChange(
+                  "dietary_restrictions",
+                  restriction,
+                  e.target.checked
+                )
+              }
+              style={{ marginRight: "8px" }}
+            />
+            {restriction
+              .replace("_", " ")
+              .replace(/\b\w/g, (l) => l.toUpperCase())}
+          </label>
+        ))}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          How much time do you prefer to spend on meal preparation? *
+        </label>
+        <select
+          value={formData.meal_prep_time}
+          onChange={(e) => handleInputChange("meal_prep_time", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.meal_prep_time ? "#e53e3e" : "#ddd",
+          }}
+        >
+          <option value="">Select meal prep preference</option>
+          <option value="minimal">Minimal (under 15 minutes)</option>
+          <option value="moderate">Moderate (15-30 minutes)</option>
+          <option value="extensive">Extensive (30+ minutes)</option>
+        </select>
+        {errors.meal_prep_time && (
+          <div style={errorStyle}>{errors.meal_prep_time}</div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Cooking Skill Level *
+        </label>
+        <select
+          value={formData.cooking_skill}
+          onChange={(e) => handleInputChange("cooking_skill", e.target.value)}
+          style={{
+            ...inputStyle,
+            borderColor: errors.cooking_skill ? "#e53e3e" : "#ddd",
+          }}
+        >
+          <option value="">Select your cooking skill level</option>
+          <option value="beginner">Beginner (basic cooking)</option>
+          <option value="intermediate">
+            Intermediate (comfortable cooking)
+          </option>
+          <option value="advanced">Advanced (experienced cook)</option>
+        </select>
+        {errors.cooking_skill && (
+          <div style={errorStyle}>{errors.cooking_skill}</div>
+        )}
+      </div>
+
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          Food Budget Preference *
+        </label>
+        <select
+          value={formData.budget_preference}
+          onChange={(e) =>
+            handleInputChange("budget_preference", e.target.value)
+          }
+          style={{
+            ...inputStyle,
+            borderColor: errors.budget_preference ? "#e53e3e" : "#ddd",
+          }}
+        >
+          <option value="">Select your budget preference</option>
+          <option value="low">Budget-conscious</option>
+          <option value="medium">Moderate spending</option>
+          <option value="high">Premium options</option>
+        </select>
+        {errors.budget_preference && (
+          <div style={errorStyle}>{errors.budget_preference}</div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStep6 = () => (
+    <div>
+      <h3>Training Preferences</h3>
+      <div style={{ marginBottom: "20px" }}>
+        <label
+          style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
+        >
+          What training styles interest you? (Select all that apply) *
+        </label>
+        {[
+          "weightlifting",
+          "bodyweight",
+          "cardio",
+          "hiit",
+          "yoga",
+          "pilates",
+          "swimming",
+          "running",
+          "cycling",
+          "sports",
+        ].map((style) => (
+          <label
+            key={style}
+            style={{ display: "block", marginBottom: "8px", cursor: "pointer" }}
+          >
+            <input
+              type="checkbox"
+              checked={formData.training_styles.includes(style)}
+              onChange={(e) =>
+                handleArrayChange("training_styles", style, e.target.checked)
+              }
+              style={{ marginRight: "8px" }}
+            />
+            {style.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+          </label>
+        ))}
+        {errors.training_styles && (
+          <div style={errorStyle}>{errors.training_styles}</div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return renderStep1();
+      case 2:
+        return renderStep2();
+      case 3:
+        return renderStep3();
+      case 4:
+        return renderStep4();
+      case 5:
+        return renderStep5();
+      case 6:
+        return renderStep6();
+      default:
+        return null;
+    }
+  };
+
+  if (!userId) {
+    return <div>Loading...</div>;
+  }
 
   return (
-    <div style={{ maxWidth: 600, margin: '2rem auto', padding: '1rem' }}>
-      <h2>NutriFit – Questionnaire</h2>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Age:
-          <input type="number" value={age} onChange={e => setAge(e.target.value)} required style={{ marginLeft: '0.5rem', width: '80px' }} />
-        </label>
-        <br /><br />
+    <div
+      style={{
+        maxWidth: "600px",
+        margin: "2rem auto",
+        padding: "2rem",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <div style={{ marginBottom: "2rem" }}>
+        <h2 style={{ color: "#2d3748", marginBottom: "0.5rem" }}>
+          Complete Your Profile
+        </h2>
+        <p style={{ color: "#718096", marginBottom: "1rem" }}>
+          Help us personalize your nutrition and fitness experience
+        </p>
 
-        <label>
-          Weight (lbs):
-          <input type="number" value={weight} onChange={e => setWeight(e.target.value)} required style={{ marginLeft: '0.5rem', width: '80px' }} />
-        </label>
-        <br /><br />
+        {/* Progress Bar */}
+        <div
+          style={{
+            backgroundColor: "#e2e8f0",
+            height: "8px",
+            borderRadius: "4px",
+            marginBottom: "1rem",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              backgroundColor: "#48bb78",
+              height: "100%",
+              width: `${(currentStep / totalSteps) * 100}%`,
+              transition: "width 0.3s ease",
+            }}
+          />
+        </div>
 
-        <label>
-          Height (cm):
-          <input type="number" value={height} onChange={e => setHeight(e.target.value)} required style={{ marginLeft: '0.5rem', width: '80px' }} />
-        </label>
-        <br /><br />
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            fontSize: "14px",
+            color: "#718096",
+            marginBottom: "2rem",
+          }}
+        >
+          <span>
+            Step {currentStep} of {totalSteps}
+          </span>
+          <span>{Math.round((currentStep / totalSteps) * 100)}% Complete</span>
+        </div>
+      </div>
 
-        <label>
-          Gender:
-          <select value={gender} onChange={e => setGender(e.target.value)} required style={{ marginLeft: '0.5rem' }}>
-            <option value="">Select...</option>
-            <option value="male">Male</option>
-            <option value="female">Female</option>
-            <option value="other">Other</option>
-            <option value="prefer_not">Prefer not to say</option>
-          </select>
-        </label>
-        <br /><br />
+      {/* Step Content */}
+      <div
+        style={{
+          backgroundColor: "#f7fafc",
+          padding: "2rem",
+          borderRadius: "12px",
+          border: "1px solid #e2e8f0",
+          marginBottom: "2rem",
+        }}
+      >
+        {renderStepContent()}
+      </div>
 
-        <fieldset>
-          <legend>Do you have a gym membership or own workout equipment?</legend>
-          <label>
-            <input type="radio" name="gym" value="yes" checked={gymMembership === 'yes'} onChange={e => setGymMembership(e.target.value)} required /> Yes
-          </label>
-          <label style={{ marginLeft: '1rem' }}>
-            <input type="radio" name="gym" value="no" checked={gymMembership === 'no'} onChange={e => setGymMembership(e.target.value)} /> No
-          </label>
-          {gymMembership === 'yes' && (
-            <div style={{ marginTop: '0.5rem' }}>
-              <label>
-                Equipment:
-                <input type="text" value={equipment} onChange={e => setEquipment(e.target.value)} placeholder="e.g. dumbbells" style={{ marginLeft: '0.5rem', width: '60%' }} />
-              </label>
-            </div>
-          )}
-        </fieldset>
-        <br />
-
-        <fieldset>
-          <legend>Would you like to focus on exercise or nutrition?</legend>
-          <label>
-            <input type="radio" name="focus" value="exercise" checked={focus === 'exercise'} onChange={e => setFocus(e.target.value)} required /> Exercise
-          </label>
-          <label style={{ marginLeft: '1rem' }}>
-            <input type="radio" name="focus" value="nutrition" checked={focus === 'nutrition'} onChange={e => setFocus(e.target.value)} /> Nutrition
-          </label>
-        </fieldset>
-        <br />
-
-        <fieldset>
-          <legend>What are your goals?</legend>
-          <label><input type="checkbox" checked={goals.gain} onChange={() => handleCheckboxChange(setGoals, goals, 'gain')} /> Weight Gain</label><br />
-          <label><input type="checkbox" checked={goals.loss} onChange={() => handleCheckboxChange(setGoals, goals, 'loss')} /> Weight Loss</label><br />
-          <label><input type="checkbox" checked={goals.muscle} onChange={() => handleCheckboxChange(setGoals, goals, 'muscle')} /> Muscle Building</label><br />
-          <label><input type="checkbox" checked={goals.other} onChange={() => handleCheckboxChange(setGoals, goals, 'other')} /> Other</label>
-          {goals.other && <input type="text" value={otherGoal} onChange={e => setOtherGoal(e.target.value)} placeholder="Please specify" style={{ marginLeft: '0.5rem', width: '60%' }} />}
-        </fieldset>
-        <br />
-
-        <fieldset>
-          <legend>Dietary restrictions/preferences</legend>
-          <label><input type="checkbox" checked={restrictions.vegetarian} onChange={() => handleCheckboxChange(setRestrictions, restrictions, 'vegetarian')} /> Vegetarian</label><br />
-          <label><input type="checkbox" checked={restrictions.vegan} onChange={() => handleCheckboxChange(setRestrictions, restrictions, 'vegan')} /> Vegan</label><br />
-          <label><input type="checkbox" checked={restrictions.glutenFree} onChange={() => handleCheckboxChange(setRestrictions, restrictions, 'glutenFree')} /> Gluten-Free</label><br />
-          <label><input type="checkbox" checked={restrictions.lactoseIntolerant} onChange={() => handleCheckboxChange(setRestrictions, restrictions, 'lactoseIntolerant')} /> Lactose Intolerant</label><br />
-          <label><input type="checkbox" checked={restrictions.other} onChange={() => handleCheckboxChange(setRestrictions, restrictions, 'other')} /> Other</label>
-          {restrictions.other && <input type="text" value={otherRestriction} onChange={e => setOtherRestriction(e.target.value)} placeholder="Please specify" style={{ marginLeft: '0.5rem', width: '60%' }} />}
-        </fieldset>
-        <br />
-
-        <fieldset>
-          <legend>Training styles interested in</legend>
-          <label><input type="checkbox" checked={trainingStyles.weightlifting} onChange={() => handleCheckboxChange(setTrainingStyles, trainingStyles, 'weightlifting')} /> Weightlifting</label><br />
-          <label><input type="checkbox" checked={trainingStyles.calisthenics} onChange={() => handleCheckboxChange(setTrainingStyles, trainingStyles, 'calisthenics')} /> Calisthenics</label><br />
-          <label><input type="checkbox" checked={trainingStyles.hiit} onChange={() => handleCheckboxChange(setTrainingStyles, trainingStyles, 'hiit')} /> HIIT</label><br />
-          <label><input type="checkbox" checked={trainingStyles.cardio} onChange={() => handleCheckboxChange(setTrainingStyles, trainingStyles, 'cardio')} /> Cardio</label><br />
-          <label><input type="checkbox" checked={trainingStyles.other} onChange={() => handleCheckboxChange(setTrainingStyles, trainingStyles, 'other')} /> Other</label>
-          {trainingStyles.other && <input type="text" value={otherTraining} onChange={e => setOtherTraining(e.target.value)} placeholder="Please specify" style={{ marginLeft: '0.5rem', width: '60%' }} />}
-        </fieldset>
-        <br />
-
-        <button type="submit" style={{ padding: '0.75rem 1.5rem', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-          Submit
+      {/* Navigation Buttons */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: "1rem",
+        }}
+      >
+        <button
+          onClick={handlePrevious}
+          disabled={currentStep === 1}
+          style={{
+            ...buttonStyle,
+            backgroundColor: currentStep === 1 ? "#e2e8f0" : "#edf2f7",
+            color: currentStep === 1 ? "#a0aec0" : "#2d3748",
+            cursor: currentStep === 1 ? "not-allowed" : "pointer",
+          }}
+        >
+          Previous
         </button>
-      </form>
+
+        {currentStep < totalSteps ? (
+          <button
+            onClick={handleNext}
+            style={{
+              ...buttonStyle,
+              backgroundColor: "#48bb78",
+              color: "white",
+            }}
+          >
+            Next
+          </button>
+        ) : (
+          <button
+            onClick={handleSubmit}
+            style={{
+              ...buttonStyle,
+              backgroundColor: "#38a169",
+              color: "white",
+            }}
+          >
+            Complete Profile
+          </button>
+        )}
+      </div>
+
+      {/* Skip Option */}
+      <div style={{ textAlign: "center", marginTop: "1rem" }}>
+        <button
+          onClick={() => {
+            if (
+              window.confirm(
+                "Are you sure you want to skip the questionnaire? This will limit personalization features."
+              )
+            ) {
+              localStorage.setItem("nutrifit_user_id", userId);
+              navigate("/nutrition");
+            }
+          }}
+          style={{
+            background: "none",
+            border: "none",
+            color: "#718096",
+            cursor: "pointer",
+            textDecoration: "underline",
+            fontSize: "14px",
+          }}
+        >
+          Skip for now
+        </button>
+      </div>
     </div>
   );
 }
