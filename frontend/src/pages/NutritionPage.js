@@ -164,13 +164,6 @@ export default function NutritionPage() {
     const percentage = Math.min(progress.progress_percentage, 100);
     const color = getProgressColor(percentage);
 
-    const mealEmojis = {
-      breakfast: "🌅",
-      lunch: "☀️",
-      dinner: "🌙",
-      snacks: "🍎",
-    };
-
     return (
       <div
         style={{
@@ -191,9 +184,7 @@ export default function NutritionPage() {
             gap: "8px",
           }}
         >
-          <span style={{ fontSize: "16px" }}>
-            {mealEmojis[mealName] || "🍽️"}
-          </span>
+          <span style={{ fontSize: "16px" }}></span>
           {mealName}
         </h4>
 
@@ -331,7 +322,7 @@ export default function NutritionPage() {
               fontSize: "16px",
             }}
           >
-            Welcome back, {userProfile.first_name || "there"}! 👋 Ready to track
+            Welcome back, {userProfile.first_name || "there"}! Ready to track
             your nutrition today?
           </p>
         </div>
@@ -356,7 +347,7 @@ export default function NutritionPage() {
             gap: "12px",
           }}
         >
-          🥗 Daily Nutrition Dashboard
+          Daily Nutrition Dashboard
         </h1>
 
         <div
@@ -384,7 +375,7 @@ export default function NutritionPage() {
                 gap: "8px",
               }}
             >
-              📊 Daily Progress
+              Daily Progress
             </h3>
             <ProgressBar
               current={dailySummary.total_eaten}
@@ -426,7 +417,7 @@ export default function NutritionPage() {
                 gap: "8px",
               }}
             >
-              🍽️ Meal Progress
+              Meal Progress
             </h3>
             {Object.entries(mealProgress).map(([mealName, progress]) => (
               <MealProgressCard
@@ -481,7 +472,7 @@ export default function NutritionPage() {
           onMouseOver={(e) => (e.target.style.backgroundColor = "#45a049")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#4CAF50")}
         >
-          🔄 Refresh Data
+          Refresh Data
         </button>
 
         <button
@@ -502,7 +493,7 @@ export default function NutritionPage() {
           onMouseOver={(e) => (e.target.style.backgroundColor = "#0056b3")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}
         >
-          🌅 Next Day
+          Next Day
         </button>
       </div>
     </div>

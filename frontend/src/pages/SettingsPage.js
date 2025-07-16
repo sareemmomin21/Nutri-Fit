@@ -979,20 +979,6 @@ function FoodPreferencesTab({ preferences, onRefresh }) {
         }}
       >
         <h3 style={{ margin: "0", color: "#2d3748" }}>Food Preferences</h3>
-        <button
-          onClick={onRefresh}
-          style={{
-            padding: "8px 16px",
-            backgroundColor: "#48bb78",
-            color: "white",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-            fontSize: "14px",
-          }}
-        >
-          Refresh
-        </button>
       </div>
 
       {/* Overall Summary */}
@@ -1008,9 +994,8 @@ function FoodPreferencesTab({ preferences, onRefresh }) {
           }}
         >
           <div>
-            <h5 style={{ color: "#22543d", marginBottom: "0.5rem" }}>
-              ✅ Liked Foods (
-              {preferences.overall_preferences.liked?.length || 0})
+            <h5 style={{ color: "green", marginBottom: "0.5rem" }}>
+              Liked Foods ({preferences.overall_preferences.liked?.length || 0})
             </h5>
             {preferences.overall_preferences.liked?.length > 0 ? (
               <ul style={listStyle}>
@@ -1044,7 +1029,7 @@ function FoodPreferencesTab({ preferences, onRefresh }) {
 
           <div>
             <h5 style={{ color: "#c53030", marginBottom: "0.5rem" }}>
-              ❌ Disliked Foods (
+              Disliked Foods (
               {preferences.overall_preferences.disliked?.length || 0})
             </h5>
             {preferences.overall_preferences.disliked?.length > 0 ? (
@@ -1236,9 +1221,12 @@ function FoodPreferencesTab({ preferences, onRefresh }) {
         }}
       >
         <p style={{ margin: "0", fontSize: "14px", color: "#4a5568" }}>
-          💡 <strong>Tip:</strong> Your food preferences are automatically
-          learned as you use the app. Like or dislike foods in the nutrition
-          section to build your personalized recommendations!
+          <strong>
+            {" "}
+            Your food preferences are automatically learned as you use the app.
+            Like or dislike foods in the nutrition section to build your
+            personalized recommendations!{" "}
+          </strong>
         </p>
       </div>
     </div>

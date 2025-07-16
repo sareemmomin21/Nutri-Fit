@@ -155,7 +155,7 @@ export default function AuthPage() {
             🥗 NutriFit
           </h1>
           <p style={{ color: "#718096", fontSize: "16px" }}>
-            {isLogin ? "Welcome back!" : "Join the NutriFit community"}
+            {isLogin ? "Welcome back!" : "Join NutriFit"}
           </p>
         </div>
 
@@ -200,7 +200,9 @@ export default function AuthPage() {
               aria-invalid={!!errors.username}
             />
             {errors.username && (
-              <div style={{ color: "#e53e3e", fontSize: "14px", marginTop: "4px" }}>
+              <div
+                style={{ color: "#e53e3e", fontSize: "14px", marginTop: "4px" }}
+              >
                 {errors.username}
               </div>
             )}
@@ -230,7 +232,13 @@ export default function AuthPage() {
                 aria-invalid={!!errors.email}
               />
               {errors.email && (
-                <div style={{ color: "#e53e3e", fontSize: "14px", marginTop: "4px" }}>
+                <div
+                  style={{
+                    color: "#e53e3e",
+                    fontSize: "14px",
+                    marginTop: "4px",
+                  }}
+                >
                   {errors.email}
                 </div>
               )}
@@ -260,7 +268,9 @@ export default function AuthPage() {
               aria-invalid={!!errors.password}
             />
             {errors.password && (
-              <div style={{ color: "#e53e3e", fontSize: "14px", marginTop: "4px" }}>
+              <div
+                style={{ color: "#e53e3e", fontSize: "14px", marginTop: "4px" }}
+              >
                 {errors.password}
               </div>
             )}
@@ -292,7 +302,13 @@ export default function AuthPage() {
                 aria-invalid={!!errors.confirmPassword}
               />
               {errors.confirmPassword && (
-                <div style={{ color: "#e53e3e", fontSize: "14px", marginTop: "4px" }}>
+                <div
+                  style={{
+                    color: "#e53e3e",
+                    fontSize: "14px",
+                    marginTop: "4px",
+                  }}
+                >
                   {errors.confirmPassword}
                 </div>
               )}
@@ -304,10 +320,18 @@ export default function AuthPage() {
             type="submit"
             disabled={isLoading}
             style={primaryButtonStyle}
-            onMouseOver={(e) => !isLoading && (e.target.style.backgroundColor = "#38a169")}
-            onMouseOut={(e) => !isLoading && (e.target.style.backgroundColor = "#48bb78")}
+            onMouseOver={(e) =>
+              !isLoading && (e.target.style.backgroundColor = "#38a169")
+            }
+            onMouseOut={(e) =>
+              !isLoading && (e.target.style.backgroundColor = "#48bb78")
+            }
           >
-            {isLoading ? "Please wait..." : isLogin ? "Sign In" : "Create Account"}
+            {isLoading
+              ? "Please wait..."
+              : isLogin
+              ? "Sign In"
+              : "Create Account"}
           </button>
         </form>
 
@@ -318,10 +342,14 @@ export default function AuthPage() {
             onClick={toggleMode}
             disabled={isLoading}
             style={secondaryButtonStyle}
-            onMouseOver={(e) => !isLoading && (e.target.style.backgroundColor = "#38a169")}
-            onMouseOut={(e) => !isLoading && (e.target.style.backgroundColor = "transparent")}
+            onMouseOver={(e) =>
+              !isLoading && (e.target.style.backgroundColor = "#38a169")
+            }
+            onMouseOut={(e) =>
+              !isLoading && (e.target.style.backgroundColor = "transparent")
+            }
           >
-            {isLogin ? "Create a new account" : "Already have an account? Sign in"}
+            {isLogin ? "Create a new account" : "Sign in"}
           </button>
         </div>
       </div>

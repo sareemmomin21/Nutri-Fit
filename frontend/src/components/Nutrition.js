@@ -92,16 +92,6 @@ export default function Nutrition({ meal, onAte, userId }) {
     }
   };
 
-  const getMealEmoji = (mealType) => {
-    const emojis = {
-      breakfast: "🌅",
-      lunch: "☀️",
-      dinner: "🌙",
-      snacks: "🍎",
-    };
-    return emojis[mealType] || "🍽️";
-  };
-
   const cardStyle = {
     border: "1px solid #ddd",
     borderRadius: "12px",
@@ -155,7 +145,7 @@ export default function Nutrition({ meal, onAte, userId }) {
           paddingBottom: "0.5rem",
         }}
       >
-        <span style={{ fontSize: "20px" }}>{getMealEmoji(meal)}</span>
+        <span style={{ fontSize: "20px" }}></span>
         {meal} Suggestions
       </h3>
 
@@ -376,7 +366,7 @@ export default function Nutrition({ meal, onAte, userId }) {
                         (e.target.style.backgroundColor = "#48bb78")
                       }
                     >
-                      👍 Like
+                      Like
                     </button>
                     <button
                       onClick={() => handleFeedback(food, false)}
@@ -388,7 +378,7 @@ export default function Nutrition({ meal, onAte, userId }) {
                         (e.target.style.backgroundColor = "#e53e3e")
                       }
                     >
-                      👎 Dislike
+                      Dislike
                     </button>
                   </div>
 
@@ -407,7 +397,7 @@ export default function Nutrition({ meal, onAte, userId }) {
                       (e.target.style.backgroundColor = "#4299e1")
                     }
                   >
-                    ✅ I Ate This
+                    I Ate This
                   </button>
                 </div>
               </div>
@@ -423,7 +413,7 @@ export default function Nutrition({ meal, onAte, userId }) {
                 }
                 onMouseOut={(e) => (e.target.style.backgroundColor = "#e2e8f0")}
               >
-                🔄 Get New Suggestions
+                Get New Suggestions
               </button>
             </div>
           </div>

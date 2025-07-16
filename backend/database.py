@@ -8,7 +8,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "nutrifit.db")
 
 def hash_password(password):
     """Hash password with salt"""
-    salt = "nutrifit_salt_2024"  # In production, use random salts per user
+    salt = "nutrifit_salt_2024"  # In production, will use random salts
     return hashlib.sha256((password + salt).encode()).hexdigest()
 
 def init_db():
@@ -16,7 +16,7 @@ def init_db():
         c = conn.cursor()
         
         # Drop existing tables if they have wrong structure (for development)
-        # Comment this out in production!
+        # will comment this out in production
         try:
             c.execute("DROP TABLE IF EXISTS users")
             c.execute("DROP TABLE IF EXISTS meals")
@@ -26,7 +26,7 @@ def init_db():
         except:
             pass
         
-        # Enhanced users table with authentication and profile data
+        # users table with authentication and profile data
         c.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
@@ -172,7 +172,7 @@ def authenticate_user(username, password):
 
 def calculate_bmr(weight_lb, height_cm, age, gender):
     """Calculate Basal Metabolic Rate using Mifflin-St Jeor Equation"""
-    weight_kg = weight_lb * 0.453592
+    weight_kg = weight_lb * 0.4535
     height_m = height_cm / 100
     
     if gender.lower() == 'male':

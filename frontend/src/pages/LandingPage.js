@@ -76,7 +76,7 @@ export default function LandingPage() {
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
-          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>🎯</div>
+          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}></div>
           <h3 style={{ color: "#2d3748", marginBottom: "0.5rem" }}>
             Personalized Goals
           </h3>
@@ -94,7 +94,7 @@ export default function LandingPage() {
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
-          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>🤖</div>
+          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}></div>
           <h3 style={{ color: "#2d3748", marginBottom: "0.5rem" }}>
             Smart Suggestions
           </h3>
@@ -112,7 +112,7 @@ export default function LandingPage() {
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
-          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>📊</div>
+          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}></div>
           <h3 style={{ color: "#2d3748", marginBottom: "0.5rem" }}>
             Progress Tracking
           </h3>
@@ -148,7 +148,7 @@ export default function LandingPage() {
           e.target.style.boxShadow = "0 4px 12px rgba(72, 187, 120, 0.3)";
         }}
       >
-        Get Started Free
+        Get Started
       </button>
 
       <p
@@ -157,9 +157,7 @@ export default function LandingPage() {
           color: "#a0aec0",
           marginTop: "2rem",
         }}
-      >
-        Join thousands of users achieving their health goals with NutriFit
-      </p>
+      ></p>
 
       {/* Call to action for existing users */}
       <div
