@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Nutrition from "../components/Nutrition";
 
 export default function NutritionPage() {
+  const navigate = useNavigate();
   const [dailySummary, setDailySummary] = useState({
     total_eaten: 0,
     nutrients: {
@@ -17,7 +19,49 @@ export default function NutritionPage() {
     carbohydrates: 250,
     fat: 70,
   });
-  const userId = "user_123";
+  const [userProfile, setUserProfile] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Get user ID from localStorage
+  const userId = localStorage.getItem("nutrifit_user_id");
+
+  useEffect(() => {
+    if (!userId) {
+      navigate("/auth");
+      return;
+    }
+
+    fetchUserProfile();
+    fetchDailySummary();
+    fetchMealProgress();
+  }, [userId, navigate]);
+
+  const fetchUserProfile = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/get_profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId }),
+      });
+
+      if (response.ok) {
+        const profile = await response.json();
+        setUserProfile(profile);
+
+        // Update goals from user profile
+        setGoals({
+          calorie_goal: profile.calorie_goal || 2000,
+          protein: profile.protein_goal || 150,
+          carbohydrates: profile.carbs_goal || 250,
+          fat: profile.fat_goal || 70,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // Combined fetch for daily totals and nutrients
   const fetchDailySummary = async () => {
@@ -47,11 +91,6 @@ export default function NutritionPage() {
       console.error("Error fetching meal progress:", error);
     }
   };
-
-  useEffect(() => {
-    fetchDailySummary();
-    fetchMealProgress();
-  }, []);
 
   const refreshData = () => {
     fetchDailySummary();
@@ -125,6 +164,13 @@ export default function NutritionPage() {
     const percentage = Math.min(progress.progress_percentage, 100);
     const color = getProgressColor(percentage);
 
+    const mealEmojis = {
+      breakfast: "🌅",
+      lunch: "☀️",
+      dinner: "🌙",
+      snacks: "🍎",
+    };
+
     return (
       <div
         style={{
@@ -145,7 +191,9 @@ export default function NutritionPage() {
             gap: "8px",
           }}
         >
-          <span style={{ fontSize: "16px" }}></span>
+          <span style={{ fontSize: "16px" }}>
+            {mealEmojis[mealName] || "🍽️"}
+          </span>
           {mealName}
         </h4>
 
@@ -225,6 +273,37 @@ export default function NutritionPage() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          height: "50vh",
+          fontFamily: "Arial, sans-serif",
+        }}
+      >
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              width: "40px",
+              height: "40px",
+              border: "4px solid #e2e8f0",
+              borderTop: "4px solid #48bb78",
+              borderRadius: "50%",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 1rem auto",
+            }}
+          ></div>
+          <div style={{ color: "#718096", fontSize: "16px" }}>
+            Loading your nutrition dashboard...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -234,6 +313,30 @@ export default function NutritionPage() {
         margin: "0 auto",
       }}
     >
+      {/* Welcome Message */}
+      {userProfile && (
+        <div
+          style={{
+            backgroundColor: "#f0fff4",
+            border: "1px solid #9ae6b4",
+            borderRadius: "8px",
+            padding: "1rem",
+            marginBottom: "2rem",
+          }}
+        >
+          <p
+            style={{
+              margin: "0",
+              color: "#22543d",
+              fontSize: "16px",
+            }}
+          >
+            Welcome back, {userProfile.first_name || "there"}! 👋 Ready to track
+            your nutrition today?
+          </p>
+        </div>
+      )}
+
       {/* Header Section */}
       <div
         style={{
@@ -253,7 +356,7 @@ export default function NutritionPage() {
             gap: "12px",
           }}
         >
-          Daily Nutrition Dashboard
+          🥗 Daily Nutrition Dashboard
         </h1>
 
         <div
@@ -280,7 +383,9 @@ export default function NutritionPage() {
                 alignItems: "center",
                 gap: "8px",
               }}
-            ></h3>
+            >
+              📊 Daily Progress
+            </h3>
             <ProgressBar
               current={dailySummary.total_eaten}
               goal={goals.calorie_goal}
@@ -321,7 +426,7 @@ export default function NutritionPage() {
                 gap: "8px",
               }}
             >
-              Meal Progress
+              🍽️ Meal Progress
             </h3>
             {Object.entries(mealProgress).map(([mealName, progress]) => (
               <MealProgressCard
@@ -343,10 +448,10 @@ export default function NutritionPage() {
           marginBottom: "2rem",
         }}
       >
-        <Nutrition meal="breakfast" onAte={refreshData} />
-        <Nutrition meal="lunch" onAte={refreshData} />
-        <Nutrition meal="dinner" onAte={refreshData} />
-        <Nutrition meal="snacks" onAte={refreshData} />
+        <Nutrition meal="breakfast" onAte={refreshData} userId={userId} />
+        <Nutrition meal="lunch" onAte={refreshData} userId={userId} />
+        <Nutrition meal="dinner" onAte={refreshData} userId={userId} />
+        <Nutrition meal="snacks" onAte={refreshData} userId={userId} />
       </div>
 
       {/* Action Buttons */}
@@ -376,7 +481,7 @@ export default function NutritionPage() {
           onMouseOver={(e) => (e.target.style.backgroundColor = "#45a049")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#4CAF50")}
         >
-          Refresh Data
+          🔄 Refresh Data
         </button>
 
         <button
@@ -397,7 +502,7 @@ export default function NutritionPage() {
           onMouseOver={(e) => (e.target.style.backgroundColor = "#0056b3")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#007bff")}
         >
-          Next Day
+          🌅 Next Day
         </button>
       </div>
     </div>

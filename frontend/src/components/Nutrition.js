@@ -1,395 +1,433 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 
-export default function Nutrition({ meal = "breakfast", onAte = () => {} }) {
+export default function Nutrition({ meal, onAte, userId }) {
   const [suggestions, setSuggestions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [processingFeedback, setProcessingFeedback] = useState({});
-  const userId = "user_123";
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const getSuggestion = async (isRefresh = false) => {
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
+  // Get userId from props or localStorage
+  const currentUserId = userId || localStorage.getItem("nutrifit_user_id");
+
+  useEffect(() => {
+    if (currentUserId) {
+      fetchSuggestions();
     }
+  }, [meal, currentUserId]);
+
+  const fetchSuggestions = async () => {
+    if (!currentUserId) {
+      setError("User not logged in");
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
 
     try {
       const response = await fetch("http://localhost:5000/get_suggestion", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: userId,
-          meal,
+          user_id: currentUserId,
+          meal: meal,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const data = await response.json();
-      setSuggestions(data);
-    } catch (error) {
-      console.error("Error fetching suggestion:", error);
-    } finally {
-      if (isRefresh) {
-        setRefreshing(false);
+
+      // Ensure data is an array
+      if (Array.isArray(data)) {
+        setSuggestions(data);
+      } else if (data.error) {
+        setError(data.error);
+        setSuggestions([]);
       } else {
-        setLoading(false);
-      }
-    }
-  };
-
-  const sendFeedback = async (liked, food) => {
-    const foodKey = food.name;
-    setProcessingFeedback((prev) => ({ ...prev, [foodKey]: true }));
-
-    try {
-      await fetch("http://localhost:5000/feedback", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          user_id: userId,
-          food: food.name,
-          liked,
-          meal,
-          calories: food.calories,
-        }),
-      });
-
-      // Only get new suggestion if disliked
-      if (!liked) {
-        await getSuggestion(true);
+        console.warn("Unexpected response format:", data);
+        setSuggestions([]);
       }
     } catch (error) {
-      console.error("Error sending feedback:", error);
+      console.error("Error fetching suggestions:", error);
+      setError("Failed to load suggestions. Please try again.");
+      setSuggestions([]);
     } finally {
-      setProcessingFeedback((prev) => ({ ...prev, [foodKey]: false }));
+      setIsLoading(false);
     }
   };
 
-  const confirmAte = async (food) => {
-    const foodKey = food.name;
-    setProcessingFeedback((prev) => ({ ...prev, [foodKey]: true }));
+  const handleFeedback = async (food, liked, ate = false) => {
+    if (!currentUserId) return;
 
     try {
-      await fetch("http://localhost:5000/feedback", {
+      const response = await fetch("http://localhost:5000/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: userId,
+          user_id: currentUserId,
           food: food.name,
-          liked: null,
-          meal,
+          liked: liked,
+          meal: meal,
+          ate: ate,
           calories: food.calories,
-          protein: food.protein || 0,
-          carbohydrates: food.carbohydrates || 0,
-          fat: food.fat || 0,
-          ate: true,
+          protein: food.protein,
+          carbohydrates: food.carbohydrates,
+          fat: food.fat,
         }),
       });
 
-      // Get new suggestion after eating
-      await getSuggestion(true);
-
-      if (typeof onAte === "function") onAte();
+      if (response.ok) {
+        if (ate && onAte) {
+          onAte(); // Refresh parent component data
+        }
+        // Refresh suggestions after feedback
+        fetchSuggestions();
+      } else {
+        console.error("Failed to send feedback");
+      }
     } catch (error) {
-      console.error("Error confirming ate:", error);
-    } finally {
-      setProcessingFeedback((prev) => ({ ...prev, [foodKey]: false }));
+      console.error("Error sending feedback:", error);
     }
   };
 
-  useEffect(() => {
-    getSuggestion();
-  }, [meal]);
-
-  const totalCalories = suggestions.reduce(
-    (sum, food) => sum + (food.calories || 0),
-    0
-  );
-
-  const getMealDisplayName = (meal) => {
-    return meal.charAt(0).toUpperCase() + meal.slice(1);
+  const getMealEmoji = (mealType) => {
+    const emojis = {
+      breakfast: "🌅",
+      lunch: "☀️",
+      dinner: "🌙",
+      snacks: "🍎",
+    };
+    return emojis[mealType] || "🍽️";
   };
 
-  const renderFoodCard = (food, index) => {
-    const isProcessing = processingFeedback[food.name];
+  const cardStyle = {
+    border: "1px solid #ddd",
+    borderRadius: "12px",
+    padding: "1.5rem",
+    backgroundColor: "#fff",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    height: "fit-content",
+  };
 
-    return (
-      <div
-        key={index}
-        style={{
-          padding: "1.5rem",
-          border: "1px solid #e0e0e0",
-          borderRadius: "12px",
-          marginBottom: "1rem",
-          maxWidth: "450px",
-          backgroundColor: "#fafafa",
-          position: "relative",
-          transition: "all 0.3s ease",
-          opacity: isProcessing ? 0.7 : 1,
-        }}
-      >
-        {isProcessing && (
-          <div
-            style={{
-              position: "absolute",
-              top: "50%",
-              left: "50%",
-              transform: "translate(-50%, -50%)",
-              zIndex: 10,
-              color: "#666",
-              fontWeight: "bold",
-            }}
-          >
-            Processing...
-          </div>
-        )}
+  const buttonStyle = {
+    padding: "8px 16px",
+    border: "none",
+    borderRadius: "6px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "bold",
+    transition: "all 0.2s",
+    margin: "0 4px",
+  };
 
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            marginBottom: "0.5rem",
-          }}
-        >
-          <h3 style={{ margin: 0, fontSize: "1.1rem", color: "#333" }}>
-            {food.name}
-          </h3>
-        </div>
+  const primaryButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: "#48bb78",
+    color: "white",
+  };
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "0.5rem",
-            marginBottom: "1rem",
-            fontSize: "0.9rem",
-            color: "#666",
-          }}
-        >
-          <p style={{ margin: 0 }}>
-            <strong>Calories:</strong> {food.calories}
-          </p>
-          <p style={{ margin: 0 }}>
-            <strong>Protein:</strong> {food.protein}g
-          </p>
-          <p style={{ margin: 0 }}>
-            <strong>Carbs:</strong> {food.carbohydrates}g
-          </p>
-          <p style={{ margin: 0 }}>
-            <strong>Fat:</strong> {food.fat}g
-          </p>
-        </div>
+  const secondaryButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: "#e2e8f0",
+    color: "#4a5568",
+  };
 
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          <button
-            onClick={() => sendFeedback(true, food)}
-            disabled={isProcessing}
-            style={{
-              background: isProcessing ? "#ccc" : "#4CAF50",
-              color: "white",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "6px",
-              cursor: isProcessing ? "not-allowed" : "pointer",
-              fontSize: "0.9rem",
-              transition: "background 0.2s",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            Like
-          </button>
-          <button
-            onClick={() => sendFeedback(false, food)}
-            disabled={isProcessing}
-            style={{
-              background: isProcessing ? "#ccc" : "#f44336",
-              color: "white",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "6px",
-              cursor: isProcessing ? "not-allowed" : "pointer",
-              fontSize: "0.9rem",
-              transition: "background 0.2s",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            Dislike
-          </button>
-          <button
-            onClick={() => confirmAte(food)}
-            disabled={isProcessing}
-            style={{
-              background: isProcessing ? "#ccc" : "#2196F3",
-              color: "white",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "6px",
-              cursor: isProcessing ? "not-allowed" : "pointer",
-              fontSize: "0.9rem",
-              transition: "background 0.2s",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            Ate This
-          </button>
-        </div>
-      </div>
-    );
+  const dangerButtonStyle = {
+    ...buttonStyle,
+    backgroundColor: "#e53e3e",
+    color: "white",
   };
 
   return (
-    <div
-      style={{
-        padding: "2rem",
-        fontFamily: "Arial, sans-serif",
-        border: "1px solid #ddd",
-        borderRadius: "8px",
-        margin: "1rem 0",
-        backgroundColor: "#ffffff",
-      }}
-    >
-      <div
+    <div style={cardStyle}>
+      {/* Header */}
+      <h3
         style={{
+          margin: "0 0 1rem 0",
+          color: "#2d3748",
+          textTransform: "capitalize",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "1rem",
+          gap: "8px",
+          borderBottom: "2px solid #e2e8f0",
+          paddingBottom: "0.5rem",
         }}
       >
-        <h2
-          style={{
-            margin: 0,
-            color: "#333",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
-          }}
-        >
-          {getMealDisplayName(meal)} Suggestions
-        </h2>
+        <span style={{ fontSize: "20px" }}>{getMealEmoji(meal)}</span>
+        {meal} Suggestions
+      </h3>
 
-        {!loading && (
-          <button
-            onClick={() => getSuggestion(true)}
-            disabled={refreshing}
-            style={{
-              background: refreshing ? "#ccc" : "#FF9800",
-              color: "white",
-              padding: "0.5rem 1rem",
-              border: "none",
-              borderRadius: "6px",
-              cursor: refreshing ? "not-allowed" : "pointer",
-              fontSize: "0.9rem",
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-          >
-            {refreshing ? "Refreshing..." : "Get New Suggestions"}
-          </button>
-        )}
-      </div>
-
-      {loading ? (
+      {/* Loading State */}
+      {isLoading && (
         <div
           style={{
             textAlign: "center",
             padding: "2rem",
-            color: "#666",
+            color: "#718096",
           }}
         >
           <div
             style={{
-              width: "40px",
-              height: "40px",
-              backgroundColor: "#f0f0f0",
+              width: "30px",
+              height: "30px",
+              border: "3px solid #e2e8f0",
+              borderTop: "3px solid #48bb78",
               borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 1rem",
-              fontSize: "20px",
-              fontWeight: "bold",
-              border: "2px solid #ddd",
+              animation: "spin 1s linear infinite",
+              margin: "0 auto 1rem auto",
             }}
-          >
-            ⋯
-          </div>
-          <p>Finding perfect {meal} suggestions for you...</p>
-        </div>
-      ) : suggestions.length > 0 ? (
-        <div>
-          <div
-            style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: "1rem",
-              marginBottom: "1rem",
-            }}
-          >
-            {suggestions.map((food, index) => renderFoodCard(food, index))}
-          </div>
-
-          <div
-            style={{
-              padding: "1rem",
-              backgroundColor: "#f0f8ff",
-              borderRadius: "8px",
-              border: "1px solid #e0e0e0",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-            }}
-          >
-            <div>
-              <strong style={{ color: "#333", fontSize: "1.1rem" }}>
-                Total Meal Calories: {Math.round(totalCalories)}
-              </strong>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div
-          style={{
-            textAlign: "center",
-            padding: "2rem",
-            color: "#666",
-          }}
-        >
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              backgroundColor: "#f0f0f0",
-              borderRadius: "50%",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              margin: "0 auto 1rem",
-              fontSize: "20px",
-              fontWeight: "bold",
-              border: "2px solid #ddd",
-              color: "#999",
-            }}
-          >
-            ∅
-          </div>
-          <p>No suggestions available right now.</p>
-          <p style={{ fontSize: "0.9rem" }}>
-            You might be close to your calorie limit for this meal.
-          </p>
+          ></div>
+          Loading suggestions...
+          <style>
+            {`
+              @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            `}
+          </style>
         </div>
       )}
+
+      {/* Error State */}
+      {error && (
+        <div
+          style={{
+            backgroundColor: "#fed7d7",
+            border: "1px solid #e53e3e",
+            color: "#c53030",
+            padding: "1rem",
+            borderRadius: "8px",
+            marginBottom: "1rem",
+            textAlign: "center",
+          }}
+        >
+          <p style={{ margin: "0 0 0.5rem 0", fontWeight: "bold" }}>⚠️ Error</p>
+          <p style={{ margin: "0", fontSize: "14px" }}>{error}</p>
+          <button
+            onClick={fetchSuggestions}
+            style={{
+              ...secondaryButtonStyle,
+              marginTop: "0.5rem",
+            }}
+          >
+            Try Again
+          </button>
+        </div>
+      )}
+
+      {/* No Suggestions State */}
+      {!isLoading && !error && suggestions.length === 0 && (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "2rem",
+            backgroundColor: "#f7fafc",
+            borderRadius: "8px",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>🍽️</div>
+          <h4 style={{ color: "#4a5568", marginBottom: "0.5rem" }}>
+            No suggestions available
+          </h4>
+          <p
+            style={{
+              color: "#718096",
+              fontSize: "14px",
+              margin: "0 0 1rem 0",
+              lineHeight: "1.4",
+            }}
+          >
+            You might have reached your calorie limit for this meal, or we're
+            having trouble finding suitable options.
+          </p>
+          <button onClick={fetchSuggestions} style={primaryButtonStyle}>
+            Refresh Suggestions
+          </button>
+        </div>
+      )}
+
+      {/* Suggestions List */}
+      {!isLoading &&
+        !error &&
+        Array.isArray(suggestions) &&
+        suggestions.length > 0 && (
+          <div>
+            {suggestions.map((food, index) => (
+              <div
+                key={`${food.fdcId || food.name}-${index}`}
+                style={{
+                  backgroundColor: "#f8f9fa",
+                  padding: "1rem",
+                  borderRadius: "8px",
+                  border: "1px solid #e9ecef",
+                  marginBottom: "1rem",
+                }}
+              >
+                {/* Food Name */}
+                <h4
+                  style={{
+                    margin: "0 0 0.5rem 0",
+                    color: "#2d3748",
+                    fontSize: "16px",
+                    lineHeight: "1.3",
+                  }}
+                >
+                  {food.name}
+                </h4>
+
+                {/* Nutrition Info */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))",
+                    gap: "0.5rem",
+                    marginBottom: "1rem",
+                    fontSize: "14px",
+                  }}
+                >
+                  <div
+                    style={{
+                      backgroundColor: "white",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      textAlign: "center",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div style={{ fontWeight: "bold", color: "#e53e3e" }}>
+                      {Math.round(food.calories)}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#718096" }}>
+                      cal
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      backgroundColor: "white",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      textAlign: "center",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div style={{ fontWeight: "bold", color: "#3182ce" }}>
+                      {Math.round(food.protein || 0)}g
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#718096" }}>
+                      protein
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      backgroundColor: "white",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      textAlign: "center",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div style={{ fontWeight: "bold", color: "#38a169" }}>
+                      {Math.round(food.carbohydrates || 0)}g
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#718096" }}>
+                      carbs
+                    </div>
+                  </div>
+                  <div
+                    style={{
+                      backgroundColor: "white",
+                      padding: "8px",
+                      borderRadius: "4px",
+                      textAlign: "center",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div style={{ fontWeight: "bold", color: "#d69e2e" }}>
+                      {Math.round(food.fat || 0)}g
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#718096" }}>
+                      fat
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: "8px",
+                  }}
+                >
+                  <div>
+                    <button
+                      onClick={() => handleFeedback(food, true)}
+                      style={primaryButtonStyle}
+                      onMouseOver={(e) =>
+                        (e.target.style.backgroundColor = "#38a169")
+                      }
+                      onMouseOut={(e) =>
+                        (e.target.style.backgroundColor = "#48bb78")
+                      }
+                    >
+                      👍 Like
+                    </button>
+                    <button
+                      onClick={() => handleFeedback(food, false)}
+                      style={dangerButtonStyle}
+                      onMouseOver={(e) =>
+                        (e.target.style.backgroundColor = "#c53030")
+                      }
+                      onMouseOut={(e) =>
+                        (e.target.style.backgroundColor = "#e53e3e")
+                      }
+                    >
+                      👎 Dislike
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => handleFeedback(food, null, true)}
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: "#4299e1",
+                      color: "white",
+                      fontWeight: "bold",
+                    }}
+                    onMouseOver={(e) =>
+                      (e.target.style.backgroundColor = "#3182ce")
+                    }
+                    onMouseOut={(e) =>
+                      (e.target.style.backgroundColor = "#4299e1")
+                    }
+                  >
+                    ✅ I Ate This
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Refresh Button */}
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <button
+                onClick={fetchSuggestions}
+                style={secondaryButtonStyle}
+                onMouseOver={(e) =>
+                  (e.target.style.backgroundColor = "#cbd5e0")
+                }
+                onMouseOut={(e) => (e.target.style.backgroundColor = "#e2e8f0")}
+              >
+                🔄 Get New Suggestions
+              </button>
+            </div>
+          </div>
+        )}
     </div>
   );
 }
