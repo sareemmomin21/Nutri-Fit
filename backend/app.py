@@ -10,6 +10,13 @@ from database import (
     create_user, authenticate_user, update_user_profile,
     get_user_profile, get_user_food_preferences
 )
+from dotenv import load_dotenv
+load_dotenv()
+import requests   
+import os
+
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/text-bison-001:generateText"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 
 app = Flask(__name__)
 CORS(app)
@@ -329,6 +336,58 @@ def feedback():
     except Exception as e:
         print(f"Error processing feedback: {e}")
         return jsonify({"error": "Failed to process feedback"}), 500
+    
+
+@app.route("/api/generate_fitness_plan", methods=["POST"])
+def generate_fitness_plan():
+    data    = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+
+    profile = get_user_profile(user_id)
+    if not profile:
+        return jsonify({"error": "User not found"}), 404
+
+    # build a human-readable prompt
+    prompt = f"""
+User Profile:
+- Name: {profile.get('first_name','')} {profile.get('last_name','')}
+- DOB: {profile.get('date_of_birth','')}
+- Gender: {profile.get('gender','')}
+- Height: {profile.get('height_cm','')} cm
+- Weight: {profile.get('weight_lb','')} lbs
+- Activity: {profile.get('activity_level','')}
+- Experience: {profile.get('fitness_experience','')}
+- Frequency: {profile.get('workout_frequency','')} days/week
+- Duration: {profile.get('workout_duration','')} minutes
+- Gym Access: {"Yes" if profile.get('has_gym_membership') else "No"}
+- Equipment: {profile.get('available_equipment','')}
+- Focus: {profile.get('primary_focus','')}
+- Goals: {", ".join(profile.get('fitness_goals',[]))}
+- Training Styles: {", ".join(profile.get('training_styles',[]))}
+
+Create a 7-day workout plan tailored to these details.
+For each day include:
+ • exercise names
+ • sets & reps (or duration)
+ • recovery or nutrition tips
+"""
+
+    try:
+        resp = requests.post(
+            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+            headers={"Content-Type": "application/json"},
+            json={"prompt":{"text":prompt}, "temperature":0.7},
+            timeout=30
+        )
+        resp.raise_for_status()
+
+        plan = resp.json()["candidates"][0]["output"]
+        return jsonify({"plan": plan})
+    except Exception as e:
+        print("Error generating plan:", e)
+        return jsonify({"error": "Failed to generate plan"}), 500
 
 
 if __name__ == "__main__":
