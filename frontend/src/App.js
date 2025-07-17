@@ -1,137 +1,118 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
+import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
-import AuthPage from "./pages/AuthPage";
-import QuestionsPage from "./pages/QuestionsPage";
+import HomePage from "./pages/HomePage";
 import NutritionPage from "./pages/NutritionPage";
 import FitnessPage from "./pages/FitnessPage";
 import SettingsPage from "./pages/SettingsPage";
-import Navbar from "./components/Navbar";
+import AuthPage from "./pages/AuthPage";
+import QuestionsPage from "./pages/QuestionsPage"; // Add this import
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
   const userId = localStorage.getItem("nutrifit_user_id");
-
-  if (!userId) {
-    return <Navigate to="/auth" replace />;
-  }
-
-  return children;
+  return userId ? children : <Navigate to="/auth" replace />;
 }
 
-// Navigation Guard Component
-function NavigationGuard({ children }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+// Public Route Component (redirect to home if logged in, but allow questions)
+function PublicRoute({ children, allowQuestions = false }) {
+  const userId = localStorage.getItem("nutrifit_user_id");
 
-  useEffect(() => {
-    const userId = localStorage.getItem("nutrifit_user_id");
-    if (userId) {
-      // Optionally verify the user ID with the backend
-      setIsAuthenticated(true);
-    }
-    setIsLoading(false);
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          height: "100vh",
-          fontFamily: "Arial, sans-serif",
-        }}
-      >
-        <div style={{ textAlign: "center" }}>
-          <div
-            style={{
-              width: "40px",
-              height: "40px",
-              border: "4px solid #e2e8f0",
-              borderTop: "4px solid #48bb78",
-              borderRadius: "50%",
-              animation: "spin 1s linear infinite",
-              margin: "0 auto 1rem auto",
-            }}
-          ></div>
-          <div style={{ color: "#718096", fontSize: "16px" }}>
-            Loading NutriFit...
-          </div>
-        </div>
-        <style>
-          {`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}
-        </style>
-      </div>
-    );
+  // If it's the questions page, allow access regardless of auth status
+  if (allowQuestions) {
+    return children;
   }
 
-  return children;
+  return userId ? <Navigate to="/home" replace /> : children;
 }
 
 function App() {
   return (
     <Router>
-      <NavigationGuard>
-        <div className="App">
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route path="/auth" element={<AuthPage />} />
+      <div style={{ fontFamily: "Arial, sans-serif" }}>
+        <Navbar />
+        <Routes>
+          {/* Public Routes */}
+          <Route
+            path="/"
+            element={
+              <PublicRoute>
+                <LandingPage />
+              </PublicRoute>
+            }
+          />
+          <Route
+            path="/auth"
+            element={
+              <PublicRoute>
+                <AuthPage />
+              </PublicRoute>
+            }
+          />
 
-            {/* Protected routes */}
-            <Route
-              path="/questions"
-              element={
-                <ProtectedRoute>
-                  <QuestionsPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/nutrition"
-              element={
-                <ProtectedRoute>
-                  <Navbar />
-                  <NutritionPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/fitness"
-              element={
-                <ProtectedRoute>
-                  <Navbar />
-                  <FitnessPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/settings"
-              element={
-                <ProtectedRoute>
-                  <Navbar />
-                  <SettingsPage />
-                </ProtectedRoute>
-              }
-            />
+          {/* Questions Route - accessible to both logged in and non-logged in users */}
+          <Route
+            path="/questions"
+            element={
+              <PublicRoute allowQuestions={true}>
+                <QuestionsPage />
+              </PublicRoute>
+            }
+          />
 
-            {/* Fallback route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </div>
-      </NavigationGuard>
+          {/* Protected Routes */}
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <HomePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nutrition"
+            element={
+              <ProtectedRoute>
+                <NutritionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/fitness"
+            element={
+              <ProtectedRoute>
+                <FitnessPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Catch all route - redirect based on auth status */}
+          <Route
+            path="*"
+            element={
+              localStorage.getItem("nutrifit_user_id") ? (
+                <Navigate to="/home" replace />
+              ) : (
+                <Navigate to="/" replace />
+              )
+            }
+          />
+        </Routes>
+      </div>
     </Router>
   );
 }

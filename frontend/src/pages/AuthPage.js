@@ -12,6 +12,7 @@ export default function AuthPage() {
   });
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
+  const [debugInfo, setDebugInfo] = useState(""); // Add debug info
 
   const validateForm = () => {
     const newErrors = {};
@@ -45,29 +46,56 @@ export default function AuthPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("Form submitted:", { isLogin, formData }); // Debug log
+
     if (!validateForm()) return;
+
     setIsLoading(true);
+    setDebugInfo("Sending request...");
+
     const endpoint = isLogin ? "/api/login" : "/api/signup";
+    console.log("Endpoint:", endpoint); // Debug log
+
     try {
       const resp = await fetch(`http://localhost:5000${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
+
+      console.log("Response status:", resp.status); // Debug log
       const data = await resp.json();
+      console.log("Response data:", data); // Debug log
+
+      setDebugInfo(`Response: ${JSON.stringify(data)}`);
+
       if (data.success) {
         localStorage.setItem("nutrifit_user_id", data.user_id);
-        const dest = isLogin
-          ? data.profile_completed
-            ? "/nutrition"
-            : "/questions"
-          : "/questions";
-        navigate(dest, { state: { userId: data.user_id } });
+        console.log("User ID stored:", data.user_id); // Debug log
+
+        if (isLogin) {
+          console.log("Login - Profile completed:", data.profile_completed); // Debug log
+          // For login, check if profile is completed
+          if (data.profile_completed) {
+            console.log("Navigating to /nutrition"); // Debug log
+            navigate("/nutrition");
+          } else {
+            console.log("Navigating to /questions"); // Debug log
+            navigate("/questions", { state: { userId: data.user_id } });
+          }
+        } else {
+          console.log("Signup - Navigating to /questions"); // Debug log
+          // For signup, ALWAYS go to questions first
+          navigate("/questions", { state: { userId: data.user_id } });
+        }
       } else {
         setErrors({ general: data.error || "Authentication failed" });
+        setDebugInfo(`Error: ${data.error}`);
       }
-    } catch {
+    } catch (error) {
+      console.error("Network error:", error); // Debug log
       setErrors({ general: "Network error. Please try again." });
+      setDebugInfo(`Network error: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -82,6 +110,7 @@ export default function AuthPage() {
     setIsLogin((prev) => !prev);
     setFormData({ username: "", password: "", confirmPassword: "", email: "" });
     setErrors({});
+    setDebugInfo("");
   };
 
   const inputStyle = {
@@ -158,6 +187,24 @@ export default function AuthPage() {
             {isLogin ? "Welcome back!" : "Join NutriFit"}
           </p>
         </div>
+
+        {/* Debug Info */}
+        {debugInfo && (
+          <div
+            style={{
+              backgroundColor: "#f0f8ff",
+              border: "1px solid #3182ce",
+              color: "#2b6cb0",
+              padding: "8px",
+              borderRadius: "6px",
+              marginBottom: "1rem",
+              fontSize: "12px",
+              wordBreak: "break-all",
+            }}
+          >
+            Debug: {debugInfo}
+          </div>
+        )}
 
         {/* General Error */}
         {errors.general && (
@@ -351,6 +398,11 @@ export default function AuthPage() {
           >
             {isLogin ? "Create a new account" : "Sign in"}
           </button>
+        </div>
+
+        {/* Debug current user */}
+        <div style={{ marginTop: "1rem", fontSize: "12px", color: "#666" }}>
+          Current user ID: {localStorage.getItem("nutrifit_user_id") || "None"}
         </div>
       </div>
     </div>
