@@ -12,7 +12,7 @@ import NutritionPage from "./pages/NutritionPage";
 import FitnessPage from "./pages/FitnessPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
-import QuestionsPage from "./pages/QuestionsPage"; // Add this import
+import QuestionsPage from "./pages/QuestionsPage";
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -29,6 +29,7 @@ function PublicRoute({ children, allowQuestions = false }) {
     return children;
   }
 
+  // FIXED: Default to /home instead of /nutrition
   return userId ? <Navigate to="/home" replace /> : children;
 }
 

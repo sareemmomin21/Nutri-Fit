@@ -1,5 +1,6 @@
-import FitnessDashboard from "./FitnessDashboard";
 import React, { useState, useEffect } from "react";
+import FitnessDashboard from "./FitnessDashboard";
+import CustomWorkoutModal from "./CustomWorkoutModal";
 
 // Workout History Tab Component
 function WorkoutHistoryTab({ history, isLoading }) {
@@ -506,423 +507,6 @@ function FitnessGoalsTab({ goals, isLoading, onAddGoal, userId }) {
   );
 }
 
-export default function Fitness() {
-  const [activeTab, setActiveTab] = useState("dashboard");
-  const [dashboardData, setDashboardData] = useState(null);
-  const [workoutRecommendations, setWorkoutRecommendations] = useState([]);
-  const [workoutPlan, setWorkoutPlan] = useState([]);
-  const [workoutHistory, setWorkoutHistory] = useState([]);
-  const [fitnessGoals, setFitnessGoals] = useState([]);
-  const [recoveryInfo, setRecoveryInfo] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadingStates, setLoadingStates] = useState({
-    dashboard: false,
-    recommendations: false,
-    plan: false,
-    history: false,
-    goals: false,
-  });
-
-  const userId = localStorage.getItem("nutrifit_user_id");
-
-  useEffect(() => {
-    if (userId) {
-      fetchDashboardData();
-      fetchWorkoutRecommendations();
-      fetchWorkoutPlan();
-      fetchWorkoutHistory();
-      fetchFitnessGoals();
-      fetchRecoveryInfo();
-    }
-  }, [userId]);
-
-  const setLoadingState = (key, value) => {
-    setLoadingStates((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoadingState("dashboard", true);
-      const response = await fetch(
-        "http://localhost:5000/api/get_fitness_dashboard",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setDashboardData(data);
-      }
-    } catch (error) {
-      console.error("Error fetching dashboard data:", error);
-    } finally {
-      setLoadingState("dashboard", false);
-      setIsLoading(false);
-    }
-  };
-
-  const fetchWorkoutRecommendations = async () => {
-    try {
-      setLoadingState("recommendations", true);
-      const response = await fetch(
-        "http://localhost:5000/api/get_workout_recommendations",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setWorkoutRecommendations(data);
-      }
-    } catch (error) {
-      console.error("Error fetching workout recommendations:", error);
-    } finally {
-      setLoadingState("recommendations", false);
-    }
-  };
-
-  const fetchWorkoutPlan = async () => {
-    try {
-      setLoadingState("plan", true);
-      const response = await fetch(
-        "http://localhost:5000/api/get_workout_plan",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setWorkoutPlan(data);
-      }
-    } catch (error) {
-      console.error("Error fetching workout plan:", error);
-    } finally {
-      setLoadingState("plan", false);
-    }
-  };
-
-  const fetchWorkoutHistory = async () => {
-    try {
-      setLoadingState("history", true);
-      const response = await fetch(
-        "http://localhost:5000/api/get_workout_history",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, days_back: 30 }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setWorkoutHistory(data);
-      }
-    } catch (error) {
-      console.error("Error fetching workout history:", error);
-    } finally {
-      setLoadingState("history", false);
-    }
-  };
-
-  const fetchFitnessGoals = async () => {
-    try {
-      setLoadingState("goals", true);
-      const response = await fetch(
-        "http://localhost:5000/api/get_fitness_goals",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setFitnessGoals(data);
-      }
-    } catch (error) {
-      console.error("Error fetching fitness goals:", error);
-    } finally {
-      setLoadingState("goals", false);
-    }
-  };
-
-  const fetchRecoveryInfo = async () => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/get_recovery_recommendations",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId }),
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        setRecoveryInfo(data);
-      }
-    } catch (error) {
-      console.error("Error fetching recovery info:", error);
-    }
-  };
-
-  const completeWorkout = async (workoutData) => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/complete_workout",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            workout_data: workoutData,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        // Refresh data after completing workout
-        fetchDashboardData();
-        fetchWorkoutHistory();
-        fetchRecoveryInfo();
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Error completing workout:", error);
-      return false;
-    }
-  };
-
-  const addFitnessGoal = async (goalData) => {
-    try {
-      const response = await fetch(
-        "http://localhost:5000/api/add_fitness_goal",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            user_id: userId,
-            ...goalData,
-          }),
-        }
-      );
-
-      if (response.ok) {
-        fetchFitnessGoals();
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Error adding fitness goal:", error);
-      return false;
-    }
-  };
-
-  // Styles
-  const containerStyle = {
-    padding: "2rem",
-    fontFamily: "Arial, sans-serif",
-    maxWidth: "1400px",
-    margin: "0 auto",
-    backgroundColor: "#f7fafc",
-    minHeight: "100vh",
-  };
-
-  const headerStyle = {
-    backgroundColor: "white",
-    padding: "1.5rem",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    marginBottom: "2rem",
-  };
-
-  const tabStyle = (isActive) => ({
-    padding: "12px 24px",
-    border: "none",
-    borderBottom: isActive ? "3px solid #48bb78" : "3px solid transparent",
-    backgroundColor: "transparent",
-    color: isActive ? "#48bb78" : "#718096",
-    cursor: "pointer",
-    fontSize: "16px",
-    fontWeight: isActive ? "bold" : "normal",
-    transition: "all 0.2s",
-  });
-
-  const cardStyle = {
-    backgroundColor: "white",
-    padding: "1.5rem",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    marginBottom: "1rem",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-  };
-
-  const LoadingSpinner = ({ size = "20px" }) => (
-    <div
-      style={{
-        width: size,
-        height: size,
-        border: "2px solid #e2e8f0",
-        borderTop: "2px solid #48bb78",
-        borderRadius: "50%",
-        animation: "spin 1s linear infinite",
-        display: "inline-block",
-        margin: "0 auto",
-      }}
-    />
-  );
-
-  if (isLoading) {
-    return (
-      <div style={containerStyle}>
-        <div style={{ textAlign: "center", padding: "4rem" }}>
-          <LoadingSpinner size="40px" />
-          <div style={{ marginTop: "1rem", color: "#718096" }}>
-            Loading your fitness dashboard...
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={containerStyle}>
-      {/* Header */}
-      <div style={headerStyle}>
-        <h1 style={{ margin: "0 0 0.5rem 0", color: "#2d3748" }}>
-          Fitness Dashboard
-        </h1>
-        <p style={{ margin: "0", color: "#718096" }}>
-          Track your workouts, monitor progress, and achieve your fitness goals
-        </p>
-      </div>
-
-      {/* Recovery Alert */}
-      {recoveryInfo && recoveryInfo.rest_needed && (
-        <div
-          style={{
-            backgroundColor: "#fed7d7",
-            border: "1px solid #e53e3e",
-            color: "#c53030",
-            padding: "1rem",
-            borderRadius: "8px",
-            marginBottom: "1rem",
-          }}
-        >
-          <strong>Recovery Recommendation:</strong> {recoveryInfo.message}
-          <br />
-          <small>{recoveryInfo.recommendation}</small>
-        </div>
-      )}
-
-      {/* Tab Navigation */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "12px 12px 0 0",
-          border: "1px solid #e2e8f0",
-          borderBottom: "none",
-        }}
-      >
-        <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
-          <button
-            onClick={() => setActiveTab("dashboard")}
-            style={tabStyle(activeTab === "dashboard")}
-          >
-            Dashboard
-          </button>
-          <button
-            onClick={() => setActiveTab("workouts")}
-            style={tabStyle(activeTab === "workouts")}
-          >
-            Workouts
-          </button>
-          <button
-            onClick={() => setActiveTab("plan")}
-            style={tabStyle(activeTab === "plan")}
-          >
-            My Plan
-          </button>
-          <button
-            onClick={() => setActiveTab("history")}
-            style={tabStyle(activeTab === "history")}
-          >
-            History
-          </button>
-          <button
-            onClick={() => setActiveTab("goals")}
-            style={tabStyle(activeTab === "goals")}
-          >
-            Goals
-          </button>
-        </div>
-      </div>
-
-      {/* Tab Content */}
-      <div
-        style={{
-          backgroundColor: "white",
-          borderRadius: "0 0 12px 12px",
-          border: "1px solid #e2e8f0",
-          padding: "2rem",
-        }}
-      >
-        {activeTab === "dashboard" && (
-          <FitnessDashboard
-            data={dashboardData}
-            isLoading={loadingStates.dashboard}
-          />
-        )}
-
-        {activeTab === "workouts" && (
-          <WorkoutsTab
-            recommendations={workoutRecommendations}
-            isLoading={loadingStates.recommendations}
-            onCompleteWorkout={completeWorkout}
-            userId={userId}
-          />
-        )}
-
-        {activeTab === "plan" && (
-          <WorkoutPlanTab
-            plan={workoutPlan}
-            isLoading={loadingStates.plan}
-            onCompleteWorkout={completeWorkout}
-            userId={userId}
-          />
-        )}
-
-        {activeTab === "history" && (
-          <WorkoutHistoryTab
-            history={workoutHistory}
-            isLoading={loadingStates.history}
-          />
-        )}
-
-        {activeTab === "goals" && (
-          <FitnessGoalsTab
-            goals={fitnessGoals}
-            isLoading={loadingStates.goals}
-            onAddGoal={addFitnessGoal}
-            userId={userId}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
 // Workouts Tab Component
 function WorkoutsTab({
   recommendations,
@@ -932,6 +516,7 @@ function WorkoutsTab({
 }) {
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  const [showCustomWorkoutModal, setShowCustomWorkoutModal] = useState(false);
   const [completingWorkout, setCompletingWorkout] = useState(false);
 
   const cardStyle = {
@@ -960,12 +545,6 @@ function WorkoutsTab({
     color: "white",
   };
 
-  const secondaryButtonStyle = {
-    ...buttonStyle,
-    backgroundColor: "#e2e8f0",
-    color: "#4a5568",
-  };
-
   const handleStartWorkout = (workout) => {
     setSelectedWorkout(workout);
     setShowWorkoutModal(true);
@@ -990,6 +569,36 @@ function WorkoutsTab({
     }
   };
 
+  const handleCreateCustomWorkout = async (customWorkoutData) => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/create_custom_workout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            ...customWorkoutData,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        alert("Custom workout created successfully!");
+        setShowCustomWorkoutModal(false);
+        return true;
+      } else {
+        alert("Failed to create custom workout. Please try again.");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error creating custom workout:", error);
+      alert("Error creating custom workout. Please try again.");
+      return false;
+    }
+  };
+
   if (isLoading) {
     return (
       <div style={{ textAlign: "center", padding: "2rem" }}>
@@ -1000,9 +609,25 @@ function WorkoutsTab({
 
   return (
     <div>
-      <h2 style={{ marginBottom: "2rem", color: "#2d3748" }}>
-        Recommended Workouts
-      </h2>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "2rem",
+        }}
+      >
+        <h2 style={{ margin: "0", color: "#2d3748" }}>Recommended Workouts</h2>
+        <button
+          onClick={() => setShowCustomWorkoutModal(true)}
+          style={{
+            ...primaryButtonStyle,
+            backgroundColor: "#9f7aea",
+          }}
+        >
+          Create Custom Workout
+        </button>
+      </div>
 
       {recommendations.length === 0 ? (
         <div style={cardStyle}>
@@ -1030,6 +655,14 @@ function WorkoutsTab({
           onClose={() => setShowWorkoutModal(false)}
           onComplete={handleCompleteWorkout}
           isCompleting={completingWorkout}
+        />
+      )}
+
+      {/* Custom Workout Modal */}
+      {showCustomWorkoutModal && (
+        <CustomWorkoutModal
+          onClose={() => setShowCustomWorkoutModal(false)}
+          onCreate={handleCreateCustomWorkout}
         />
       )}
     </div>
@@ -1592,6 +1225,408 @@ function WorkoutPlanTab({ plan, isLoading, onCompleteWorkout, userId }) {
           isCompleting={false}
         />
       )}
+    </div>
+  );
+}
+
+export default function Fitness() {
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [dashboardData, setDashboardData] = useState(null);
+  const [workoutRecommendations, setWorkoutRecommendations] = useState([]);
+  const [workoutPlan, setWorkoutPlan] = useState([]);
+  const [workoutHistory, setWorkoutHistory] = useState([]);
+  const [fitnessGoals, setFitnessGoals] = useState([]);
+  const [recoveryInfo, setRecoveryInfo] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadingStates, setLoadingStates] = useState({
+    dashboard: false,
+    recommendations: false,
+    plan: false,
+    history: false,
+    goals: false,
+  });
+
+  const userId = localStorage.getItem("nutrifit_user_id");
+
+  useEffect(() => {
+    if (userId) {
+      fetchDashboardData();
+      fetchWorkoutRecommendations();
+      fetchWorkoutPlan();
+      fetchWorkoutHistory();
+      fetchFitnessGoals();
+      fetchRecoveryInfo();
+    }
+  }, [userId]);
+
+  const setLoadingState = (key, value) => {
+    setLoadingStates((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoadingState("dashboard", true);
+      const response = await fetch(
+        "http://localhost:5000/api/get_fitness_dashboard",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setDashboardData(data);
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoadingState("dashboard", false);
+      setIsLoading(false);
+    }
+  };
+
+  const fetchWorkoutRecommendations = async () => {
+    try {
+      setLoadingState("recommendations", true);
+      const response = await fetch(
+        "http://localhost:5000/api/get_workout_recommendations",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setWorkoutRecommendations(data);
+      }
+    } catch (error) {
+      console.error("Error fetching workout recommendations:", error);
+    } finally {
+      setLoadingState("recommendations", false);
+    }
+  };
+
+  const fetchWorkoutPlan = async () => {
+    try {
+      setLoadingState("plan", true);
+      const response = await fetch(
+        "http://localhost:5000/api/get_workout_plan",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setWorkoutPlan(data);
+      }
+    } catch (error) {
+      console.error("Error fetching workout plan:", error);
+    } finally {
+      setLoadingState("plan", false);
+    }
+  };
+
+  const fetchWorkoutHistory = async () => {
+    try {
+      setLoadingState("history", true);
+      const response = await fetch(
+        "http://localhost:5000/api/get_workout_history",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId, days_back: 30 }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setWorkoutHistory(data);
+      }
+    } catch (error) {
+      console.error("Error fetching workout history:", error);
+    } finally {
+      setLoadingState("history", false);
+    }
+  };
+
+  const fetchFitnessGoals = async () => {
+    try {
+      setLoadingState("goals", true);
+      const response = await fetch(
+        "http://localhost:5000/api/get_fitness_goals",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setFitnessGoals(data);
+      }
+    } catch (error) {
+      console.error("Error fetching fitness goals:", error);
+    } finally {
+      setLoadingState("goals", false);
+    }
+  };
+
+  const fetchRecoveryInfo = async () => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/get_recovery_recommendations",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setRecoveryInfo(data);
+      }
+    } catch (error) {
+      console.error("Error fetching recovery info:", error);
+    }
+  };
+
+  const completeWorkout = async (workoutData) => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/complete_workout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            workout_data: workoutData,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        // Refresh data after completing workout
+        fetchDashboardData();
+        fetchWorkoutHistory();
+        fetchRecoveryInfo();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error completing workout:", error);
+      return false;
+    }
+  };
+
+  const addFitnessGoal = async (goalData) => {
+    try {
+      const response = await fetch(
+        "http://localhost:5000/api/add_fitness_goal",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            ...goalData,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        fetchFitnessGoals();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Error adding fitness goal:", error);
+      return false;
+    }
+  };
+
+  // Styles
+  const containerStyle = {
+    padding: "2rem",
+    fontFamily: "Arial, sans-serif",
+    maxWidth: "1400px",
+    margin: "0 auto",
+    backgroundColor: "#f7fafc",
+    minHeight: "100vh",
+  };
+
+  const headerStyle = {
+    backgroundColor: "white",
+    padding: "1.5rem",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    marginBottom: "2rem",
+  };
+
+  const tabStyle = (isActive) => ({
+    padding: "12px 24px",
+    border: "none",
+    borderBottom: isActive ? "3px solid #48bb78" : "3px solid transparent",
+    backgroundColor: "transparent",
+    color: isActive ? "#48bb78" : "#718096",
+    cursor: "pointer",
+    fontSize: "16px",
+    fontWeight: isActive ? "bold" : "normal",
+    transition: "all 0.2s",
+  });
+
+  const LoadingSpinner = ({ size = "20px" }) => (
+    <div
+      style={{
+        width: size,
+        height: size,
+        border: "2px solid #e2e8f0",
+        borderTop: "2px solid #48bb78",
+        borderRadius: "50%",
+        animation: "spin 1s linear infinite",
+        display: "inline-block",
+        margin: "0 auto",
+      }}
+    />
+  );
+
+  if (isLoading) {
+    return (
+      <div style={containerStyle}>
+        <div style={{ textAlign: "center", padding: "4rem" }}>
+          <LoadingSpinner size="40px" />
+          <div style={{ marginTop: "1rem", color: "#718096" }}>
+            Loading your fitness dashboard...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={containerStyle}>
+      {/* Header */}
+      <div style={headerStyle}>
+        <h1 style={{ margin: "0 0 0.5rem 0", color: "#2d3748" }}>
+          Fitness Dashboard
+        </h1>
+        <p style={{ margin: "0", color: "#718096" }}>
+          Track your workouts, monitor progress, and achieve your fitness goals
+        </p>
+      </div>
+
+      {/* Recovery Alert */}
+      {recoveryInfo && recoveryInfo.rest_needed && (
+        <div
+          style={{
+            backgroundColor: "#fed7d7",
+            border: "1px solid #e53e3e",
+            color: "#c53030",
+            padding: "1rem",
+            borderRadius: "8px",
+            marginBottom: "1rem",
+          }}
+        >
+          <strong>Recovery Recommendation:</strong> {recoveryInfo.message}
+          <br />
+          <small>{recoveryInfo.recommendation}</small>
+        </div>
+      )}
+
+      {/* Tab Navigation */}
+      <div
+        style={{
+          backgroundColor: "white",
+          borderRadius: "12px 12px 0 0",
+          border: "1px solid #e2e8f0",
+          borderBottom: "none",
+        }}
+      >
+        <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            style={tabStyle(activeTab === "dashboard")}
+          >
+            Dashboard
+          </button>
+          <button
+            onClick={() => setActiveTab("workouts")}
+            style={tabStyle(activeTab === "workouts")}
+          >
+            Workouts
+          </button>
+          <button
+            onClick={() => setActiveTab("plan")}
+            style={tabStyle(activeTab === "plan")}
+          >
+            My Plan
+          </button>
+          <button
+            onClick={() => setActiveTab("goals")}
+            style={tabStyle(activeTab === "goals")}
+          >
+            Goals
+          </button>
+        </div>
+      </div>
+
+      {/* Tab Content */}
+      <div
+        style={{
+          backgroundColor: "white",
+          borderRadius: "0 0 12px 12px",
+          border: "1px solid #e2e8f0",
+          padding: "2rem",
+        }}
+      >
+        {activeTab === "dashboard" && (
+          <FitnessDashboard
+            data={dashboardData}
+            isLoading={loadingStates.dashboard}
+          />
+        )}
+
+        {activeTab === "workouts" && (
+          <WorkoutsTab
+            recommendations={workoutRecommendations}
+            isLoading={loadingStates.recommendations}
+            onCompleteWorkout={completeWorkout}
+            userId={userId}
+          />
+        )}
+
+        {activeTab === "plan" && (
+          <WorkoutPlanTab
+            plan={workoutPlan}
+            isLoading={loadingStates.plan}
+            onCompleteWorkout={completeWorkout}
+            userId={userId}
+          />
+        )}
+
+        {activeTab === "history" && (
+          <WorkoutHistoryTab
+            history={workoutHistory}
+            isLoading={loadingStates.history}
+          />
+        )}
+
+        {activeTab === "goals" && (
+          <FitnessGoalsTab
+            goals={fitnessGoals}
+            isLoading={loadingStates.goals}
+            onAddGoal={addFitnessGoal}
+            userId={userId}
+          />
+        )}
+      </div>
     </div>
   );
 }

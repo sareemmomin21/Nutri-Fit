@@ -291,7 +291,7 @@ export default function NutritionPage() {
           >
             {progress.calories_remaining > 0
               ? `${progress.calories_remaining} left`
-              : "Over budget"}
+              : "Over"}
           </span>
         </div>
 

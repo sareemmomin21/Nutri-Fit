@@ -22,6 +22,18 @@ export default function HomePage() {
     currentStreak: 0,
     longestStreak: 0,
   });
+  const [fitnessStats, setFitnessStats] = useState({
+    weeklyWorkouts: 0,
+    weeklyDuration: 0,
+    weeklyCaloriesBurned: 0,
+    avgWorkoutDuration: 0,
+  });
+  const [combinedInsights, setCombinedInsights] = useState({
+    netCalories: 0,
+    calorieBalance: "balanced",
+    workoutConsistency: 0,
+    recommendations: [],
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -71,9 +83,29 @@ export default function HomePage() {
         });
       }
 
+      // Set fitness stats
+      if (data.fitness_data) {
+        setFitnessStats({
+          weeklyWorkouts: data.fitness_data.weekly_stats?.workouts || 0,
+          weeklyDuration: data.fitness_data.weekly_stats?.total_duration || 0,
+          weeklyCaloriesBurned:
+            data.fitness_data.weekly_stats?.total_calories || 0,
+          avgWorkoutDuration: data.fitness_data.weekly_stats?.avg_duration || 0,
+        });
+      }
+
       // Calculate weekly stats
       if (data.daily_history) {
         calculateWeeklyStats(data.daily_history, data.profile);
+      }
+
+      // Calculate combined insights
+      if (data.today_summary && data.fitness_data) {
+        calculateCombinedInsights(
+          data.today_summary,
+          data.fitness_data,
+          data.profile
+        );
       }
     } catch (error) {
       console.error("Error fetching dashboard data:", error);
@@ -130,6 +162,68 @@ export default function HomePage() {
     });
   };
 
+  const calculateCombinedInsights = (nutritionData, fitnessData, profile) => {
+    const caloriesConsumed = nutritionData.total_eaten || 0;
+    const caloriesBurned = fitnessData.weekly_stats?.total_calories || 0;
+    const weeklyWorkouts = fitnessData.weekly_stats?.workouts || 0;
+    const calorieGoal = profile?.calorie_goal || 2000;
+
+    // Calculate net calories (weekly average)
+    const netCalories = caloriesConsumed - caloriesBurned / 7; // Daily average burned
+
+    // Determine calorie balance
+    let calorieBalance = "balanced";
+    if (netCalories > calorieGoal * 1.1) {
+      calorieBalance = "surplus";
+    } else if (netCalories < calorieGoal * 0.9) {
+      calorieBalance = "deficit";
+    }
+
+    // Calculate workout consistency (workouts per week)
+    const workoutConsistency = Math.min((weeklyWorkouts / 3) * 100, 100); // Target: 3 workouts/week
+
+    // Generate recommendations
+    const recommendations = [];
+
+    if (weeklyWorkouts === 0) {
+      recommendations.push(
+        "Start with 1-2 workouts this week to boost your metabolism!"
+      );
+    } else if (weeklyWorkouts < 3) {
+      recommendations.push(
+        "Great start! Try to add one more workout to reach your weekly goal."
+      );
+    } else if (weeklyWorkouts >= 5) {
+      recommendations.push(
+        "Excellent workout consistency! Consider active recovery days."
+      );
+    }
+
+    if (calorieBalance === "surplus" && weeklyWorkouts < 3) {
+      recommendations.push(
+        "You're consuming more calories than burning. Consider adding more cardio."
+      );
+    } else if (calorieBalance === "deficit" && weeklyWorkouts >= 4) {
+      recommendations.push(
+        "Great job staying active! You may need to eat more to fuel your workouts."
+      );
+    }
+
+    if (caloriesBurned > 0) {
+      const extraCaloriesEarned = Math.round(caloriesBurned / 7);
+      recommendations.push(
+        `Your workouts earned you ~${extraCaloriesEarned} extra calories per day!`
+      );
+    }
+
+    setCombinedInsights({
+      netCalories: Math.round(netCalories),
+      calorieBalance,
+      workoutConsistency: Math.round(workoutConsistency),
+      recommendations,
+    });
+  };
+
   const calculateStreaks = (history, calorieGoal) => {
     let currentStreak = 0;
     let longestStreak = 0;
@@ -180,15 +274,40 @@ export default function HomePage() {
       todayProgress.calorieGoal
     );
     const { currentStreak } = weeklyStats;
+    const { weeklyWorkouts } = fitnessStats;
 
-    if (progress >= 90) {
-      return "Great job! You're hitting your goals consistently!";
-    } else if (progress >= 70) {
-      return "You're doing well! Keep up the momentum!";
+    if (progress >= 90 && weeklyWorkouts >= 3) {
+      return "Outstanding! You're crushing both nutrition and fitness goals!";
+    } else if (progress >= 70 && weeklyWorkouts >= 2) {
+      return "Great balance of nutrition and exercise! Keep up the momentum!";
     } else if (currentStreak > 0) {
-      return `You have a ${currentStreak}-day streak going! Don't break it now!`;
+      return `You have a ${currentStreak}-day nutrition streak going! Don't break it now!`;
+    } else if (weeklyWorkouts >= 3) {
+      return "Awesome workout consistency! Now let's dial in your nutrition.";
     } else {
-      return "Every meal is a new opportunity to fuel your body right!";
+      return "Every meal and workout is a new opportunity to improve your health!";
+    }
+  };
+
+  const getBalanceColor = (balance) => {
+    switch (balance) {
+      case "surplus":
+        return "#ed8936";
+      case "deficit":
+        return "#4299e1";
+      default:
+        return "#48bb78";
+    }
+  };
+
+  const getBalanceText = (balance) => {
+    switch (balance) {
+      case "surplus":
+        return "Calorie Surplus";
+      case "deficit":
+        return "Calorie Deficit";
+      default:
+        return "Balanced";
     }
   };
 
@@ -300,13 +419,13 @@ export default function HomePage() {
             <span
               style={{ color: "#234e52", fontSize: "14px", fontWeight: "bold" }}
             >
-              Day {dashboardData.current_day} of your nutrition journey
+              Day {dashboardData.current_day} of your health journey
             </span>
           </div>
         )}
       </div>
 
-      {/* Stats Overview Cards */}
+      {/* Combined Stats Overview */}
       <div
         style={{
           display: "grid",
@@ -315,7 +434,7 @@ export default function HomePage() {
           marginBottom: "2rem",
         }}
       >
-        {/* Current Streak */}
+        {/* Nutrition Streak */}
         <div
           style={{
             backgroundColor: "white",
@@ -331,14 +450,11 @@ export default function HomePage() {
             {weeklyStats.currentStreak}
           </div>
           <div style={{ color: "#718096", fontSize: "14px" }}>
-            Day Current Streak
-          </div>
-          <div style={{ color: "#a0aec0", fontSize: "12px", marginTop: "4px" }}>
-            Best: {weeklyStats.longestStreak} days
+            Day Nutrition Streak
           </div>
         </div>
 
-        {/* Weekly Average Calories */}
+        {/* Weekly Workouts */}
         <div
           style={{
             backgroundColor: "white",
@@ -351,13 +467,64 @@ export default function HomePage() {
           <div
             style={{ fontSize: "2rem", fontWeight: "bold", color: "#4299e1" }}
           >
-            {weeklyStats.avgCalories}
+            {fitnessStats.weeklyWorkouts}
           </div>
           <div style={{ color: "#718096", fontSize: "14px" }}>
-            Weekly Avg Calories
+            Workouts This Week
           </div>
-          <div style={{ color: "#a0aec0", fontSize: "12px", marginTop: "4px" }}>
-            Goal: {todayProgress.calorieGoal}
+        </div>
+
+        {/* Calorie Balance */}
+        <div
+          style={{
+            backgroundColor: "white",
+            padding: "1.5rem",
+            borderRadius: "12px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "2rem",
+              fontWeight: "bold",
+              color: getBalanceColor(combinedInsights.calorieBalance),
+            }}
+          >
+            {combinedInsights.netCalories}
+          </div>
+          <div style={{ color: "#718096", fontSize: "14px" }}>
+            Net Calories Today
+          </div>
+          <div
+            style={{
+              fontSize: "12px",
+              color: getBalanceColor(combinedInsights.calorieBalance),
+              marginTop: "4px",
+              fontWeight: "bold",
+            }}
+          >
+            {getBalanceText(combinedInsights.calorieBalance)}
+          </div>
+        </div>
+
+        {/* Weekly Calories Burned */}
+        <div
+          style={{
+            backgroundColor: "white",
+            padding: "1.5rem",
+            borderRadius: "12px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{ fontSize: "2rem", fontWeight: "bold", color: "#ed8936" }}
+          >
+            {fitnessStats.weeklyCaloriesBurned}
+          </div>
+          <div style={{ color: "#718096", fontSize: "14px" }}>
+            Calories Burned (Week)
           </div>
         </div>
 
@@ -372,39 +539,55 @@ export default function HomePage() {
           }}
         >
           <div
-            style={{ fontSize: "2rem", fontWeight: "bold", color: "#ed8936" }}
-          >
-            {weeklyStats.consistencyScore}%
-          </div>
-          <div style={{ color: "#718096", fontSize: "14px" }}>
-            Consistency Score
-          </div>
-          <div style={{ color: "#a0aec0", fontSize: "12px", marginTop: "4px" }}>
-            Last 7 days
-          </div>
-        </div>
-
-        {/* Weekly Protein Average */}
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "1.5rem",
-            borderRadius: "12px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            textAlign: "center",
-          }}
-        >
-          <div
             style={{ fontSize: "2rem", fontWeight: "bold", color: "#9f7aea" }}
           >
-            {weeklyStats.avgProtein}g
+            {Math.round(
+              (weeklyStats.consistencyScore +
+                combinedInsights.workoutConsistency) /
+                2
+            )}
+            %
           </div>
           <div style={{ color: "#718096", fontSize: "14px" }}>
-            Weekly Avg Protein
+            Overall Consistency
           </div>
-          <div style={{ color: "#a0aec0", fontSize: "12px", marginTop: "4px" }}>
-            Goal: {todayProgress.proteinGoal}g
-          </div>
+        </div>
+      </div>
+
+      {/* Combined Insights Section */}
+      <div
+        style={{
+          backgroundColor: "white",
+          padding: "2rem",
+          borderRadius: "12px",
+          marginBottom: "2rem",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+        }}
+      >
+        <h2 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
+          Smart Insights
+        </h2>
+
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gap: "1rem",
+          }}
+        >
+          {combinedInsights.recommendations.map((rec, index) => (
+            <div
+              key={index}
+              style={{
+                padding: "1rem",
+                backgroundColor: "#f7fafc",
+                borderRadius: "8px",
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              <div style={{ fontSize: "14px", color: "#4a5568" }}> {rec}</div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -419,7 +602,7 @@ export default function HomePage() {
         }}
       >
         <h2 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
-          Today's Progress
+          Today's Nutrition Progress
         </h2>
 
         <div
@@ -628,7 +811,7 @@ export default function HomePage() {
                 />
               ))}
 
-              {/* Goal line */}
+              {/* Goal line - FIXED to use actual user calorie goal */}
               <line
                 x1="40"
                 y1="100"
@@ -676,7 +859,7 @@ export default function HomePage() {
                   );
                 })}
 
-              {/* Y-axis labels */}
+              {/* Y-axis labels - FIXED to show actual user goals */}
               <text x="35" y="45" textAnchor="end" fontSize="12" fill="#718096">
                 {Math.round(todayProgress.calorieGoal * 1.2)}
               </text>
@@ -724,7 +907,7 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* Macro Distribution */}
+        {/* Fitness vs Nutrition Chart */}
         <div
           style={{
             backgroundColor: "white",
@@ -734,178 +917,115 @@ export default function HomePage() {
           }}
         >
           <h3 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
-            Today's Macro Distribution
+            Weekly Balance Overview
           </h3>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-              height: "200px",
-            }}
-          >
-            {todayProgress.calories > 0 ? (
+
+          <div style={{ display: "grid", gap: "1rem" }}>
+            {/* Nutrition Bar */}
+            <div>
               <div
                 style={{
-                  position: "relative",
-                  width: "150px",
-                  height: "150px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "0.5rem",
                 }}
               >
-                <svg width="150" height="150" viewBox="0 0 150 150">
-                  {(() => {
-                    const total =
-                      todayProgress.protein * 4 +
-                      todayProgress.carbs * 4 +
-                      todayProgress.fat * 9;
-                    if (total === 0) return null;
-
-                    const proteinAngle =
-                      ((todayProgress.protein * 4) / total) * 360;
-                    const carbAngle = ((todayProgress.carbs * 4) / total) * 360;
-                    const fatAngle = ((todayProgress.fat * 9) / total) * 360;
-
-                    let currentAngle = 0;
-                    const radius = 60;
-                    const centerX = 75;
-                    const centerY = 75;
-
-                    const createPath = (startAngle, endAngle, color) => {
-                      const start = (startAngle * Math.PI) / 180;
-                      const end = (endAngle * Math.PI) / 180;
-                      const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
-
-                      const x1 = centerX + radius * Math.cos(start);
-                      const y1 = centerY + radius * Math.sin(start);
-                      const x2 = centerX + radius * Math.cos(end);
-                      const y2 = centerY + radius * Math.sin(end);
-
-                      return (
-                        <path
-                          key={startAngle}
-                          d={`M ${centerX} ${centerY} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
-                          fill={color}
-                        />
-                      );
-                    };
-
-                    const paths = [];
-                    if (proteinAngle > 0) {
-                      paths.push(
-                        createPath(
-                          currentAngle,
-                          currentAngle + proteinAngle,
-                          "#3182ce"
-                        )
-                      );
-                      currentAngle += proteinAngle;
-                    }
-                    if (carbAngle > 0) {
-                      paths.push(
-                        createPath(
-                          currentAngle,
-                          currentAngle + carbAngle,
-                          "#38a169"
-                        )
-                      );
-                      currentAngle += carbAngle;
-                    }
-                    if (fatAngle > 0) {
-                      paths.push(
-                        createPath(
-                          currentAngle,
-                          currentAngle + fatAngle,
-                          "#d69e2e"
-                        )
-                      );
-                    }
-
-                    return paths;
-                  })()}
-                </svg>
+                <span style={{ fontWeight: "bold", fontSize: "14px" }}>
+                  Nutrition Consistency
+                </span>
+                <span style={{ fontSize: "14px", color: "#718096" }}>
+                  {weeklyStats.consistencyScore}%
+                </span>
+              </div>
+              <div
+                style={{
+                  width: "100%",
+                  height: "20px",
+                  backgroundColor: "#e2e8f0",
+                  borderRadius: "10px",
+                  overflow: "hidden",
+                }}
+              >
                 <div
                   style={{
-                    position: "absolute",
-                    top: "50%",
-                    left: "50%",
-                    transform: "translate(-50%, -50%)",
-                    textAlign: "center",
+                    width: `${weeklyStats.consistencyScore}%`,
+                    height: "100%",
+                    backgroundColor: "#48bb78",
+                    transition: "width 0.3s ease",
                   }}
-                >
-                  <div
-                    style={{
-                      fontSize: "18px",
-                      fontWeight: "bold",
-                      color: "#2d3748",
-                    }}
-                  >
-                    {Math.round(todayProgress.calories)}
-                  </div>
-                  <div style={{ fontSize: "12px", color: "#718096" }}>
-                    calories
-                  </div>
+                />
+              </div>
+            </div>
+
+            {/* Fitness Bar */}
+            <div>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                <span style={{ fontWeight: "bold", fontSize: "14px" }}>
+                  Workout Consistency
+                </span>
+                <span style={{ fontSize: "14px", color: "#718096" }}>
+                  {combinedInsights.workoutConsistency}%
+                </span>
+              </div>
+              <div
+                style={{
+                  width: "100%",
+                  height: "20px",
+                  backgroundColor: "#e2e8f0",
+                  borderRadius: "10px",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    width: `${combinedInsights.workoutConsistency}%`,
+                    height: "100%",
+                    backgroundColor: "#4299e1",
+                    transition: "width 0.3s ease",
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Combined Stats */}
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "1rem",
+                backgroundColor: "#f7fafc",
+                borderRadius: "8px",
+                border: "1px solid #e2e8f0",
+              }}
+            >
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "1rem",
+                  fontSize: "14px",
+                }}
+              >
+                <div>
+                  <strong>Weekly Averages:</strong>
+                  <br />
+                  {weeklyStats.avgCalories} calories
+                  <br />
+                  {weeklyStats.avgProtein}g protein
+                </div>
+                <div>
+                  <strong>Fitness Summary:</strong>
+                  <br />
+                  {fitnessStats.weeklyWorkouts} workouts
+                  <br />
+                  {fitnessStats.weeklyCaloriesBurned} cal burned
                 </div>
               </div>
-            ) : (
-              <div style={{ textAlign: "center", color: "#718096" }}>
-                No data to display yet.
-                <br />
-                Start tracking your meals!
-              </div>
-            )}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "center",
-              gap: "1rem",
-              marginTop: "1rem",
-            }}
-          >
-            <div
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-            >
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  backgroundColor: "#3182ce",
-                  borderRadius: "2px",
-                }}
-              ></div>
-              <span style={{ fontSize: "12px", color: "#718096" }}>
-                Protein ({Math.round(todayProgress.protein)}g)
-              </span>
-            </div>
-            <div
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-            >
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  backgroundColor: "#38a169",
-                  borderRadius: "2px",
-                }}
-              ></div>
-              <span style={{ fontSize: "12px", color: "#718096" }}>
-                Carbs ({Math.round(todayProgress.carbs)}g)
-              </span>
-            </div>
-            <div
-              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
-            >
-              <div
-                style={{
-                  width: "12px",
-                  height: "12px",
-                  backgroundColor: "#d69e2e",
-                  borderRadius: "2px",
-                }}
-              ></div>
-              <span style={{ fontSize: "12px", color: "#718096" }}>
-                Fat ({Math.round(todayProgress.fat)}g)
-              </span>
             </div>
           </div>
         </div>
@@ -1047,103 +1167,6 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Insights Section */}
-      {dashboardData?.daily_history &&
-        dashboardData.daily_history.length > 3 && (
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "2rem",
-              borderRadius: "12px",
-              marginBottom: "2rem",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
-            }}
-          >
-            <h2 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
-              Insights & Recommendations
-            </h2>
-
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
-                gap: "1rem",
-              }}
-            >
-              {/* Consistency Insight */}
-              <div
-                style={{
-                  padding: "1rem",
-                  backgroundColor:
-                    weeklyStats.consistencyScore >= 70 ? "#f0fff4" : "#fff5f5",
-                  borderRadius: "8px",
-                  border: `1px solid ${
-                    weeklyStats.consistencyScore >= 70 ? "#9ae6b4" : "#fed7d7"
-                  }`,
-                }}
-              >
-                <h4 style={{ margin: "0 0 0.5rem 0", color: "#2d3748" }}>
-                  Consistency
-                </h4>
-                <p style={{ margin: "0", fontSize: "14px", color: "#4a5568" }}>
-                  {weeklyStats.consistencyScore >= 70
-                    ? "Great job! You're consistently meeting your nutrition goals."
-                    : "Try to be more consistent with your daily nutrition tracking."}
-                </p>
-              </div>
-
-              {/* Protein Insight */}
-              <div
-                style={{
-                  padding: "1rem",
-                  backgroundColor:
-                    weeklyStats.avgProtein >= todayProgress.proteinGoal * 0.8
-                      ? "#f0fff4"
-                      : "#fffbf0",
-                  borderRadius: "8px",
-                  border: `1px solid ${
-                    weeklyStats.avgProtein >= todayProgress.proteinGoal * 0.8
-                      ? "#9ae6b4"
-                      : "#fbd38d"
-                  }`,
-                }}
-              >
-                <h4 style={{ margin: "0 0 0.5rem 0", color: "#2d3748" }}>
-                  Protein Intake
-                </h4>
-                <p style={{ margin: "0", fontSize: "14px", color: "#4a5568" }}>
-                  {weeklyStats.avgProtein >= todayProgress.proteinGoal * 0.8
-                    ? "Your protein intake is on track! Keep it up."
-                    : "Consider adding more protein-rich foods to reach your goals."}
-                </p>
-              </div>
-
-              {/* Best Day Insight */}
-              {weeklyStats.bestDay && (
-                <div
-                  style={{
-                    padding: "1rem",
-                    backgroundColor: "#f7fafc",
-                    borderRadius: "8px",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  <h4 style={{ margin: "0 0 0.5rem 0", color: "#2d3748" }}>
-                    Best Recent Day
-                  </h4>
-                  <p
-                    style={{ margin: "0", fontSize: "14px", color: "#4a5568" }}
-                  >
-                    {formatDaysAgo(weeklyStats.bestDay.days_ago)} was your best
-                    day with {Math.round(weeklyStats.bestDay.calories)} calories
-                    and {Math.round(weeklyStats.bestDay.protein)}g protein!
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
       {/* Quick Actions */}
       <div
         style={{
@@ -1189,7 +1212,7 @@ export default function HomePage() {
           onMouseOver={(e) => (e.target.style.backgroundColor = "#3182ce")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#4299e1")}
         >
-          View Fitness
+          View Workouts
         </button>
 
         <button

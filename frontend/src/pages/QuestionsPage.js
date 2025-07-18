@@ -32,9 +32,9 @@ export default function QuestionsPage() {
     workout_frequency: "",
     workout_duration: "",
 
-    // Equipment & Access
+    // Equipment & Access - UPDATED
     has_gym_membership: null,
-    available_equipment: "",
+    home_equipment: [], // Array of equipment available at home
 
     // Goals & Focus
     primary_focus: "",
@@ -51,6 +51,25 @@ export default function QuestionsPage() {
   });
 
   const totalSteps = 6;
+
+  // Equipment options for home
+  const homeEquipmentOptions = [
+    { value: "dumbbells", label: "Dumbbells" },
+    { value: "resistance_bands", label: "Resistance Bands" },
+    { value: "kettlebell", label: "Kettlebell" },
+    { value: "yoga_mat", label: "Yoga Mat" },
+    { value: "pull_up_bar", label: "Pull-up Bar" },
+    { value: "exercise_bike", label: "Exercise Bike" },
+    { value: "treadmill", label: "Treadmill" },
+    { value: "barbell", label: "Barbell & Plates" },
+    { value: "bench", label: "Exercise Bench" },
+    { value: "jump_rope", label: "Jump Rope" },
+    { value: "foam_roller", label: "Foam Roller" },
+    { value: "stability_ball", label: "Stability Ball" },
+    { value: "suspension_trainer", label: "Suspension Trainer (TRX)" },
+    { value: "medicine_ball", label: "Medicine Ball" },
+    { value: "cable_machine", label: "Cable Machine" },
+  ];
 
   const validateStep = (step) => {
     const newErrors = {};
@@ -106,7 +125,7 @@ export default function QuestionsPage() {
         }
         break;
 
-      case 4: // Equipment & Goals
+      case 4: // Equipment & Goals - UPDATED VALIDATION
         if (formData.has_gym_membership === null)
           newErrors.has_gym_membership = "Please select an option";
         if (!formData.primary_focus)
@@ -167,12 +186,23 @@ export default function QuestionsPage() {
     if (!validateStep(currentStep)) return;
 
     try {
+      // Process equipment data - if gym membership, add all gym equipment
+      let processedData = { ...formData };
+
+      if (formData.has_gym_membership) {
+        // If user has gym membership, they have access to all equipment
+        processedData.available_equipment = "gym_membership_full_access";
+      } else {
+        // Convert home equipment array to string for database
+        processedData.available_equipment = formData.home_equipment.join(", ");
+      }
+
       const response = await fetch(
         "http://localhost:5000/api/complete_profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: userId, ...formData }),
+          body: JSON.stringify({ user_id: userId, ...processedData }),
         }
       );
 
@@ -181,7 +211,7 @@ export default function QuestionsPage() {
       if (data.success) {
         // Store user ID for the app
         localStorage.setItem("nutrifit_user_id", userId);
-        navigate("/nutrition");
+        navigate("/home");
       } else {
         alert(data.error || "Failed to complete profile");
       }
@@ -466,14 +496,17 @@ export default function QuestionsPage() {
     </div>
   );
 
+  // UPDATED STEP 4 - Separate gym and equipment questions
   const renderStep4 = () => (
     <div>
       <h3>Equipment & Goals</h3>
-      <div style={{ marginBottom: "20px" }}>
+
+      {/* Gym Membership Question */}
+      <div style={{ marginBottom: "25px" }}>
         <label
           style={{ display: "block", marginBottom: "8px", fontWeight: "bold" }}
         >
-          Do you have access to a gym or workout equipment? *
+          Do you have a gym membership? *
         </label>
         <div style={{ display: "flex", gap: "20px", marginBottom: "10px" }}>
           <label
@@ -481,24 +514,24 @@ export default function QuestionsPage() {
           >
             <input
               type="radio"
-              name="gym_access"
+              name="gym_membership"
               checked={formData.has_gym_membership === true}
               onChange={() => handleInputChange("has_gym_membership", true)}
               style={{ marginRight: "8px" }}
             />
-            Yes
+            Yes, I have access to a gym
           </label>
           <label
             style={{ display: "flex", alignItems: "center", cursor: "pointer" }}
           >
             <input
               type="radio"
-              name="gym_access"
+              name="gym_membership"
               checked={formData.has_gym_membership === false}
               onChange={() => handleInputChange("has_gym_membership", false)}
               style={{ marginRight: "8px" }}
             />
-            No
+            No, I work out at home/outdoors
           </label>
         </div>
         {errors.has_gym_membership && (
@@ -506,25 +539,80 @@ export default function QuestionsPage() {
         )}
       </div>
 
-      {formData.has_gym_membership && (
-        <div style={{ marginBottom: "20px" }}>
+      {/* Home Equipment Question - Only show if no gym membership */}
+      {formData.has_gym_membership === false && (
+        <div style={{ marginBottom: "25px" }}>
           <label
             style={{
               display: "block",
-              marginBottom: "8px",
+              marginBottom: "12px",
               fontWeight: "bold",
             }}
           >
-            What equipment do you have access to?
+            What workout equipment do you have at home? (Select all that apply)
           </label>
-          <textarea
-            value={formData.available_equipment}
-            onChange={(e) =>
-              handleInputChange("available_equipment", e.target.value)
-            }
-            style={{ ...inputStyle, minHeight: "80px" }}
-            placeholder="e.g., dumbbells, treadmill, resistance bands..."
-          />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: "10px",
+              maxHeight: "200px",
+              overflowY: "auto",
+              border: "1px solid #ddd",
+              padding: "15px",
+              borderRadius: "8px",
+              backgroundColor: "#f9f9f9",
+            }}
+          >
+            {homeEquipmentOptions.map((equipment) => (
+              <label
+                key={equipment.value}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={formData.home_equipment.includes(equipment.value)}
+                  onChange={(e) =>
+                    handleArrayChange(
+                      "home_equipment",
+                      equipment.value,
+                      e.target.checked
+                    )
+                  }
+                  style={{ marginRight: "8px" }}
+                />
+                {equipment.label}
+              </label>
+            ))}
+          </div>
+          <div style={{ fontSize: "12px", color: "#666", marginTop: "8px" }}>
+            Don't worry if you don't have equipment - we have plenty of
+            bodyweight exercises!
+          </div>
+        </div>
+      )}
+
+      {/* Gym Access Notice */}
+      {formData.has_gym_membership === true && (
+        <div
+          style={{
+            backgroundColor: "#e6fffa",
+            padding: "15px",
+            borderRadius: "8px",
+            border: "1px solid #81e6d9",
+            marginBottom: "25px",
+          }}
+        >
+          <div style={{ color: "#234e52", fontSize: "14px" }}>
+            <strong>Great!</strong> With gym access, you'll have access to all
+            equipment types. We'll recommend workouts using barbells, machines,
+            free weights, and more!
+          </div>
         </div>
       )}
 
@@ -896,7 +984,7 @@ export default function QuestionsPage() {
               )
             ) {
               localStorage.setItem("nutrifit_user_id", userId);
-              navigate("/nutrition");
+              navigate("/home");
             }
           }}
           style={{
