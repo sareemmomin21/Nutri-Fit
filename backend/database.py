@@ -847,11 +847,44 @@ def get_user_profile(user_id):
         return profile
 
 def get_meal_progress(user_id):
-    """Get meal progress with current items"""
+    """Get meal progress with current items and smart calorie allocations"""
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
-       
-        # Get meal totals from current items
+
+        # Get user's daily calorie goal
+        c.execute("SELECT calorie_goal FROM users WHERE id = ?", (user_id,))
+        result = c.fetchone()
+        calorie_goal = result[0] if result and result[0] else 2000  # default fallback
+
+        # Define dynamic allocations as proportions
+        allocations = {
+            'breakfast': 0.25,
+            'lunch': 0.30,
+            'dinner': 0.35,
+            'snacks': 0.10
+        }
+
+        # Calculate allocations based on calorie goal
+        meal_allocations = {
+            meal: round(calorie_goal * proportion)
+            for meal, proportion in allocations.items()
+        }
+
+        # Initialize meal data structure
+        meal_data = {
+            meal: {
+                "calories_allocated": meal_allocations[meal],
+                "calories_eaten": 0,
+                "calories_remaining": meal_allocations[meal],
+                "protein_eaten": 0,
+                "carbohydrates_eaten": 0,
+                "fat_eaten": 0,
+                "progress_percentage": 0
+            }
+            for meal in allocations
+        }
+
+        # Fetch current meal item totals
         c.execute("""
         SELECT meal_type,
                COALESCE(SUM(calories), 0) as calories_eaten,
@@ -862,42 +895,23 @@ def get_meal_progress(user_id):
         WHERE user_id = ?
         GROUP BY meal_type
         """, (user_id,))
-       
-        meal_data = {}
-        meal_allocations = {
-            'breakfast': 500,
-            'lunch': 600,
-            'dinner': 700,
-            'snacks': 200
-        }
-       
-        # Initialize all meals
-        for meal_type, allocation in meal_allocations.items():
-            meal_data[meal_type] = {
-                "calories_allocated": allocation,
-                "calories_eaten": 0,
-                "calories_remaining": allocation,
-                "protein_eaten": 0,
-                "carbohydrates_eaten": 0,
-                "fat_eaten": 0,
-                "progress_percentage": 0
-            }
-       
-        # Update with actual data
+
         for row in c.fetchall():
             meal_type = row[0]
             if meal_type in meal_data:
                 calories_eaten = row[1]
+                allocated = meal_data[meal_type]['calories_allocated']
                 meal_data[meal_type].update({
                     "calories_eaten": calories_eaten,
-                    "calories_remaining": meal_data[meal_type]["calories_allocated"] - calories_eaten,
+                    "calories_remaining": allocated - calories_eaten,
                     "protein_eaten": row[2],
                     "carbohydrates_eaten": row[3],
                     "fat_eaten": row[4],
-                    "progress_percentage": (calories_eaten / meal_data[meal_type]["calories_allocated"]) * 100 if meal_data[meal_type]["calories_allocated"] > 0 else 0
+                    "progress_percentage": (calories_eaten / allocated) * 100 if allocated > 0 else 0
                 })
-       
+
         return meal_data
+
 
 def remove_food_from_current_meal(user_id, meal_item_id):
     """Remove a food item from the current meal"""

@@ -814,9 +814,9 @@ export default function HomePage() {
               {/* Goal line - FIXED to use actual user calorie goal */}
               <line
                 x1="40"
-                y1="100"
+                y1="72"
                 x2="380"
-                y2="100"
+                y2="72"
                 stroke="#48bb78"
                 strokeWidth="2"
                 strokeDasharray="5,5"
@@ -833,9 +833,9 @@ export default function HomePage() {
                       .slice(-14)
                       .map((day, index) => {
                         const x = 40 + (index * 340) / 13;
-                        const y =
-                          168 -
-                          (day.calories / todayProgress.calorieGoal) * 128;
+                        const chartMax = todayProgress.calorieGoal * 1.2;
+                        const y = 168 - (day.calories / chartMax) * 128;
+
                         return `${x},${Math.max(40, Math.min(168, y))}`;
                       })
                       .join(" ")}
@@ -846,8 +846,9 @@ export default function HomePage() {
               {dashboardData?.daily_history &&
                 dashboardData.daily_history.slice(-14).map((day, index) => {
                   const x = 40 + (index * 340) / 13;
-                  const y =
-                    168 - (day.calories / todayProgress.calorieGoal) * 128;
+                  const chartMax = todayProgress.calorieGoal * 1.2;
+                  const y = 168 - (day.calories / chartMax) * 128;
+
                   return (
                     <circle
                       key={index}
