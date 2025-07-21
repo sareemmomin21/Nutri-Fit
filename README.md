@@ -66,16 +66,6 @@ nutri-fit/             # Root directory
    pip install -r requirements.txt
    ```
 
-3. **Environment Variables**
-   Create a `.env` file in `backend/`:
-
-   ```env
-   FLASK_ENV=development
-   DATABASE_URL=sqlite:///nutrifit.db
-   FATSECRET_API_KEY=your_fatsecret_api_key
-   FIREBASE_API_KEY=your_firebase_api_key
-   ```
-
 4. **Initialize Database**
 
    ```bash
