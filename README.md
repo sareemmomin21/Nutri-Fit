@@ -9,7 +9,6 @@
 * **Personalized Onboarding**: Tailor recommendations based on age, height, weight, and goal (cut, bulk, maintain).
 * **Custom Workouts**: Generate exercise routines matching available equipment and preferred training styles.
 * **Meal Suggestions**: AI-driven food options with macro tracking, USDA integration, and dietary preference filtering.
-* **Barcode Logging**: Scan packaged foods (via FatSecret API) to auto-populate nutrition data.
 * **Smart Feedback**: Log completed workouts and meals; system adjusts your weekly plan dynamically.
 * **Visual Dashboards**: Track body-fat %, consistency streaks, calorie consumption, and workout stats over time.
 * **Firebase Authentication**: Secure user sign-up, login, and session management.
