@@ -43,7 +43,7 @@ export default function NutritionPage() {
 
   const fetchUserProfile = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:5000/api/get_profile", {
+      const response = await fetch("http://127.0.0.1:5000/api/get_profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
@@ -72,7 +72,7 @@ export default function NutritionPage() {
     try {
       // Fetch daily summary
       const summaryResponse = await fetch(
-        "http://localhost:5000/get_daily_summary",
+        "http://127.0.0.1:5000/get_daily_summary",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -86,7 +86,7 @@ export default function NutritionPage() {
 
       // Fetch meal progress
       const progressResponse = await fetch(
-        "http://localhost:5000/get_meal_progress",
+        "http://127.0.0.1:5000/get_meal_progress",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -106,7 +106,7 @@ export default function NutritionPage() {
     async (targetDay = null) => {
       try {
         const response = await fetch(
-          "http://localhost:5000/api/get_navigation_info",
+          "http://127.0.0.1:5000/api/get_navigation_info",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -131,7 +131,7 @@ export default function NutritionPage() {
     async (targetDay) => {
       try {
         setHistoryLoading(true);
-        const response = await fetch("http://localhost:5000/api/get_day_data", {
+        const response = await fetch("http://127.0.0.1:5000/api/get_day_data", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userId, target_day: targetDay }),
@@ -497,7 +497,7 @@ export default function NutritionPage() {
       )
     ) {
       try {
-        const response = await fetch("http://localhost:5000/next_day", {
+        const response = await fetch("http://127.0.0.1:5000/next_day", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userId }),
