@@ -2,7 +2,7 @@ import json
 import pytest
 from unittest.mock import patch
 
-from app import app  # assuming your Flask app is in app.py
+from backend.app import app  # assuming your Flask app is in app.py
 
 @pytest.fixture
 def client():
@@ -21,7 +21,7 @@ def test_signup_validation(client):
     assert resp.status_code == 400
     assert b"Password must be at least 6 characters" in resp.data
 
-@patch('app.create_user')
+@patch('backend.app.create_user')
 def test_signup_success(mock_create_user, client):
     mock_create_user.return_value = (42, None)
     payload = {'username': 'testuser', 'password': 'strongpass', 'email': 't@t.com'}
@@ -31,7 +31,7 @@ def test_signup_success(mock_create_user, client):
     assert data['success'] is True
     assert data['user_id'] == 42
 
-@patch('app.authenticate_user')
+@patch('backend.app.authenticate_user')
 def test_login_success_and_failure(mock_auth, client):
     # failure
     mock_auth.return_value = (None, False)
@@ -45,8 +45,8 @@ def test_login_success_and_failure(mock_auth, client):
     assert resp.status_code == 200
     assert data == {'success': True, 'user_id': 7, 'profile_completed': True}
 
-@patch('app.search_food_autocomplete')
-@patch('app.get_user_custom_foods')
+@patch('backend.app.search_food_autocomplete')
+@patch('backend.app.get_user_custom_foods')
 def test_search_food_autocomplete(mock_custom, mock_autocomplete, client):
     mock_autocomplete.return_value = [
         {'name': 'Apple', 'source': 'usda', 'serving': '1 medium'},
@@ -60,14 +60,14 @@ def test_search_food_autocomplete(mock_custom, mock_autocomplete, client):
     assert data[0]['name'] == 'My Salad'
     assert any(item['name']=='Apple' for item in data)
 
-@patch('app.add_food_to_current_meal')
-@patch('app.ensure_user_exists')
+@patch('backend.app.add_food_to_current_meal')
+@patch('backend.app.ensure_user_exists')
 def test_add_food_to_meal_missing_fields(mock_ensure, mock_add, client):
     resp = client.post('/api/add_food_to_meal', json={})
     assert resp.status_code == 400
 
-@patch('app.add_food_to_current_meal')
-@patch('app.ensure_user_exists')
+@patch('backend.app.add_food_to_current_meal')
+@patch('backend.app.ensure_user_exists')
 def test_add_food_to_meal_success(mock_ensure, mock_add, client):
     payload = {
         'user_id': 10,
