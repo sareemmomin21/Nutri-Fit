@@ -78,6 +78,12 @@ nutri-fit/             # Root directory
    npm install
    npm start            # Runs on http://localhost:3000
    ```
+## Environment
+
+Create a `.env` in your `/backend` folder:
+
+```bash
+USDA_API_KEY=your_usda_api_key_here // You will need to set up the USDA food API key
 
 ---
 
