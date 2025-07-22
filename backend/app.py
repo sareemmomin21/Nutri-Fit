@@ -1,10 +1,10 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from backend.nutrition_utils import (
+from nutrition_utils import (
     search_food_autocomplete, search_food_comprehensive, scale_food_nutrition,
     get_meal_suggestions
 )
-from backend.database import (
+from database import (
     init_db, get_user_profile, get_daily_totals, get_meal_progress,
     reset_day, create_user, authenticate_user, update_user_profile,
     get_user_food_preferences, add_user_custom_food, get_user_custom_foods,
@@ -19,7 +19,7 @@ from backend.database import (
     get_combined_dashboard_data, init_fitness_tables
 )
 
-from backend.fitness_utils import (
+from fitness_utils import (
     get_workout_recommendations, get_workout_plan, calculate_calories_burned,
     get_recovery_recommendations, generate_workout_stats, create_custom_workout,
     get_exercise_tips, get_workout_difficulty_progression
