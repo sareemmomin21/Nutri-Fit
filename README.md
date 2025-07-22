@@ -79,16 +79,6 @@ nutri-fit/             # Root directory
    npm start            # Runs on http://localhost:3000
    ```
 ---
-## Environment
-
-Create a `.env` in your `/backend` folder:
-
-```bash
-USDA_API_KEY=your_usda_api_key_here // You will need to set up the USDA food API key
-
----
-
----
 
 ## ▶️ Running the App
 
@@ -106,4 +96,13 @@ Ensure your React proxy (`frontend/package.json: "proxy": "http://localhost:5000
 4. Log foods by selecting suggestions or scanning barcodes.
 5. Mark workouts as complete; view progress graphs and stats.
 
+---
+
+## Environment
+
+Create a `.env` in your `/backend` folder:
+
+```bash
+USDA_API_KEY=your_usda_api_key_here // You will need to set up the USDA food API key
+```
 ---
