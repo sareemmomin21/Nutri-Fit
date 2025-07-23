@@ -1141,6 +1141,10 @@ def get_progression_suggestions_endpoint():
         print(f"Error getting progression suggestions: {e}")
         return jsonify({"error": "Failed to get progression suggestions"}), 500
 
+@app.route("/")
+def index():
+    return "Backend is live!"
+    
 if __name__ == "__main__":
     init_db()
     init_fitness_tables()  # Initialize fitness tables
