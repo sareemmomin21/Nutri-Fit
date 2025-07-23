@@ -100,7 +100,14 @@ function CustomWorkoutModal({ onClose, onCreate }) {
         estimated_calories: parseInt(estimatedCalories),
         estimated_duration: parseInt(estimatedDuration),
         intensity: intensity,
-        exercises: exercises,
+        exercises: exercises.map((ex) => ({
+          name: ex.name,
+          sets: ex.sets ? parseInt(ex.sets) : undefined,
+          reps: ex.reps,
+          rest: ex.rest,
+          weight: ex.weight,
+          notes: ex.notes,
+        })),
       });
 
       if (success) {

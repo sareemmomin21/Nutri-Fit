@@ -163,8 +163,8 @@ def init_fitness_tables():
     """Initialize fitness-related database tables"""
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
-       
-        # Workout sessions table
+        
+        # Existing tables...
         c.execute("""
         CREATE TABLE IF NOT EXISTS workout_sessions (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -180,8 +180,7 @@ def init_fitness_tables():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
         """)
-       
-        # Exercise performance tracking
+        
         c.execute("""
         CREATE TABLE IF NOT EXISTS exercise_performance (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -200,8 +199,7 @@ def init_fitness_tables():
             FOREIGN KEY (workout_session_id) REFERENCES workout_sessions (id)
         )
         """)
-       
-        # Workout plans table
+        
         c.execute("""
         CREATE TABLE IF NOT EXISTS workout_plans (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -213,8 +211,7 @@ def init_fitness_tables():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
         """)
-       
-        # Fitness goals table
+        
         c.execute("""
         CREATE TABLE IF NOT EXISTS fitness_goals (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -228,10 +225,41 @@ def init_fitness_tables():
             FOREIGN KEY (user_id) REFERENCES users (id)
         )
         """)
-       
+        
+        # NEW TABLE FOR WORKOUT PREFERENCES
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS workout_preferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            workout_name TEXT,
+            preference TEXT CHECK(preference IN ('liked', 'disliked')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id, workout_name)
+        )
+        """)
+        
         conn.commit()
         print("Fitness tables initialized successfully")
 
+
+def get_user_workout_preferences(user_id):
+    """Get user's workout preferences (likes/dislikes)"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        SELECT workout_name, preference
+        FROM workout_preferences 
+        WHERE user_id = ?
+        """, (user_id,))
+        
+        preferences = {'liked': [], 'disliked': []}
+        for workout_name, preference in c.fetchall():
+            preferences[preference].append(workout_name)
+        
+        return preferences
+    
 def get_user_current_day(user_id):
     """Get current day number for user"""
     with sqlite3.connect(DB_PATH) as conn:
