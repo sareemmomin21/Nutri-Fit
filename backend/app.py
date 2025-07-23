@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+import os
 from flask_cors import CORS
 from nutrition_utils import (
     search_food_autocomplete, search_food_comprehensive, scale_food_nutrition,
@@ -1143,4 +1144,5 @@ def get_progression_suggestions_endpoint():
 if __name__ == "__main__":
     init_db()
     init_fitness_tables()  # Initialize fitness tables
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port)
