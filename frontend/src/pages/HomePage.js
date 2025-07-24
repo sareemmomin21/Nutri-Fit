@@ -54,7 +54,7 @@ export default function HomePage() {
 
       // Single optimized API call to get all dashboard data
       const response = await fetch(
-        "https://nutri-fit-2iom.onrender.com/api/get_dashboard_data",
+        "${process.env.REACT_APP_API_URL}/api/get_dashboard_data",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

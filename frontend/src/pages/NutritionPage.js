@@ -43,7 +43,7 @@ export default function NutritionPage() {
 
   const fetchUserProfile = useCallback(async () => {
     try {
-      const response = await fetch("https://nutri-fit-2iom.onrender.com/api/get_profile", {
+      const response = await fetch("${process.env.REACT_APP_API_URL}/api/get_profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
@@ -72,7 +72,7 @@ export default function NutritionPage() {
     try {
       // Fetch daily summary
       const summaryResponse = await fetch(
-        "https://nutri-fit-2iom.onrender.com/get_daily_summary",
+        "${process.env.REACT_APP_API_URL}/get_daily_summary",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -86,7 +86,7 @@ export default function NutritionPage() {
 
       // Fetch meal progress
       const progressResponse = await fetch(
-        "https://nutri-fit-2iom.onrender.com/get_meal_progress",
+        "${process.env.REACT_APP_API_URL}/get_meal_progress",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -106,7 +106,7 @@ export default function NutritionPage() {
     async (targetDay = null) => {
       try {
         const response = await fetch(
-          "https://nutri-fit-2iom.onrender.com/api/get_navigation_info",
+          "${process.env.REACT_APP_API_URL}/api/get_navigation_info",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -131,7 +131,7 @@ export default function NutritionPage() {
     async (targetDay) => {
       try {
         setHistoryLoading(true);
-        const response = await fetch("https://nutri-fit-2iom.onrender.com/api/get_day_data", {
+        const response = await fetch("${process.env.REACT_APP_API_URL}/api/get_day_data", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userId, target_day: targetDay }),
@@ -497,7 +497,7 @@ export default function NutritionPage() {
       )
     ) {
       try {
-        const response = await fetch("https://nutri-fit-2iom.onrender.com/next_day", {
+        const response = await fetch("${process.env.REACT_APP_API_URL}/next_day", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ user_id: userId }),
