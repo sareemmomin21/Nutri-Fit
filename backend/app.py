@@ -27,7 +27,7 @@ from fitness_utils import (
 )
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins=["https://nutrifit-nine.vercel.app"])
 
 @app.route("/api/hello")
 def hello():
