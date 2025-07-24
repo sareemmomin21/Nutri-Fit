@@ -155,6 +155,28 @@ def init_db():
             UNIQUE(user_id, food_name)
         )
         """)
+
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS friends (
+        user_id   TEXT,
+        friend_id TEXT,
+        PRIMARY KEY(user_id, friend_id),
+        FOREIGN KEY(user_id)   REFERENCES users(id),
+        FOREIGN KEY(friend_id) REFERENCES users(id)
+        )
+        """)
+
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS challenges (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      TEXT    NOT NULL,
+            title        TEXT    NOT NULL,
+            description  TEXT    DEFAULT '',
+            completed    BOOLEAN DEFAULT FALSE,
+            created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """)
        
         conn.commit()
         print("Database initialized successfully")
@@ -1429,5 +1451,117 @@ def get_combined_dashboard_data(user_id):
             }
         }
     }
+
+def search_users(exclude_user_id, query):
+    like = f"%{query}%"
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+        SELECT id, username, first_name, last_name
+        FROM users
+        WHERE id != ?
+          AND (username LIKE ? COLLATE NOCASE
+               OR first_name LIKE ? COLLATE NOCASE
+               OR last_name LIKE ? COLLATE NOCASE)
+        ORDER BY username
+        LIMIT 20
+        """, (exclude_user_id, like, like, like))
+
+        return [
+            {
+              "user_id":    row[0],
+              "username":   row[1],
+              "first_name": row[2],
+              "last_name":  row[3],
+              "name":       f"{row[2]} {row[3]}".strip()
+            }
+            for row in c.fetchall()
+        ]
+
+def get_user_friends(user_id):
+    """List your current friends."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+          SELECT u.id, u.username, u.first_name, u.last_name
+            FROM users u
+            JOIN friends f
+              ON f.friend_id = u.id
+           WHERE f.user_id = ?
+        """, (user_id,))
+        return [
+          {"user_id": row[0], "username": row[1], "first_name": row[2], "last_name": row[3]}
+          for row in c.fetchall()
+        ]
+
+def add_friend(user_id, friend_id):
+    """Create a mutual friendship link."""
+    if user_id == friend_id:
+        return False, "Cannot friend yourself"
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Check existing
+        c.execute("SELECT 1 FROM friends WHERE user_id=? AND friend_id=?", (user_id, friend_id))
+        if c.fetchone():
+            return False, "Already friends"
+        # Insert both directions
+        c.execute("INSERT INTO friends (user_id, friend_id) VALUES (?, ?)", (user_id, friend_id))
+        c.execute("INSERT INTO friends (user_id, friend_id) VALUES (?, ?)", (friend_id, user_id))
+        conn.commit()
+        return True, "Friend added"
+
+def remove_friend(user_id, friend_id):
+    """Tear down a friendship link."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Check existing
+        c.execute("SELECT 1 FROM friends WHERE user_id=? AND friend_id=?", (user_id, friend_id))
+        if not c.fetchone():
+            return False, "Not friends"
+        # Delete both directions
+        c.execute("DELETE FROM friends WHERE user_id=? AND friend_id=?", (user_id, friend_id))
+        c.execute("DELETE FROM friends WHERE user_id=? AND friend_id=?", (friend_id, user_id))
+        conn.commit()
+        return True, "Friend removed"
+    
+def insert_custom_challenge(user_id: str, title: str, description: str = "") -> dict:
+    """Create a new custom challenge for this user and return its record."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            INSERT INTO challenges (user_id, title, description)
+            VALUES (?, ?, ?)
+        """, (user_id, title, description))
+        conn.commit()
+        return {
+            "id": c.lastrowid,
+            "user_id": user_id,
+            "title": title,
+            "description": description,
+            "completed": False
+        }
+
+def fetch_weekly_challenges(user_id: str) -> list:
+    """Return all challenges (including custom) for this user."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT id, title, description, completed
+            FROM challenges
+            WHERE user_id = ?
+            ORDER BY created_at
+        """, (user_id,))
+        rows = c.fetchall()
+        return [
+            {
+                "id":          row[0],
+                "title":       row[1],
+                "description": row[2],
+                "completed":   bool(row[3])
+            }
+            for row in rows
+        ]
+
+
    
     return combined_data

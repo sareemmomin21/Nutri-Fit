@@ -16,7 +16,11 @@ from database import (
     add_workout_session, get_workout_history, get_exercise_performance_history,
     save_workout_plan, get_active_workout_plan, get_fitness_dashboard_data,
     get_fitness_goals, update_fitness_goal_progress, add_fitness_goal,
-    get_combined_dashboard_data, init_fitness_tables
+    get_combined_dashboard_data, init_fitness_tables,
+    #gamification functions
+    search_users, get_user_friends, add_friend, remove_friend,
+    fetch_weekly_challenges,
+    insert_custom_challenge,
 )
 
 from fitness_utils import (
@@ -26,7 +30,7 @@ from fitness_utils import (
 )
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 @app.route("/api/hello")
 def hello():
@@ -1140,7 +1144,126 @@ def get_progression_suggestions_endpoint():
         print(f"Error getting progression suggestions: {e}")
         return jsonify({"error": "Failed to get progression suggestions"}), 500
 
+
+# ---------------------------
+# FRIENDS / SOCIAL ENDPOINTS
+# ---------------------------
+
+@app.route("/api/search_users", methods=["POST"])
+def search_users_endpoint():
+    data    = request.json or {}
+    user_id = data.get("user_id")
+    query   = data.get("query", "").strip()
+
+    if not user_id:
+        return jsonify([]), 400
+
+    raw = search_users(user_id, query)
+    users = []
+    for u in raw:
+        users.append({
+            "id":         u["user_id"],
+            "username":   u["username"],
+            "first_name": u["first_name"],
+            "last_name":  u["last_name"]
+        })
+    return jsonify(users)
+
+
+@app.route("/api/get_friends", methods=["POST"])
+def get_friends_endpoint():
+    data    = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify([]), 400
+
+    raw = get_user_friends(user_id)
+    friends = []
+    for f in raw:
+        friends.append({
+            "id":         f["user_id"],
+            "username":   f["username"],
+            "first_name": f["first_name"],
+            "last_name":  f["last_name"]
+        })
+    return jsonify(friends)
+
+
+@app.route("/api/add_friend", methods=["POST"])
+def add_friend_endpoint():
+    data      = request.json or {}
+    user_id   = data.get("user_id")
+    friend_id = data.get("friend_id")
+    if not user_id or not friend_id:
+        return jsonify({"error": "user_id & friend_id required"}), 400
+
+    ok, msg = add_friend(user_id, friend_id)
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/remove_friend", methods=["POST"])
+def remove_friend_endpoint():
+    data      = request.json or {}
+    user_id   = data.get("user_id")
+    friend_id = data.get("friend_id")
+    if not user_id or not friend_id:
+        return jsonify({"error": "user_id & friend_id required"}), 400
+
+    ok, msg = remove_friend(user_id, friend_id)
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+# ---------------------------
+# GAMIFICATION ENDPOINTS
+# ---------------------------
+
+@app.route("/api/get_streak", methods=["POST"])
+def get_streak():
+    # TODO: replace with real DB lookup if you want
+    return jsonify({"current": 5, "best": 10}), 200
+
+
+@app.route("/api/get_badges", methods=["POST"])
+def get_badges():
+    data    = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+
+    # TODO: load real badges from DB
+    return jsonify([]), 200
+
+
+@app.route("/api/get_weekly_challenges", methods=["POST"])
+def get_weekly_challenges_endpoint():
+    data    = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+
+    # fetch all challenges (including custom) for this user
+    challenges = fetch_weekly_challenges(user_id)
+    return jsonify(challenges), 200
+
+
+@app.route("/api/add_custom_challenge", methods=["POST"])
+def add_custom_challenge_endpoint():
+    data        = request.json or {}
+    user_id     = data.get("user_id")
+    title       = (data.get("title") or "").strip()
+    description = (data.get("description") or "").strip()
+
+    if not user_id or not title:
+        return jsonify({"error": "user_id & title required"}), 400
+
+    # insert into DB and return the new record
+    new_challenge = insert_custom_challenge(user_id, title, description)
+    return jsonify(new_challenge), 200
+
+
+
+
 if __name__ == "__main__":
     init_db()
-    init_fitness_tables()  # Initialize fitness tables
-    app.run(debug=True)
+    init_fitness_tables()
+    app.run(host="0.0.0.0", port=5000, debug=True)
