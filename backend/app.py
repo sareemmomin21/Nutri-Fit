@@ -21,6 +21,9 @@ from database import (
     search_users, get_user_friends, add_friend, remove_friend,
     fetch_weekly_challenges,
     insert_custom_challenge,
+    # friend challenge functions
+    create_friend_challenge, get_friend_challenges, respond_to_friend_challenge,
+    update_friend_challenge_progress, get_friend_preferences,
 )
 
 from fitness_utils import (
@@ -1211,6 +1214,78 @@ def remove_friend_endpoint():
 
     ok, msg = remove_friend(user_id, friend_id)
     return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/create_friend_challenge", methods=["POST"])
+def create_friend_challenge_endpoint():
+    data = request.json or {}
+    creator_id = data.get("user_id")
+    target_friend_id = data.get("friend_id")
+    title = (data.get("title") or "").strip()
+    description = (data.get("description") or "").strip()
+    max_progress = data.get("max_progress", 100)
+    
+    if not creator_id or not target_friend_id or not title:
+        return jsonify({"error": "user_id, friend_id, and title required"}), 400
+    
+    ok, msg = create_friend_challenge(creator_id, target_friend_id, title, description, max_progress)
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/get_friend_challenges", methods=["POST"])
+def get_friend_challenges_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    
+    challenges = get_friend_challenges(user_id)
+    return jsonify(challenges), 200
+
+
+@app.route("/api/respond_friend_challenge", methods=["POST"])
+def respond_friend_challenge_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    challenge_id = data.get("challenge_id")
+    response = data.get("response")
+    
+    if not user_id or not challenge_id or not response:
+        return jsonify({"error": "user_id, challenge_id, and response required"}), 400
+    
+    ok, msg = respond_to_friend_challenge(user_id, challenge_id, response)
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/update_challenge_progress", methods=["POST"])
+def update_challenge_progress_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    challenge_id = data.get("challenge_id")
+    progress = data.get("progress")
+    
+    if not user_id or not challenge_id or progress is None:
+        return jsonify({"error": "user_id, challenge_id, and progress required"}), 400
+    
+    ok, msg = update_friend_challenge_progress(user_id, challenge_id, int(progress))
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/get_friend_preferences", methods=["POST"])
+def get_friend_preferences_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+    
+    if not user_id or not friend_id:
+        return jsonify({"error": "user_id and friend_id required"}), 400
+    
+    preferences, msg = get_friend_preferences(user_id, friend_id)
+    if preferences is None:
+        return jsonify({"error": msg}), 400
+    
+    return jsonify(preferences), 200
 
 
 # ---------------------------
