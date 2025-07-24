@@ -1,6 +1,8 @@
 from flask import Flask, request, jsonify
 import os
 from flask_cors import CORS
+import json
+import sqlite3
 from nutrition_utils import (
     search_food_autocomplete, search_food_comprehensive, scale_food_nutrition,
     get_meal_suggestions
@@ -25,6 +27,8 @@ from fitness_utils import (
     get_recovery_recommendations, generate_workout_stats, create_custom_workout,
     get_exercise_tips, get_workout_difficulty_progression
 )
+
+DB_PATH = os.path.join(os.path.dirname(__file__), "nutrifit.db")
 
 app = Flask(__name__)
 CORS(app, origins=["https://nutrifit-nine.vercel.app"])
@@ -1147,6 +1151,7 @@ def index():
     
 if __name__ == "__main__":
     init_db()
-    init_fitness_tables()  # Initialize fitness tables
+    init_fitness_tables()
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
+    app.run(host="0.0.0.0", port=port, debug=debug)

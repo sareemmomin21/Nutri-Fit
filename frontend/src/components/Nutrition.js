@@ -103,7 +103,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
     try {
       const response = await fetch(
-        "${process.env.REACT_APP_API_URL}/api/search_food_autocomplete",
+        `${process.env.REACT_APP_API_URL}/api/search_food_autocomplete`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -132,7 +132,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
     setIsSearching(true);
     try {
-      const response = await fetch("${process.env.REACT_APP_API_URL}/api/search_food", {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/search_food`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -158,7 +158,7 @@ export default function Nutrition({ meal, onAte, userId }) {
     try {
       setLoadingState("suggestions", true);
       const response = await fetch(
-        "${process.env.REACT_APP_API_URL}/api/get_meal_suggestions",
+        `${process.env.REACT_APP_API_URL}/api/get_meal_suggestions`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -184,7 +184,7 @@ export default function Nutrition({ meal, onAte, userId }) {
     try {
       setLoadingState("mealItems", true);
       const response = await fetch(
-        "${process.env.REACT_APP_API_URL}/api/get_current_meal",
+        `${process.env.REACT_APP_API_URL}/api/get_current_meal`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -255,7 +255,7 @@ export default function Nutrition({ meal, onAte, userId }) {
       let scaledFood = food;
       if (finalQuantity !== 1 || finalServing !== food.serving) {
         const scaleResponse = await fetch(
-          "${process.env.REACT_APP_API_URL}/api/scale_food",
+          `${process.env.REACT_APP_API_URL}/api/scale_food`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -274,7 +274,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
       // Add to current meal
       const response = await fetch(
-        "${process.env.REACT_APP_API_URL}/api/add_food_to_meal",
+        `${process.env.REACT_APP_API_URL}/api/add_food_to_meal`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -323,7 +323,7 @@ export default function Nutrition({ meal, onAte, userId }) {
     try {
       setLoadingState("removingFood", true);
       const response = await fetch(
-        "${process.env.REACT_APP_API_URL}/api/remove_food_from_meal",
+        `${process.env.REACT_APP_API_URL}/api/remove_food_from_meal`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -347,7 +347,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
   const updateFoodPreference = async (food, liked) => {
     try {
-      await fetch("${process.env.REACT_APP_API_URL}/api/update_food_preference", {
+      await fetch(`${process.env.REACT_APP_API_URL}/api/update_food_preference`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -395,7 +395,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
     try {
       const addResponse = await fetch(
-        "${process.env.REACT_APP_API_URL}/api/add_custom_food",
+        `${process.env.REACT_APP_API_URL}/api/add_custom_food`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
