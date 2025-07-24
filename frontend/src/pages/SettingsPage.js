@@ -29,7 +29,7 @@ export default function SettingsPage() {
 
       // Fetch profile
       const profileResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_profile",
+        "https://nutri-fit-2iom.onrender.com/api/get_profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -44,7 +44,7 @@ export default function SettingsPage() {
 
       // Fetch food preferences
       const prefsResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_food_preferences",
+        "https://nutri-fit-2iom.onrender.com/api/get_food_preferences",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -67,7 +67,7 @@ export default function SettingsPage() {
   const handleProfileUpdate = async (updatedData) => {
     try {
       setIsSaving(true);
-      const response = await fetch("http://127.0.0.1:5000/api/update_profile", {
+      const response = await fetch("https://nutri-fit-2iom.onrender.com/api/update_profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, ...updatedData }),

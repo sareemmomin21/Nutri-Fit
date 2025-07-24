@@ -198,7 +198,7 @@ export default function QuestionsPage() {
       }
 
       const response = await fetch(
-        "http://127.0.0.1:5000/api/complete_profile",
+        "https://nutri-fit-2iom.onrender.com/api/complete_profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

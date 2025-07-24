@@ -57,7 +57,7 @@ export default function AuthPage() {
     console.log("Endpoint:", endpoint); // Debug log
 
     try {
-      const resp = await fetch(`http://127.0.0.1:5000${endpoint}`, {
+      const resp = await fetch(`https://nutri-fit-2iom.onrender.com${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
