@@ -2,6 +2,671 @@ import random
 from datetime import datetime, timedelta
 import json
 
+# MASSIVELY EXPANDED QUICK WORKOUT DATABASE - Organized by focus area and exact duration
+QUICK_WORKOUT_DATABASE = {
+    'upper_body': {
+        '10_min': [
+            {
+                'name': 'Upper Body Wake-Up',
+                'exercises': [
+                    {'name': 'Arm Circles', 'sets': 2, 'reps': '15 each way', 'rest': '20s'},
+                    {'name': 'Wall Push-ups', 'sets': 3, 'reps': '12-15', 'rest': '30s'},
+                    {'name': 'Shoulder Shrugs', 'sets': 2, 'reps': '15', 'rest': '20s'},
+                    {'name': 'Tricep Dips (chair)', 'sets': 2, 'reps': '8-10', 'rest': '30s'}
+                ],
+                'duration': 10,
+                'calories_burned': 80,
+                'equipment': ['none'],
+                'intensity': 'low'
+            },
+            {
+                'name': 'Quick Upper Burn',
+                'exercises': [
+                    {'name': 'Push-ups', 'sets': 3, 'reps': '8-12', 'rest': '30s'},
+                    {'name': 'Pike Push-ups', 'sets': 2, 'reps': '6-8', 'rest': '30s'},
+                    {'name': 'Plank Hold', 'sets': 2, 'reps': '20-30s', 'rest': '30s'}
+                ],
+                'duration': 10,
+                'calories_burned': 100,
+                'equipment': ['none'],
+                'intensity': 'moderate'
+            },
+            {
+                'name': 'Dumbbell Upper Express',
+                'exercises': [
+                    {'name': 'Dumbbell Press', 'sets': 3, 'reps': '10-12', 'rest': '30s'},
+                    {'name': 'Bent-over Rows', 'sets': 3, 'reps': '10-12', 'rest': '30s'},
+                    {'name': 'Overhead Press', 'sets': 2, 'reps': '8-10', 'rest': '30s'}
+                ],
+                'duration': 10,
+                'calories_burned': 120,
+                'equipment': ['dumbbells'],
+                'intensity': 'moderate'
+            }
+        ],
+        '15_min': [
+            {
+                'name': 'Upper Body Blast',
+                'exercises': [
+                    {'name': 'Push-ups', 'sets': 3, 'reps': '10-15', 'rest': '30s'},
+                    {'name': 'Pike Push-ups', 'sets': 2, 'reps': '8-12', 'rest': '45s'},
+                    {'name': 'Tricep Dips', 'sets': 2, 'reps': '10-12', 'rest': '30s'},
+                    {'name': 'Arm Circles', 'sets': 2, 'reps': '15 each way', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 120,
+                'equipment': ['none'],
+                'intensity': 'moderate'
+            },
+            {
+                'name': 'Upper Body Pump',
+                'exercises': [
+                    {'name': 'Wall Push-ups', 'sets': 3, 'reps': '15-20', 'rest': '30s'},
+                    {'name': 'Plank to Downward Dog', 'sets': 3, 'reps': '8-10', 'rest': '45s'},
+                    {'name': 'Superman', 'sets': 2, 'reps': '12-15', 'rest': '30s'},
+                    {'name': 'Shoulder Shrugs', 'sets': 2, 'reps': '20', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 110,
+                'equipment': ['none'],
+                'intensity': 'low-moderate'
+            },
+            {
+                'name': 'Dumbbell Upper Power',
+                'exercises': [
+                    {'name': 'Chest Press', 'sets': 3, 'reps': '10-12', 'rest': '45s'},
+                    {'name': 'Bent-over Rows', 'sets': 3, 'reps': '10-12', 'rest': '45s'},
+                    {'name': 'Shoulder Press', 'sets': 2, 'reps': '8-10', 'rest': '45s'},
+                    {'name': 'Bicep Curls', 'sets': 2, 'reps': '12-15', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 140,
+                'equipment': ['dumbbells'],
+                'intensity': 'moderate'
+            },
+            {
+                'name': 'Resistance Band Upper',
+                'exercises': [
+                    {'name': 'Band Chest Press', 'sets': 3, 'reps': '12-15', 'rest': '30s'},
+                    {'name': 'Band Rows', 'sets': 3, 'reps': '12-15', 'rest': '30s'},
+                    {'name': 'Band Overhead Press', 'sets': 2, 'reps': '10-12', 'rest': '45s'},
+                    {'name': 'Band Pull-Aparts', 'sets': 2, 'reps': '15-20', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 125,
+                'equipment': ['resistance_bands'],
+                'intensity': 'moderate'
+            }
+        ],
+        '20_min': [
+            {
+                'name': 'Upper Body Strength Circuit',
+                'exercises': [
+                    {'name': 'Push-ups', 'sets': 4, 'reps': '12-15', 'rest': '45s'},
+                    {'name': 'Pike Push-ups', 'sets': 3, 'reps': '8-12', 'rest': '60s'},
+                    {'name': 'Tricep Dips', 'sets': 3, 'reps': '10-15', 'rest': '45s'},
+                    {'name': 'Plank', 'sets': 3, 'reps': '30-45s', 'rest': '60s'},
+                    {'name': 'Mountain Climbers', 'sets': 2, 'reps': '20', 'rest': '45s'}
+                ],
+                'duration': 20,
+                'calories_burned': 180,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            },
+            {
+                'name': 'Dumbbell Upper Complete',
+                'exercises': [
+                    {'name': 'Chest Press', 'sets': 4, 'reps': '10-12', 'rest': '60s'},
+                    {'name': 'Bent-over Rows', 'sets': 4, 'reps': '10-12', 'rest': '60s'},
+                    {'name': 'Shoulder Press', 'sets': 3, 'reps': '8-10', 'rest': '60s'},
+                    {'name': 'Lateral Raises', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
+                    {'name': 'Bicep Curls', 'sets': 2, 'reps': '12-15', 'rest': '45s'}
+                ],
+                'duration': 20,
+                'calories_burned': 200,
+                'equipment': ['dumbbells'],
+                'intensity': 'moderate'
+            }
+        ],
+        '30_min': [
+            {
+                'name': 'Complete Upper Workout',
+                'exercises': [
+                    {'name': 'Push-ups', 'sets': 4, 'reps': '10-15', 'rest': '60s'},
+                    {'name': 'Pike Push-ups', 'sets': 3, 'reps': '8-12', 'rest': '60s'},
+                    {'name': 'Tricep Dips', 'sets': 3, 'reps': '10-15', 'rest': '60s'},
+                    {'name': 'Plank', 'sets': 3, 'reps': '30-45s', 'rest': '60s'},
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '20', 'rest': '60s'},
+                    {'name': 'Burpees', 'sets': 2, 'reps': '8-10', 'rest': '90s'}
+                ],
+                'duration': 30,
+                'calories_burned': 250,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            },
+            {
+                'name': 'Dumbbell Upper Power Session',
+                'exercises': [
+                    {'name': 'Chest Press', 'sets': 4, 'reps': '8-12', 'rest': '90s'},
+                    {'name': 'Bent-over Rows', 'sets': 4, 'reps': '8-12', 'rest': '90s'},
+                    {'name': 'Shoulder Press', 'sets': 3, 'reps': '10-12', 'rest': '90s'},
+                    {'name': 'Lateral Raises', 'sets': 3, 'reps': '12-15', 'rest': '60s'},
+                    {'name': 'Bicep Curls', 'sets': 3, 'reps': '12-15', 'rest': '60s'},
+                    {'name': 'Tricep Extensions', 'sets': 3, 'reps': '12-15', 'rest': '60s'}
+                ],
+                'duration': 30,
+                'calories_burned': 280,
+                'equipment': ['dumbbells'],
+                'intensity': 'moderate-high'
+            }
+        ],
+        '45_min': [
+            {
+                'name': 'Ultimate Upper Body Challenge',
+                'exercises': [
+                    {'name': 'Push-ups', 'sets': 5, 'reps': '12-18', 'rest': '90s'},
+                    {'name': 'Archer Push-ups', 'sets': 3, 'reps': '6-8 each', 'rest': '90s'},
+                    {'name': 'Pike Push-ups', 'sets': 4, 'reps': '10-15', 'rest': '90s'},
+                    {'name': 'Tricep Dips', 'sets': 4, 'reps': '12-18', 'rest': '90s'},
+                    {'name': 'Diamond Push-ups', 'sets': 3, 'reps': '8-12', 'rest': '90s'},
+                    {'name': 'Plank to T', 'sets': 3, 'reps': '10-12', 'rest': '90s'},
+                    {'name': 'Burpees', 'sets': 3, 'reps': '10-15', 'rest': '120s'}
+                ],
+                'duration': 45,
+                'calories_burned': 380,
+                'equipment': ['none'],
+                'intensity': 'high'
+            }
+        ]
+    },
+    
+    'lower_body': {
+        '10_min': [
+            {
+                'name': 'Lower Body Wake-Up',
+                'exercises': [
+                    {'name': 'Bodyweight Squats', 'sets': 3, 'reps': '12-15', 'rest': '30s'},
+                    {'name': 'Lunges', 'sets': 2, 'reps': '8 each leg', 'rest': '30s'},
+                    {'name': 'Calf Raises', 'sets': 2, 'reps': '15-20', 'rest': '20s'}
+                ],
+                'duration': 10,
+                'calories_burned': 90,
+                'equipment': ['none'],
+                'intensity': 'low-moderate'
+            },
+            {
+                'name': 'Quick Leg Burn',
+                'exercises': [
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '8-10', 'rest': '45s'},
+                    {'name': 'Reverse Lunges', 'sets': 2, 'reps': '10 each leg', 'rest': '30s'},
+                    {'name': 'Wall Sit', 'sets': 2, 'reps': '20-30s', 'rest': '30s'}
+                ],
+                'duration': 10,
+                'calories_burned': 110,
+                'equipment': ['none'],
+                'intensity': 'moderate'
+            }
+        ],
+        '15_min': [
+            {
+                'name': 'Lower Body Blast',
+                'exercises': [
+                    {'name': 'Bodyweight Squats', 'sets': 3, 'reps': '15-20', 'rest': '30s'},
+                    {'name': 'Lunges', 'sets': 3, 'reps': '10 each leg', 'rest': '45s'},
+                    {'name': 'Glute Bridges', 'sets': 3, 'reps': '15-20', 'rest': '30s'},
+                    {'name': 'Calf Raises', 'sets': 2, 'reps': '20-25', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 130,
+                'equipment': ['none'],
+                'intensity': 'moderate'
+            },
+            {
+                'name': 'Lower Power Express',
+                'exercises': [
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '10-12', 'rest': '45s'},
+                    {'name': 'Reverse Lunges', 'sets': 3, 'reps': '12 each leg', 'rest': '45s'},
+                    {'name': 'Single-leg Glute Bridges', 'sets': 2, 'reps': '10 each', 'rest': '45s'},
+                    {'name': 'Wall Sit', 'sets': 2, 'reps': '30-45s', 'rest': '60s'}
+                ],
+                'duration': 15,
+                'calories_burned': 150,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            },
+            {
+                'name': 'Dumbbell Lower Express',
+                'exercises': [
+                    {'name': 'Goblet Squats', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
+                    {'name': 'Dumbbell Lunges', 'sets': 3, 'reps': '10 each leg', 'rest': '45s'},
+                    {'name': 'Romanian Deadlifts', 'sets': 3, 'reps': '10-12', 'rest': '60s'},
+                    {'name': 'Calf Raises', 'sets': 2, 'reps': '15-20', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 160,
+                'equipment': ['dumbbells'],
+                'intensity': 'moderate'
+            }
+        ],
+        '20_min': [
+            {
+                'name': 'Lower Body Power',
+                'exercises': [
+                    {'name': 'Squats', 'sets': 4, 'reps': '15-20', 'rest': '45s'},
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '12-15', 'rest': '60s'},
+                    {'name': 'Walking Lunges', 'sets': 3, 'reps': '12 each leg', 'rest': '60s'},
+                    {'name': 'Single-leg Deadlifts', 'sets': 2, 'reps': '8 each leg', 'rest': '60s'},
+                    {'name': 'Glute Bridges', 'sets': 3, 'reps': '20-25', 'rest': '45s'}
+                ],
+                'duration': 20,
+                'calories_burned': 200,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            }
+        ],
+        '30_min': [
+            {
+                'name': 'Lower Body Crusher',
+                'exercises': [
+                    {'name': 'Squats', 'sets': 4, 'reps': '15-20', 'rest': '60s'},
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '12-15', 'rest': '60s'},
+                    {'name': 'Walking Lunges', 'sets': 3, 'reps': '12 each leg', 'rest': '60s'},
+                    {'name': 'Bulgarian Split Squats', 'sets': 3, 'reps': '10 each leg', 'rest': '90s'},
+                    {'name': 'Single-leg Deadlifts', 'sets': 3, 'reps': '8 each leg', 'rest': '60s'},
+                    {'name': 'Glute Bridges', 'sets': 3, 'reps': '20-25', 'rest': '60s'}
+                ],
+                'duration': 30,
+                'calories_burned': 270,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            }
+        ]
+    },
+    
+    'full_body': {
+        '10_min': [
+            {
+                'name': 'Morning Energizer',
+                'exercises': [
+                    {'name': 'Jumping Jacks', 'sets': 3, 'reps': '15', 'rest': '30s'},
+                    {'name': 'Bodyweight Squats', 'sets': 2, 'reps': '10', 'rest': '30s'},
+                    {'name': 'Push-ups (modified)', 'sets': 2, 'reps': '8', 'rest': '30s'},
+                    {'name': 'Plank Hold', 'sets': 2, 'reps': '15-20s', 'rest': '30s'}
+                ],
+                'duration': 10,
+                'calories_burned': 100,
+                'equipment': ['none'],
+                'intensity': 'low-moderate'
+            },
+            {
+                'name': 'Quick HIIT Blast',
+                'exercises': [
+                    {'name': 'Burpees', 'sets': 3, 'reps': '5-6', 'rest': '45s'},
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '15', 'rest': '30s'},
+                    {'name': 'Jump Squats', 'sets': 2, 'reps': '8-10', 'rest': '45s'}
+                ],
+                'duration': 10,
+                'calories_burned': 130,
+                'equipment': ['none'],
+                'intensity': 'high'
+            }
+        ],
+        '15_min': [
+            {
+                'name': 'Total Body Express',
+                'exercises': [
+                    {'name': 'Burpees', 'sets': 3, 'reps': '8-10', 'rest': '60s'},
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '20', 'rest': '45s'},
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
+                    {'name': 'Push-ups', 'sets': 2, 'reps': '10-12', 'rest': '45s'}
+                ],
+                'duration': 15,
+                'calories_burned': 180,
+                'equipment': ['none'],
+                'intensity': 'high'
+            },
+            {
+                'name': 'Full Body Flow',
+                'exercises': [
+                    {'name': 'Squat to Press', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
+                    {'name': 'Plank to Downward Dog', 'sets': 3, 'reps': '10', 'rest': '45s'},
+                    {'name': 'Reverse Lunge with Twist', 'sets': 3, 'reps': '10 each', 'rest': '45s'},
+                    {'name': 'Bear Crawl', 'sets': 2, 'reps': '10 steps forward/back', 'rest': '60s'}
+                ],
+                'duration': 15,
+                'calories_burned': 160,
+                'equipment': ['none'],
+                'intensity': 'moderate'
+            },
+            {
+                'name': 'Kettlebell Express',
+                'exercises': [
+                    {'name': 'Kettlebell Swings', 'sets': 4, 'reps': '15-20', 'rest': '45s'},
+                    {'name': 'Goblet Squats', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
+                    {'name': 'Kettlebell Deadlifts', 'sets': 3, 'reps': '10-12', 'rest': '60s'}
+                ],
+                'duration': 15,
+                'calories_burned': 200,
+                'equipment': ['kettlebell'],
+                'intensity': 'moderate-high'
+            }
+        ],
+        '20_min': [
+            {
+                'name': 'Full Body HIIT',
+                'exercises': [
+                    {'name': 'Burpees', 'sets': 4, 'reps': '8-10', 'rest': '60s'},
+                    {'name': 'Thrusters', 'sets': 3, 'reps': '12-15', 'rest': '60s'},
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '25', 'rest': '45s'},
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '15-20', 'rest': '60s'},
+                    {'name': 'Plank Jacks', 'sets': 3, 'reps': '15', 'rest': '45s'}
+                ],
+                'duration': 20,
+                'calories_burned': 260,
+                'equipment': ['none'],
+                'intensity': 'high'
+            }
+        ],
+        '30_min': [
+            {
+                'name': 'Ultimate Full Body',
+                'exercises': [
+                    {'name': 'Burpees', 'sets': 4, 'reps': '10-12', 'rest': '90s'},
+                    {'name': 'Thrusters', 'sets': 4, 'reps': '12-15', 'rest': '90s'},
+                    {'name': 'Renegade Rows', 'sets': 3, 'reps': '8-10', 'rest': '90s'},
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '15-20', 'rest': '60s'},
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '30', 'rest': '60s'},
+                    {'name': 'Plank', 'sets': 3, 'reps': '45-60s', 'rest': '60s'}
+                ],
+                'duration': 30,
+                'calories_burned': 350,
+                'equipment': ['none'],
+                'intensity': 'high'
+            },
+            {
+                'name': 'Dumbbell Total Body',
+                'exercises': [
+                    {'name': 'Thrusters', 'sets': 4, 'reps': '10-12', 'rest': '90s'},
+                    {'name': 'Renegade Rows', 'sets': 3, 'reps': '8-10', 'rest': '90s'},
+                    {'name': 'Goblet Squats', 'sets': 4, 'reps': '12-15', 'rest': '60s'},
+                    {'name': 'Dumbbell Deadlifts', 'sets': 3, 'reps': '10-12', 'rest': '90s'},
+                    {'name': 'Man Makers', 'sets': 2, 'reps': '6-8', 'rest': '120s'}
+                ],
+                'duration': 30,
+                'calories_burned': 320,
+                'equipment': ['dumbbells'],
+                'intensity': 'high'
+            }
+        ],
+        '45_min': [
+            {
+                'name': 'Epic Full Body Challenge',
+                'exercises': [
+                    {'name': 'Burpee Box Jumps', 'sets': 4, 'reps': '8-10', 'rest': '120s'},
+                    {'name': 'Thrusters', 'sets': 5, 'reps': '12-15', 'rest': '90s'},
+                    {'name': 'Renegade Rows', 'sets': 4, 'reps': '10-12', 'rest': '90s'},
+                    {'name': 'Jump Squats', 'sets': 4, 'reps': '20', 'rest': '90s'},
+                    {'name': 'Turkish Get-ups', 'sets': 3, 'reps': '5 each side', 'rest': '120s'},
+                    {'name': 'Plank to Push-up', 'sets': 3, 'reps': '10-12', 'rest': '90s'},
+                    {'name': 'Mountain Climber Burpees', 'sets': 3, 'reps': '8-10', 'rest': '120s'}
+                ],
+                'duration': 45,
+                'calories_burned': 450,
+                'equipment': ['none'],
+                'intensity': 'very_high'
+            }
+        ]
+    },
+    
+    'core': {
+        '10_min': [
+            {
+                'name': 'Core Wake-Up',
+                'exercises': [
+                    {'name': 'Plank', 'sets': 2, 'reps': '20-30s', 'rest': '30s'},
+                    {'name': 'Dead Bug', 'sets': 2, 'reps': '8 each side', 'rest': '30s'},
+                    {'name': 'Russian Twists', 'sets': 2, 'reps': '15', 'rest': '30s'},
+                    {'name': 'Knee-to-Chest', 'sets': 2, 'reps': '10 each', 'rest': '20s'}
+                ],
+                'duration': 10,
+                'calories_burned': 70,
+                'equipment': ['none'],
+                'intensity': 'low-moderate'
+            },
+            {
+                'name': 'Quick Ab Blast',
+                'exercises': [
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '15', 'rest': '30s'},
+                    {'name': 'Leg Raises', 'sets': 2, 'reps': '10-12', 'rest': '45s'},
+                    {'name': 'Bicycle Crunches', 'sets': 2, 'reps': '15', 'rest': '30s'}
+                ],
+                'duration': 10,
+                'calories_burned': 85,
+                'equipment': ['none'],
+                'intensity': 'moderate'
+            }
+        ],
+        '15_min': [
+            {
+                'name': 'Core Crusher',
+                'exercises': [
+                    {'name': 'Plank', 'sets': 3, 'reps': '30-45s', 'rest': '45s'},
+                    {'name': 'Dead Bug', 'sets': 3, 'reps': '10 each side', 'rest': '45s'},
+                    {'name': 'Russian Twists', 'sets': 3, 'reps': '20', 'rest': '30s'},
+                    {'name': 'Bicycle Crunches', 'sets': 3, 'reps': '20', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 100,
+                'equipment': ['none'],
+                'intensity': 'moderate'
+            },
+            {
+                'name': 'Ab Shredder',
+                'exercises': [
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '20', 'rest': '45s'},
+                    {'name': 'Leg Raises', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
+                    {'name': 'Side Plank', 'sets': 2, 'reps': '20-30s each', 'rest': '60s'},
+                    {'name': 'Flutter Kicks', 'sets': 3, 'reps': '20', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 120,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            }
+        ],
+        '20_min': [
+            {
+                'name': 'Core Power Session',
+                'exercises': [
+                    {'name': 'Plank', 'sets': 4, 'reps': '45-60s', 'rest': '60s'},
+                    {'name': 'Dead Bug', 'sets': 4, 'reps': '12 each side', 'rest': '45s'},
+                    {'name': 'Russian Twists', 'sets': 3, 'reps': '25', 'rest': '45s'},
+                    {'name': 'Bicycle Crunches', 'sets': 3, 'reps': '25', 'rest': '45s'},
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '25', 'rest': '60s'},
+                    {'name': 'Side Plank', 'sets': 2, 'reps': '30-45s each', 'rest': '60s'}
+                ],
+                'duration': 20,
+                'calories_burned': 150,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            }
+        ],
+        '30_min': [
+            {
+                'name': 'Core Demolition',
+                'exercises': [
+                    {'name': 'Plank', 'sets': 4, 'reps': '45-60s', 'rest': '60s'},
+                    {'name': 'Dead Bug', 'sets': 4, 'reps': '12 each side', 'rest': '60s'},
+                    {'name': 'Russian Twists', 'sets': 4, 'reps': '30', 'rest': '45s'},
+                    {'name': 'Bicycle Crunches', 'sets': 4, 'reps': '30', 'rest': '45s'},
+                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '30', 'rest': '60s'},
+                    {'name': 'Side Plank', 'sets': 3, 'reps': '30-45s each', 'rest': '60s'},
+                    {'name': 'Hollow Body Hold', 'sets': 3, 'reps': '20-30s', 'rest': '60s'}
+                ],
+                'duration': 30,
+                'calories_burned': 200,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            }
+        ]
+    },
+    
+    'cardio': {
+        '10_min': [
+            {
+                'name': 'Quick Cardio Blast',
+                'exercises': [
+                    {'name': 'Jumping Jacks', 'sets': 3, 'reps': '30s', 'rest': '30s'},
+                    {'name': 'High Knees', 'sets': 3, 'reps': '30s', 'rest': '30s'},
+                    {'name': 'Butt Kicks', 'sets': 2, 'reps': '30s', 'rest': '30s'}
+                ],
+                'duration': 10,
+                'calories_burned': 120,
+                'equipment': ['none'],
+                'intensity': 'moderate-high'
+            },
+            {
+                'name': 'HIIT Sprint',
+                'exercises': [
+                    {'name': 'Burpees', 'sets': 4, 'reps': '20s on/40s off', 'rest': '0s'},
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '20s on/40s off', 'rest': '0s'}
+                ],
+                'duration': 10,
+                'calories_burned': 140,
+                'equipment': ['none'],
+                'intensity': 'very_high'
+            }
+        ],
+        '15_min': [
+            {
+                'name': 'HIIT Cardio Blast',
+                'exercises': [
+                    {'name': 'Jumping Jacks', 'sets': 4, 'reps': '30s', 'rest': '30s'},
+                    {'name': 'High Knees', 'sets': 4, 'reps': '30s', 'rest': '30s'},
+                    {'name': 'Butt Kicks', 'sets': 4, 'reps': '30s', 'rest': '30s'},
+                    {'name': 'Burpees', 'sets': 3, 'reps': '30s', 'rest': '30s'}
+                ],
+                'duration': 15,
+                'calories_burned': 200,
+                'equipment': ['none'],
+                'intensity': 'high'
+            },
+            {
+                'name': 'Tabata Express',
+                'exercises': [
+                    {'name': 'Jump Squats', 'sets': 4, 'reps': '20s on/10s off', 'rest': '60s'},
+                    {'name': 'Mountain Climbers', 'sets': 4, 'reps': '20s on/10s off', 'rest': '60s'},
+                    {'name': 'Burpees', 'sets': 4, 'reps': '20s on/10s off', 'rest': '60s'}
+                ],
+                'duration': 15,
+                'calories_burned': 220,
+                'equipment': ['none'],
+                'intensity': 'very_high'
+            }
+        ],
+        '20_min': [
+            {
+                'name': 'Cardio Power',
+                'exercises': [
+                    {'name': 'Jumping Jacks', 'sets': 5, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'Burpees', 'sets': 4, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'Mountain Climbers', 'sets': 4, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'High Knees', 'sets': 4, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'Jump Squats', 'sets': 3, 'reps': '45s', 'rest': '15s'}
+                ],
+                'duration': 20,
+                'calories_burned': 280,
+                'equipment': ['none'],
+                'intensity': 'high'
+            }
+        ],
+        '30_min': [
+            {
+                'name': 'Cardio Inferno',
+                'exercises': [
+                    {'name': 'Jumping Jacks', 'sets': 6, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'Burpees', 'sets': 5, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'Mountain Climbers', 'sets': 5, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'High Knees', 'sets': 5, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'Jump Squats', 'sets': 4, 'reps': '45s', 'rest': '15s'},
+                    {'name': 'Plank Jacks', 'sets': 4, 'reps': '45s', 'rest': '15s'}
+                ],
+                'duration': 30,
+                'calories_burned': 350,
+                'equipment': ['none'],
+                'intensity': 'very_high'
+            }
+        ]
+    },
+    
+    'flexibility': {
+        '10_min': [
+            {
+                'name': 'Morning Stretch',
+                'exercises': [
+                    {'name': 'Cat-Cow Stretch', 'sets': 3, 'reps': '8-10', 'rest': '15s'},
+                    {'name': 'Child\'s Pose', 'sets': 2, 'reps': '30s', 'rest': '15s'},
+                    {'name': 'Hip Flexor Stretch', 'sets': 2, 'reps': '20s each', 'rest': '15s'},
+                    {'name': 'Shoulder Rolls', 'sets': 2, 'reps': '10 each way', 'rest': '15s'}
+                ],
+                'duration': 10,
+                'calories_burned': 40,
+                'equipment': ['none'],
+                'intensity': 'low'
+            }
+        ],
+        '15_min': [
+            {
+                'name': 'Full Body Stretch',
+                'exercises': [
+                    {'name': 'Cat-Cow Stretch', 'sets': 3, 'reps': '10', 'rest': '15s'},
+                    {'name': 'Child\'s Pose', 'sets': 3, 'reps': '30s', 'rest': '15s'},
+                    {'name': 'Hip Flexor Stretch', 'sets': 2, 'reps': '30s each', 'rest': '15s'},
+                    {'name': 'Seated Spinal Twist', 'sets': 2, 'reps': '30s each', 'rest': '15s'},
+                    {'name': 'Forward Fold', 'sets': 2, 'reps': '30s', 'rest': '15s'}
+                ],
+                'duration': 15,
+                'calories_burned': 60,
+                'equipment': ['none'],
+                'intensity': 'low'
+            }
+        ],
+        '20_min': [
+            {
+                'name': 'Deep Stretch Session',
+                'exercises': [
+                    {'name': 'Sun Salutation', 'sets': 3, 'reps': '3-5 flows', 'rest': '30s'},
+                    {'name': 'Warrior I', 'sets': 2, 'reps': '30s each side', 'rest': '15s'},
+                    {'name': 'Downward Dog', 'sets': 3, 'reps': '45s', 'rest': '30s'},
+                    {'name': 'Pigeon Pose', 'sets': 2, 'reps': '45s each side', 'rest': '30s'},
+                    {'name': 'Savasana', 'sets': 1, 'reps': '2-3 min', 'rest': '0s'}
+                ],
+                'duration': 20,
+                'calories_burned': 80,
+                'equipment': ['yoga_mat'],
+                'intensity': 'low'
+            }
+        ],
+        '30_min': [
+            {
+                'name': 'Complete Yoga Flow',
+                'exercises': [
+                    {'name': 'Sun Salutation A', 'sets': 5, 'reps': '5 flows', 'rest': '60s'},
+                    {'name': 'Warrior Sequence', 'sets': 3, 'reps': '45s each side', 'rest': '30s'},
+                    {'name': 'Tree Pose', 'sets': 2, 'reps': '30s each side', 'rest': '15s'},
+                    {'name': 'Seated Forward Fold', 'sets': 2, 'reps': '60s', 'rest': '30s'},
+                    {'name': 'Supine Twist', 'sets': 2, 'reps': '45s each side', 'rest': '30s'},
+                    {'name': 'Savasana', 'sets': 1, 'reps': '3-5 min', 'rest': '0s'}
+                ],
+                'duration': 30,
+                'calories_burned': 120,
+                'equipment': ['yoga_mat'],
+                'intensity': 'low-moderate'
+            }
+        ]
+    }
+}
+
 # Comprehensive workout database with extensive options for all equipment types
 WORKOUT_DATABASE = {
     'strength': {
@@ -1347,375 +2012,21 @@ def format_custom_workout_for_recommendations(custom_workout_data):
         'description': f"Your custom {custom_workout_data.get('workout_type', 'strength')} workout"
     }
 
-# Add this to your existing fitness_utils.py
-
-# QUICK WORKOUT DATABASE - Organized by focus area and duration
-QUICK_WORKOUT_DATABASE = {
-    'upper_body': {
-        '15_min': [
-            {
-                'name': 'Quick Upper Blast',
-                'exercises': [
-                    {'name': 'Push-ups', 'sets': 3, 'reps': '10-15', 'rest': '30s'},
-                    {'name': 'Pike Push-ups', 'sets': 2, 'reps': '8-12', 'rest': '45s'},
-                    {'name': 'Tricep Dips', 'sets': 2, 'reps': '10-12', 'rest': '30s'},
-                    {'name': 'Arm Circles', 'sets': 2, 'reps': '15 each way', 'rest': '30s'}
-                ],
-                'duration': 15,
-                'calories_burned': 120,
-                'equipment': ['none'],
-                'intensity': 'moderate'
-            },
-            {
-                'name': 'Upper Body Pump',
-                'exercises': [
-                    {'name': 'Wall Push-ups', 'sets': 3, 'reps': '15-20', 'rest': '30s'},
-                    {'name': 'Plank to Downward Dog', 'sets': 3, 'reps': '8-10', 'rest': '45s'},
-                    {'name': 'Superman', 'sets': 2, 'reps': '12-15', 'rest': '30s'},
-                    {'name': 'Shoulder Shrugs', 'sets': 2, 'reps': '20', 'rest': '30s'}
-                ],
-                'duration': 15,
-                'calories_burned': 110,
-                'equipment': ['none'],
-                'intensity': 'low-moderate'
-            },
-            {
-                'name': 'Dumbbell Upper Express',
-                'exercises': [
-                    {'name': 'Chest Press', 'sets': 3, 'reps': '10-12', 'rest': '45s'},
-                    {'name': 'Bent-over Rows', 'sets': 3, 'reps': '10-12', 'rest': '45s'},
-                    {'name': 'Shoulder Press', 'sets': 2, 'reps': '8-10', 'rest': '45s'},
-                    {'name': 'Bicep Curls', 'sets': 2, 'reps': '12-15', 'rest': '30s'}
-                ],
-                'duration': 15,
-                'calories_burned': 140,
-                'equipment': ['dumbbells'],
-                'intensity': 'moderate'
-            }
-        ],
-        '30_min': [
-            {
-                'name': 'Complete Upper Workout',
-                'exercises': [
-                    {'name': 'Push-ups', 'sets': 4, 'reps': '10-15', 'rest': '60s'},
-                    {'name': 'Pike Push-ups', 'sets': 3, 'reps': '8-12', 'rest': '60s'},
-                    {'name': 'Tricep Dips', 'sets': 3, 'reps': '10-15', 'rest': '60s'},
-                    {'name': 'Plank', 'sets': 3, 'reps': '30-45s', 'rest': '60s'},
-                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '20', 'rest': '60s'},
-                    {'name': 'Burpees', 'sets': 2, 'reps': '8-10', 'rest': '90s'}
-                ],
-                'duration': 30,
-                'calories_burned': 250,
-                'equipment': ['none'],
-                'intensity': 'moderate-high'
-            },
-            {
-                'name': 'Dumbbell Upper Power',
-                'exercises': [
-                    {'name': 'Chest Press', 'sets': 4, 'reps': '8-12', 'rest': '90s'},
-                    {'name': 'Bent-over Rows', 'sets': 4, 'reps': '8-12', 'rest': '90s'},
-                    {'name': 'Shoulder Press', 'sets': 3, 'reps': '10-12', 'rest': '90s'},
-                    {'name': 'Lateral Raises', 'sets': 3, 'reps': '12-15', 'rest': '60s'},
-                    {'name': 'Bicep Curls', 'sets': 3, 'reps': '12-15', 'rest': '60s'},
-                    {'name': 'Tricep Extensions', 'sets': 3, 'reps': '12-15', 'rest': '60s'}
-                ],
-                'duration': 30,
-                'calories_burned': 280,
-                'equipment': ['dumbbells'],
-                'intensity': 'moderate-high'
-            }
-        ],
-        '45_min': [
-            {
-                'name': 'Ultimate Upper Body',
-                'exercises': [
-                    {'name': 'Push-ups', 'sets': 5, 'reps': '12-18', 'rest': '90s'},
-                    {'name': 'Archer Push-ups', 'sets': 3, 'reps': '6-8 each', 'rest': '90s'},
-                    {'name': 'Pike Push-ups', 'sets': 4, 'reps': '10-15', 'rest': '90s'},
-                    {'name': 'Tricep Dips', 'sets': 4, 'reps': '12-18', 'rest': '90s'},
-                    {'name': 'Diamond Push-ups', 'sets': 3, 'reps': '8-12', 'rest': '90s'},
-                    {'name': 'Plank to T', 'sets': 3, 'reps': '10-12', 'rest': '90s'},
-                    {'name': 'Burpees', 'sets': 3, 'reps': '10-15', 'rest': '120s'}
-                ],
-                'duration': 45,
-                'calories_burned': 380,
-                'equipment': ['none'],
-                'intensity': 'high'
-            }
-        ]
-    },
-    
-    'lower_body': {
-        '15_min': [
-            {
-                'name': 'Quick Lower Burn',
-                'exercises': [
-                    {'name': 'Bodyweight Squats', 'sets': 3, 'reps': '15-20', 'rest': '30s'},
-                    {'name': 'Lunges', 'sets': 3, 'reps': '10 each leg', 'rest': '45s'},
-                    {'name': 'Glute Bridges', 'sets': 3, 'reps': '15-20', 'rest': '30s'},
-                    {'name': 'Calf Raises', 'sets': 2, 'reps': '20-25', 'rest': '30s'}
-                ],
-                'duration': 15,
-                'calories_burned': 130,
-                'equipment': ['none'],
-                'intensity': 'moderate'
-            },
-            {
-                'name': 'Lower Power Quick',
-                'exercises': [
-                    {'name': 'Jump Squats', 'sets': 3, 'reps': '10-12', 'rest': '45s'},
-                    {'name': 'Reverse Lunges', 'sets': 3, 'reps': '12 each leg', 'rest': '45s'},
-                    {'name': 'Single-leg Glute Bridges', 'sets': 2, 'reps': '10 each', 'rest': '45s'},
-                    {'name': 'Wall Sit', 'sets': 2, 'reps': '30-45s', 'rest': '60s'}
-                ],
-                'duration': 15,
-                'calories_burned': 150,
-                'equipment': ['none'],
-                'intensity': 'moderate-high'
-            },
-            {
-                'name': 'Dumbbell Lower Express',
-                'exercises': [
-                    {'name': 'Goblet Squats', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
-                    {'name': 'Dumbbell Lunges', 'sets': 3, 'reps': '10 each leg', 'rest': '45s'},
-                    {'name': 'Romanian Deadlifts', 'sets': 3, 'reps': '10-12', 'rest': '60s'},
-                    {'name': 'Calf Raises', 'sets': 2, 'reps': '15-20', 'rest': '30s'}
-                ],
-                'duration': 15,
-                'calories_burned': 160,
-                'equipment': ['dumbbells'],
-                'intensity': 'moderate'
-            }
-        ],
-        '30_min': [
-            {
-                'name': 'Lower Body Crusher',
-                'exercises': [
-                    {'name': 'Squats', 'sets': 4, 'reps': '15-20', 'rest': '60s'},
-                    {'name': 'Jump Squats', 'sets': 3, 'reps': '12-15', 'rest': '60s'},
-                    {'name': 'Walking Lunges', 'sets': 3, 'reps': '12 each leg', 'rest': '60s'},
-                    {'name': 'Bulgarian Split Squats', 'sets': 3, 'reps': '10 each leg', 'rest': '90s'},
-                    {'name': 'Single-leg Deadlifts', 'sets': 3, 'reps': '8 each leg', 'rest': '60s'},
-                    {'name': 'Glute Bridges', 'sets': 3, 'reps': '20-25', 'rest': '60s'}
-                ],
-                'duration': 30,
-                'calories_burned': 270,
-                'equipment': ['none'],
-                'intensity': 'moderate-high'
-            }
-        ]
-    },
-    
-    'full_body': {
-        '15_min': [
-            {
-                'name': 'Total Body Blast',
-                'exercises': [
-                    {'name': 'Burpees', 'sets': 3, 'reps': '8-10', 'rest': '60s'},
-                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '20', 'rest': '45s'},
-                    {'name': 'Jump Squats', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
-                    {'name': 'Push-ups', 'sets': 2, 'reps': '10-12', 'rest': '45s'}
-                ],
-                'duration': 15,
-                'calories_burned': 180,
-                'equipment': ['none'],
-                'intensity': 'high'
-            },
-            {
-                'name': 'Full Body Flow',
-                'exercises': [
-                    {'name': 'Squat to Press', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
-                    {'name': 'Plank to Downward Dog', 'sets': 3, 'reps': '10', 'rest': '45s'},
-                    {'name': 'Reverse Lunge with Twist', 'sets': 3, 'reps': '10 each', 'rest': '45s'},
-                    {'name': 'Bear Crawl', 'sets': 2, 'reps': '10 steps forward/back', 'rest': '60s'}
-                ],
-                'duration': 15,
-                'calories_burned': 160,
-                'equipment': ['none'],
-                'intensity': 'moderate'
-            },
-            {
-                'name': 'Kettlebell Express',
-                'exercises': [
-                    {'name': 'Kettlebell Swings', 'sets': 4, 'reps': '15-20', 'rest': '45s'},
-                    {'name': 'Goblet Squats', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
-                    {'name': 'Kettlebell Deadlifts', 'sets': 3, 'reps': '10-12', 'rest': '60s'}
-                ],
-                'duration': 15,
-                'calories_burned': 200,
-                'equipment': ['kettlebell'],
-                'intensity': 'moderate-high'
-            }
-        ],
-        '30_min': [
-            {
-                'name': 'Ultimate Full Body',
-                'exercises': [
-                    {'name': 'Burpees', 'sets': 4, 'reps': '10-12', 'rest': '90s'},
-                    {'name': 'Thrusters', 'sets': 4, 'reps': '12-15', 'rest': '90s'},
-                    {'name': 'Renegade Rows', 'sets': 3, 'reps': '8-10', 'rest': '90s'},
-                    {'name': 'Jump Squats', 'sets': 3, 'reps': '15-20', 'rest': '60s'},
-                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '30', 'rest': '60s'},
-                    {'name': 'Plank', 'sets': 3, 'reps': '45-60s', 'rest': '60s'}
-                ],
-                'duration': 30,
-                'calories_burned': 350,
-                'equipment': ['none'],
-                'intensity': 'high'
-            },
-            {
-                'name': 'Dumbbell Total Body',
-                'exercises': [
-                    {'name': 'Thrusters', 'sets': 4, 'reps': '10-12', 'rest': '90s'},
-                    {'name': 'Renegade Rows', 'sets': 3, 'reps': '8-10', 'rest': '90s'},
-                    {'name': 'Goblet Squats', 'sets': 4, 'reps': '12-15', 'rest': '60s'},
-                    {'name': 'Dumbbell Deadlifts', 'sets': 3, 'reps': '10-12', 'rest': '90s'},
-                    {'name': 'Man Makers', 'sets': 2, 'reps': '6-8', 'rest': '120s'}
-                ],
-                'duration': 30,
-                'calories_burned': 320,
-                'equipment': ['dumbbells'],
-                'intensity': 'high'
-            }
-        ],
-        '45_min': [
-            {
-                'name': 'Epic Full Body Challenge',
-                'exercises': [
-                    {'name': 'Burpee Box Jumps', 'sets': 4, 'reps': '8-10', 'rest': '120s'},
-                    {'name': 'Thrusters', 'sets': 5, 'reps': '12-15', 'rest': '90s'},
-                    {'name': 'Renegade Rows', 'sets': 4, 'reps': '10-12', 'rest': '90s'},
-                    {'name': 'Jump Squats', 'sets': 4, 'reps': '20', 'rest': '90s'},
-                    {'name': 'Turkish Get-ups', 'sets': 3, 'reps': '5 each side', 'rest': '120s'},
-                    {'name': 'Plank to Push-up', 'sets': 3, 'reps': '10-12', 'rest': '90s'},
-                    {'name': 'Mountain Climber Burpees', 'sets': 3, 'reps': '8-10', 'rest': '120s'}
-                ],
-                'duration': 45,
-                'calories_burned': 450,
-                'equipment': ['none'],
-                'intensity': 'very_high'
-            }
-        ]
-    },
-    
-    'core': {
-        '15_min': [
-            {
-                'name': 'Core Crusher',
-                'exercises': [
-                    {'name': 'Plank', 'sets': 3, 'reps': '30-45s', 'rest': '45s'},
-                    {'name': 'Dead Bug', 'sets': 3, 'reps': '10 each side', 'rest': '45s'},
-                    {'name': 'Russian Twists', 'sets': 3, 'reps': '20', 'rest': '30s'},
-                    {'name': 'Bicycle Crunches', 'sets': 3, 'reps': '20', 'rest': '30s'}
-                ],
-                'duration': 15,
-                'calories_burned': 100,
-                'equipment': ['none'],
-                'intensity': 'moderate'
-            },
-            {
-                'name': 'Ab Shredder',
-                'exercises': [
-                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '20', 'rest': '45s'},
-                    {'name': 'Leg Raises', 'sets': 3, 'reps': '12-15', 'rest': '45s'},
-                    {'name': 'Side Plank', 'sets': 2, 'reps': '20-30s each', 'rest': '60s'},
-                    {'name': 'Flutter Kicks', 'sets': 3, 'reps': '20', 'rest': '30s'}
-                ],
-                'duration': 15,
-                'calories_burned': 120,
-                'equipment': ['none'],
-                'intensity': 'moderate-high'
-            }
-        ],
-        '30_min': [
-            {
-                'name': 'Core Demolition',
-                'exercises': [
-                    {'name': 'Plank', 'sets': 4, 'reps': '45-60s', 'rest': '60s'},
-                    {'name': 'Dead Bug', 'sets': 4, 'reps': '12 each side', 'rest': '60s'},
-                    {'name': 'Russian Twists', 'sets': 4, 'reps': '30', 'rest': '45s'},
-                    {'name': 'Bicycle Crunches', 'sets': 4, 'reps': '30', 'rest': '45s'},
-                    {'name': 'Mountain Climbers', 'sets': 3, 'reps': '30', 'rest': '60s'},
-                    {'name': 'Side Plank', 'sets': 3, 'reps': '30-45s each', 'rest': '60s'},
-                    {'name': 'Hollow Body Hold', 'sets': 3, 'reps': '20-30s', 'rest': '60s'}
-                ],
-                'duration': 30,
-                'calories_burned': 200,
-                'equipment': ['none'],
-                'intensity': 'moderate-high'
-            }
-        ]
-    },
-    
-    'cardio': {
-        '15_min': [
-            {
-                'name': 'HIIT Cardio Blast',
-                'exercises': [
-                    {'name': 'Jumping Jacks', 'sets': 4, 'reps': '30s', 'rest': '30s'},
-                    {'name': 'High Knees', 'sets': 4, 'reps': '30s', 'rest': '30s'},
-                    {'name': 'Butt Kicks', 'sets': 4, 'reps': '30s', 'rest': '30s'},
-                    {'name': 'Burpees', 'sets': 3, 'reps': '30s', 'rest': '30s'}
-                ],
-                'duration': 15,
-                'calories_burned': 200,
-                'equipment': ['none'],
-                'intensity': 'high'
-            },
-            {
-                'name': 'Tabata Express',
-                'exercises': [
-                    {'name': 'Jump Squats', 'sets': 4, 'reps': '20s on/10s off', 'rest': '60s'},
-                    {'name': 'Mountain Climbers', 'sets': 4, 'reps': '20s on/10s off', 'rest': '60s'},
-                    {'name': 'Burpees', 'sets': 4, 'reps': '20s on/10s off', 'rest': '60s'}
-                ],
-                'duration': 15,
-                'calories_burned': 220,
-                'equipment': ['none'],
-                'intensity': 'very_high'
-            }
-        ],
-        '30_min': [
-            {
-                'name': 'Cardio Inferno',
-                'exercises': [
-                    {'name': 'Jumping Jacks', 'sets': 6, 'reps': '45s', 'rest': '15s'},
-                    {'name': 'Burpees', 'sets': 5, 'reps': '45s', 'rest': '15s'},
-                    {'name': 'Mountain Climbers', 'sets': 5, 'reps': '45s', 'rest': '15s'},
-                    {'name': 'High Knees', 'sets': 5, 'reps': '45s', 'rest': '15s'},
-                    {'name': 'Jump Squats', 'sets': 4, 'reps': '45s', 'rest': '15s'},
-                    {'name': 'Plank Jacks', 'sets': 4, 'reps': '45s', 'rest': '15s'}
-                ],
-                'duration': 30,
-                'calories_burned': 350,
-                'equipment': ['none'],
-                'intensity': 'very_high'
-            }
-        ]
-    }
-}
-
-
-# Add this enhanced function to your fitness_utils.py to replace the existing get_quick_workout_suggestions
-
 def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excluded_workouts):
-    """Get quick workout suggestions from both dedicated quick workouts AND main workout database"""
+    """Get quick workout suggestions with EXACT duration matching from both databases"""
     suggestions = []
     
-    # Determine duration category for quick workout database
-    if duration <= 20:
-        duration_key = '15_min'
-    elif duration <= 35:
-        duration_key = '30_min'
-    else:
-        duration_key = '45_min'
+    # 1. GET WORKOUTS FROM QUICK WORKOUT DATABASE WITH EXACT DURATION MATCHING
     
-    # 1. GET QUICK WORKOUTS FROM DEDICATED DATABASE
+    # Map duration to exact keys in our database
+    duration_key = f'{duration}_min'
+    
+    # Get workouts from quick workout database
     focus_workouts = QUICK_WORKOUT_DATABASE.get(focus, {})
-    duration_workouts = focus_workouts.get(duration_key, [])
+    exact_duration_workouts = focus_workouts.get(duration_key, [])
     
     # Filter by equipment availability
-    for workout in duration_workouts:
+    for workout in exact_duration_workouts:
         workout_equipment = workout.get('equipment', ['none'])
         
         # Check if user has required equipment
@@ -1731,90 +2042,123 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                     'source': 'quick_database'
                 })
     
-    # 2. GET COMPATIBLE WORKOUTS FROM MAIN WORKOUT DATABASE
-    experience = user_profile.get('fitness_experience', 'beginner') if user_profile else 'beginner'
+    # 2. ALSO CHECK OTHER DURATION CATEGORIES FOR CLOSE MATCHES (±5 minutes)
+    all_duration_keys = ['10_min', '15_min', '20_min', '30_min', '45_min']
+    target_durations = {
+        '10_min': 10, '15_min': 15, '20_min': 20, '30_min': 30, '45_min': 45
+    }
     
-    # Map focus areas to workout types
-    if focus == 'full_body':
-        workout_types = ['strength', 'cardio']
-    elif focus == 'cardio':
-        workout_types = ['cardio']
-    elif focus in ['upper_body', 'lower_body', 'core']:
-        workout_types = ['strength']
-    else:
-        workout_types = ['strength', 'cardio']
-    
-    # Search main workout database
-    for workout_type in workout_types:
-        if workout_type == 'strength' and focus != 'cardio':
-            # Get strength workouts
-            strength_workouts = WORKOUT_DATABASE.get('strength', {}).get(experience, {})
-            
-            for equipment_type, workouts in strength_workouts.items():
-                if isinstance(workouts, list):
-                    for workout in workouts:
-                        # Check duration compatibility (allow 15 min flexibility)
-                        duration_diff = abs(workout['duration'] - duration)
-                        if duration_diff <= 15:
-                            # Check equipment compatibility
-                            workout_equipment = workout.get('equipment', ['none'])
-                            equipment_compatible = (
-                                'none' in workout_equipment or
-                                (equipment and any(eq in equipment for eq in workout_equipment)) or
-                                (not equipment and 'none' in workout_equipment)
-                            )
-                            
-                            if (equipment_compatible and 
-                                workout['name'] not in excluded_workouts and
-                                workout['name'] not in [s['workout']['name'] for s in suggestions]):
-                                
-                                # Check if workout matches focus area
-                                focus_match = True
-                                if focus == 'upper_body':
-                                    focus_match = any(muscle in workout.get('muscle_groups', []) 
-                                                    for muscle in ['chest', 'shoulders', 'arms', 'back'])
-                                elif focus == 'lower_body':
-                                    focus_match = any(muscle in workout.get('muscle_groups', []) 
-                                                    for muscle in ['quads', 'glutes', 'hamstrings', 'calves'])
-                                elif focus == 'core':
-                                    focus_match = 'core' in workout.get('muscle_groups', [])
-                                
-                                if focus_match:
-                                    suggestions.append({
-                                        'workout': workout,
-                                        'score': calculate_quick_workout_score(workout, user_profile, duration),
-                                        'match_reason': f"From {workout_type} training • " + get_match_reason(workout, duration, focus, equipment),
-                                        'source': 'main_database'
-                                    })
-        
-        elif workout_type == 'cardio':
-            # Get cardio workouts
-            cardio_workouts = WORKOUT_DATABASE.get('cardio', {}).get(experience, [])
-            
-            for workout in cardio_workouts:
-                # Check duration compatibility
-                duration_diff = abs(workout['duration'] - duration)
-                if duration_diff <= 15:
-                    # Check equipment compatibility
+    for dur_key in all_duration_keys:
+        if dur_key != duration_key:  # Skip the exact match we already checked
+            dur_value = target_durations[dur_key]
+            if abs(dur_value - duration) <= 5:  # Within 5 minutes
+                close_workouts = focus_workouts.get(dur_key, [])
+                for workout in close_workouts:
                     workout_equipment = workout.get('equipment', ['none'])
-                    equipment_compatible = (
-                        'none' in workout_equipment or
+                    if ('none' in workout_equipment or 
                         (equipment and any(eq in equipment for eq in workout_equipment)) or
-                        (not equipment and 'none' in workout_equipment)
-                    )
-                    
-                    if (equipment_compatible and 
-                        workout['name'] not in excluded_workouts and
-                        workout['name'] not in [s['workout']['name'] for s in suggestions]):
+                        (not equipment and 'none' in workout_equipment)):
                         
-                        suggestions.append({
-                            'workout': workout,
-                            'score': calculate_quick_workout_score(workout, user_profile, duration),
-                            'match_reason': f"From cardio training • " + get_match_reason(workout, duration, focus, equipment),
-                            'source': 'main_database'
-                        })
+                        if workout['name'] not in excluded_workouts:
+                            suggestions.append({
+                                'workout': workout,
+                                'score': calculate_quick_workout_score(workout, user_profile, duration) - 5,  # Small penalty for inexact match
+                                'match_reason': f"Close match ({workout['duration']} min) • " + get_match_reason(workout, duration, focus, equipment),
+                                'source': 'quick_database'
+                            })
     
-    # 3. GET USER PREFERENCES AND FILTER OUT DISLIKED WORKOUTS
+    # 3. GET COMPATIBLE WORKOUTS FROM MAIN WORKOUT DATABASE (only if we need more suggestions)
+    if len(suggestions) < 5:
+        experience = user_profile.get('fitness_experience', 'beginner') if user_profile else 'beginner'
+        
+        # Map focus areas to workout types
+        if focus == 'full_body':
+            workout_types = ['strength', 'cardio']
+        elif focus == 'cardio':
+            workout_types = ['cardio']
+        elif focus in ['upper_body', 'lower_body', 'core']:
+            workout_types = ['strength']
+        else:
+            workout_types = ['strength', 'cardio']
+        
+        # Search main workout database
+        for workout_type in workout_types:
+            if workout_type == 'strength' and focus != 'cardio':
+                # Get strength workouts
+                strength_workouts = WORKOUT_DATABASE.get('strength', {}).get(experience, {})
+                
+                for equipment_type, workouts in strength_workouts.items():
+                    if isinstance(workouts, list):
+                        for workout in workouts:
+                            # Check EXACT duration first, then allow small differences
+                            duration_diff = abs(workout['duration'] - duration)
+                            if duration_diff <= 10:  # Allow 10 minute flexibility for main database
+                                # Check equipment compatibility
+                                workout_equipment = workout.get('equipment', ['none'])
+                                equipment_compatible = (
+                                    'none' in workout_equipment or
+                                    (equipment and any(eq in equipment for eq in workout_equipment)) or
+                                    (not equipment and 'none' in workout_equipment)
+                                )
+                                
+                                if (equipment_compatible and 
+                                    workout['name'] not in excluded_workouts and
+                                    workout['name'] not in [s['workout']['name'] for s in suggestions]):
+                                    
+                                    # Check if workout matches focus area
+                                    focus_match = True
+                                    if focus == 'upper_body':
+                                        focus_match = any(muscle in workout.get('muscle_groups', []) 
+                                                        for muscle in ['chest', 'shoulders', 'arms', 'back'])
+                                    elif focus == 'lower_body':
+                                        focus_match = any(muscle in workout.get('muscle_groups', []) 
+                                                        for muscle in ['quads', 'glutes', 'hamstrings', 'calves'])
+                                    elif focus == 'core':
+                                        focus_match = 'core' in workout.get('muscle_groups', [])
+                                    
+                                    if focus_match:
+                                        # Calculate penalty for duration mismatch
+                                        duration_penalty = duration_diff * 2  # 2 points per minute off
+                                        base_score = calculate_quick_workout_score(workout, user_profile, duration)
+                                        
+                                        suggestions.append({
+                                            'workout': workout,
+                                            'score': max(0, base_score - duration_penalty),
+                                            'match_reason': f"From {workout_type} training • " + get_match_reason(workout, duration, focus, equipment),
+                                            'source': 'main_database'
+                                        })
+            
+            elif workout_type == 'cardio':
+                # Get cardio workouts
+                cardio_workouts = WORKOUT_DATABASE.get('cardio', {}).get(experience, [])
+                
+                for workout in cardio_workouts:
+                    # Check duration compatibility
+                    duration_diff = abs(workout['duration'] - duration)
+                    if duration_diff <= 10:
+                        # Check equipment compatibility
+                        workout_equipment = workout.get('equipment', ['none'])
+                        equipment_compatible = (
+                            'none' in workout_equipment or
+                            (equipment and any(eq in equipment for eq in workout_equipment)) or
+                            (not equipment and 'none' in workout_equipment)
+                        )
+                        
+                        if (equipment_compatible and 
+                            workout['name'] not in excluded_workouts and
+                            workout['name'] not in [s['workout']['name'] for s in suggestions]):
+                            
+                            duration_penalty = duration_diff * 2
+                            base_score = calculate_quick_workout_score(workout, user_profile, duration)
+                            
+                            suggestions.append({
+                                'workout': workout,
+                                'score': max(0, base_score - duration_penalty),
+                                'match_reason': f"From cardio training • " + get_match_reason(workout, duration, focus, equipment),
+                                'source': 'main_database'
+                            })
+    
+    # 4. GET USER PREFERENCES AND FILTER OUT DISLIKED WORKOUTS
     user_id = user_profile.get('id') if user_profile else None
     disliked_workouts = set()
     if user_id:
@@ -1828,13 +2172,15 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
     # Filter out disliked workouts
     suggestions = [s for s in suggestions if s['workout']['name'] not in disliked_workouts]
     
-    # 4. ADD FLEXIBILITY WORKOUTS IF REQUESTED
-    if focus == 'flexibility' or focus == 'core':
-        flexibility_workouts = WORKOUT_DATABASE.get('flexibility', {}).get(experience, [])
+    # 5. ADD FLEXIBILITY WORKOUTS IF REQUESTED
+    if focus == 'flexibility':
+        flexibility_workouts = WORKOUT_DATABASE.get('flexibility', {}).get(
+            user_profile.get('fitness_experience', 'beginner') if user_profile else 'beginner', []
+        )
         
         for workout in flexibility_workouts:
             duration_diff = abs(workout['duration'] - duration)
-            if duration_diff <= 15:
+            if duration_diff <= 10:
                 workout_equipment = workout.get('equipment', ['none'])
                 equipment_compatible = (
                     'none' in workout_equipment or
@@ -1846,52 +2192,50 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                     workout['name'] not in [s['workout']['name'] for s in suggestions] and
                     workout['name'] not in disliked_workouts):
                     
+                    duration_penalty = duration_diff * 2
+                    base_score = calculate_quick_workout_score(workout, user_profile, duration)
+                    
                     suggestions.append({
                         'workout': workout,
-                        'score': calculate_quick_workout_score(workout, user_profile, duration),
+                        'score': max(0, base_score - duration_penalty),
                         'match_reason': f"From flexibility training • " + get_match_reason(workout, duration, focus, equipment),
                         'source': 'main_database'
                     })
     
-    # Score and sort workouts
+    # Score and sort workouts (prioritize exact duration matches)
     suggestions.sort(key=lambda x: x['score'], reverse=True)
     
-    # Return top suggestions with variety
+    # Return top suggestions with variety, prioritizing exact duration matches
     final_suggestions = []
-    quick_count = 0
-    main_count = 0
+    exact_matches = [s for s in suggestions if s['workout']['duration'] == duration]
+    close_matches = [s for s in suggestions if s['workout']['duration'] != duration]
     
-    for suggestion in suggestions:
-        if len(final_suggestions) >= 8:  # Limit to 8 suggestions
-            break
-            
-        # Ensure variety between sources
-        if suggestion['source'] == 'quick_database' and quick_count < 4:
-            final_suggestions.append(suggestion)
-            quick_count += 1
-        elif suggestion['source'] == 'main_database' and main_count < 4:
-            final_suggestions.append(suggestion)
-            main_count += 1
-        elif len(final_suggestions) < 5:  # Fill remaining slots
-            final_suggestions.append(suggestion)
+    # Add exact matches first
+    final_suggestions.extend(exact_matches[:6])
     
-    return final_suggestions
-
+    # Fill remaining slots with close matches if needed
+    remaining_slots = 8 - len(final_suggestions)
+    if remaining_slots > 0:
+        final_suggestions.extend(close_matches[:remaining_slots])
+    
+    return final_suggestions[:8]  # Return up to 8 suggestions
 
 def calculate_quick_workout_score(workout, user_profile, target_duration):
-    """Calculate how well a workout matches user preferences"""
+    """Calculate how well a workout matches user preferences with heavy emphasis on exact duration"""
     score = 0
     
-    # Duration match (max 30 points)
+    # Duration match (max 40 points) - HEAVILY WEIGHTED FOR EXACT MATCHES
     duration_diff = abs(workout['duration'] - target_duration)
     if duration_diff == 0:
-        score += 30
+        score += 40  # Perfect match gets maximum points
+    elif duration_diff <= 2:
+        score += 35  # Very close gets high points
     elif duration_diff <= 5:
-        score += 25
+        score += 25  # Close gets good points
     elif duration_diff <= 10:
-        score += 20
+        score += 15  # Acceptable gets some points
     else:
-        score += max(0, 15 - duration_diff)
+        score += max(0, 5 - duration_diff // 5)  # Far matches get minimal points
     
     # Experience level match (max 25 points)
     if user_profile:
@@ -1933,30 +2277,32 @@ def calculate_quick_workout_score(workout, user_profile, target_duration):
     else:
         score += 5
     
-    # Variety bonus (max 15 points)
+    # Variety bonus (max 10 points)
     exercise_count = len(workout.get('exercises', []))
     if exercise_count >= 6:
-        score += 15
+        score += 10
     elif exercise_count >= 4:
-        score += 12
-    elif exercise_count >= 3:
         score += 8
+    elif exercise_count >= 3:
+        score += 6
     else:
-        score += 5
+        score += 3
     
-    # Random factor for variety (max 10 points)
+    # Random factor for variety (max 5 points)
     import random
-    score += random.randint(0, 10)
+    score += random.randint(0, 5)
     
     return min(score, 100)
-
 
 def get_match_reason(workout, duration, focus, equipment):
     """Generate a reason why this workout matches the user's criteria"""
     reasons = []
     
-    if abs(workout['duration'] - duration) <= 5:
-        reasons.append(f"Perfect {duration}-minute duration")
+    duration_diff = abs(workout['duration'] - duration)
+    if duration_diff == 0:
+        reasons.append(f"Exact {duration}-minute duration")
+    elif duration_diff <= 5:
+        reasons.append(f"Close to {duration} minutes ({workout['duration']} min)")
     
     if focus in ['full_body', 'cardio'] and workout.get('calories_burned', 0) > 150:
         reasons.append("High calorie burn")
@@ -1979,7 +2325,6 @@ def get_match_reason(workout, duration, focus, equipment):
         reasons.append("Great workout option")
     
     return " • ".join(reasons)
-
 
 # Enhanced equipment mapping for quick workouts
 QUICK_WORKOUT_EQUIPMENT_OPTIONS = [
@@ -2004,4 +2349,5 @@ QUICK_WORKOUT_FOCUS_OPTIONS = [
     {'value': 'lower_body', 'label': 'Lower Body', 'description': 'Legs, glutes, and calves'},
     {'value': 'core', 'label': 'Core', 'description': 'Abs, obliques, and core stability'},
     {'value': 'cardio', 'label': 'Cardio', 'description': 'Heart-pumping, calorie-burning exercises'},
+    {'value': 'flexibility', 'label': 'Flexibility', 'description': 'Stretching and mobility work'},
 ]

@@ -1,6 +1,61 @@
 import React, { useState, useEffect } from "react";
+import { Eye } from "lucide-react";
+import dumbellBenchPress from "./images/dumbell-bench-press.jpg";
+import bentOverRows from "./images/bent-over-rows.png";
+import lateralRaises from "./images/lateral-raises.png";
+import bicepCurl from "./images/bicep-curls.jpg";
+import tricepExtension from "./images/tricep-extension.jpg";
+import shoulderPress from "./images/shoulder-press.jpg";
 import { FaThumbsUp, FaThumbsDown } from "react-icons/fa";
-// Quick Workout Component
+// Exercise image database - you can replace these with actual image URLs
+const EXERCISE_IMAGES = {
+  // Hardcoded specific exercises you requested
+  "chest press": dumbellBenchPress,
+  "dumbbell chest press": dumbellBenchPress,
+  "bent-over rows": bentOverRows,
+  "dumbbell rows": "./images/dumbell-bench-press.jpg",
+  "shoulder press": shoulderPress,
+  "overhead press": "./images/dumbell-bench-press.jpg",
+  "lateral raises": lateralRaises,
+  "bicep curls": bicepCurl,
+  "tricep extensions": tricepExtension,
+  "dumbbell flyes":
+    "https://images.unsplash.com/photo-1583500178895-1c445b8f4cc0?w=400&h=300&fit=crop&crop=center",
+  "dumbbell reverse flyes":
+    "https://images.unsplash.com/photo-1583500178745-5c52744f98bd?w=400&h=300&fit=crop&crop=center",
+
+  // Generic fallback images for other exercises
+  "push-ups":
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center",
+  squats:
+    "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop&crop=center",
+  "bodyweight squats":
+    "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop&crop=center",
+  "goblet squats":
+    "https://images.unsplash.com/photo-1574680096145-d05b474e2155?w=400&h=300&fit=crop&crop=center",
+  lunges:
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center",
+  plank:
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center",
+  burpees:
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center",
+  "mountain climbers":
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center",
+  "jumping jacks":
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center",
+  deadlifts:
+    "https://images.unsplash.com/photo-1583500178690-5405e627b7b3?w=400&h=300&fit=crop&crop=center",
+  "romanian deadlifts":
+    "https://images.unsplash.com/photo-1583500178690-5405e627b7b3?w=400&h=300&fit=crop&crop=center",
+  "kettlebell swings":
+    "https://images.unsplash.com/photo-1583500178879-39fda5146234?w=400&h=300&fit=crop&crop=center",
+  thrusters:
+    "https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=400&h=300&fit=crop&crop=center",
+  default:
+    "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center",
+};
+
+// Quick Workout Component with Enhanced Like/Dislike Functionality
 function QuickWorkout({ userId }) {
   const [duration, setDuration] = useState(30);
   const [focus, setFocus] = useState("full_body");
@@ -10,6 +65,8 @@ function QuickWorkout({ userId }) {
   const [excludedWorkouts, setExcludedWorkouts] = useState([]);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState("");
+  const [processingFeedback, setProcessingFeedback] = useState(null);
 
   const focusOptions = [
     {
@@ -64,6 +121,12 @@ function QuickWorkout({ userId }) {
   const fetchSuggestions = async () => {
     setIsLoading(true);
     try {
+      console.log(
+        `🔍 Fetching suggestions for ${duration} minutes, focus: ${focus}, equipment: ${equipment.join(
+          ", "
+        )}`
+      );
+
       const response = await fetch(
         "http://127.0.0.1:5000/api/get_quick_workout_suggestions",
         {
@@ -81,10 +144,26 @@ function QuickWorkout({ userId }) {
 
       if (response.ok) {
         const data = await response.json();
+        console.log(`✅ Received ${data.length} suggestions`);
         setSuggestions(data);
+      } else {
+        console.error("❌ Failed to fetch suggestions:", response.status);
+        const errorText = await response.text();
+        console.error("Error details:", errorText);
+        setSuggestions([]);
+
+        setFeedbackMessage(
+          "⚠️ Failed to load workout suggestions. Please try again."
+        );
+        setTimeout(() => setFeedbackMessage(""), 3000);
       }
     } catch (error) {
-      console.error("Error fetching suggestions:", error);
+      console.error("❌ Network error fetching suggestions:", error);
+      setSuggestions([]);
+      setFeedbackMessage(
+        "⚠️ Network error. Please check your connection and try again."
+      );
+      setTimeout(() => setFeedbackMessage(""), 3000);
     } finally {
       setIsLoading(false);
     }
@@ -106,16 +185,41 @@ function QuickWorkout({ userId }) {
   };
 
   const handleWorkoutFeedback = async (workoutName, liked) => {
+    if (processingFeedback === workoutName) {
+      console.log(
+        `⏳ Already processing feedback for "${workoutName}", skipping...`
+      );
+      return;
+    }
+
+    setProcessingFeedback(workoutName);
+
     try {
       console.log(
-        `Submitting ${liked ? "like" : "dislike"} for workout: ${workoutName}`
+        `Submitting ${
+          liked ? "LIKE 👍" : "DISLIKE 👎"
+        } for workout: "${workoutName}"`
+      );
+      console.log(`📤 Request payload:`, {
+        user_id: userId,
+        workout_name: workoutName,
+        liked: liked,
+      });
+
+      setFeedbackMessage(
+        liked
+          ? `👍 Liked "${workoutName}"! We'll show you more workouts like this.`
+          : `👎 Disliked "${workoutName}". We'll avoid suggesting this workout in the future.`
       );
 
       const response = await fetch(
         "http://127.0.0.1:5000/api/quick_workout_feedback",
         {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
           body: JSON.stringify({
             user_id: userId,
             workout_name: workoutName,
@@ -124,41 +228,77 @@ function QuickWorkout({ userId }) {
         }
       );
 
+      console.log(`📡 Response status: ${response.status}`);
+
       if (response.ok) {
+        const data = await response.json();
         console.log(
-          `Successfully submitted ${
+          `✅ Successfully saved ${
             liked ? "like" : "dislike"
-          } for ${workoutName}`
+          } for "${workoutName}"`
         );
+        console.log(`📥 Response data:`, data);
 
         if (!liked) {
-          // If disliked, exclude this workout and fetch new suggestions
+          console.log(`🚫 Adding "${workoutName}" to excluded workouts list`);
           setExcludedWorkouts((prev) => {
             const newExcluded = [...prev, workoutName];
             console.log("Updated excluded workouts:", newExcluded);
             return newExcluded;
           });
+
+          setFeedbackMessage(
+            `👎 "${workoutName}" disliked and removed from suggestions. Finding new workouts...`
+          );
         } else {
-          // If liked, just show a success message
-          alert(`Great! We'll show you more workouts like "${workoutName}"`);
+          setFeedbackMessage(
+            `👍 "${workoutName}" added to your liked workouts!`
+          );
         }
+
+        setTimeout(() => setFeedbackMessage(""), 4000);
       } else {
-        console.error("Failed to submit workout feedback");
-        alert("Failed to save preference. Please try again.");
+        const errorText = await response.text();
+        console.error(`❌ HTTP ${response.status} error:`, errorText);
+
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch (e) {
+          errorData = { error: errorText };
+        }
+
+        console.error("❌ Failed to submit workout feedback:", response.status);
+        console.error("Error details:", errorData);
+
+        setFeedbackMessage(
+          `⚠️ Failed to save preference (${response.status}): ${
+            errorData.error || "Unknown error"
+          }. Please try again.`
+        );
+        setTimeout(() => setFeedbackMessage(""), 5000);
       }
     } catch (error) {
-      console.error("Error submitting feedback:", error);
-      alert("Error saving preference. Please try again.");
+      console.error("❌ Network error submitting feedback:", error);
+      setFeedbackMessage(
+        "⚠️ Network error saving preference. Please check your connection and try again."
+      );
+      setTimeout(() => setFeedbackMessage(""), 5000);
+    } finally {
+      setProcessingFeedback(null);
     }
   };
 
   const handleStartWorkout = (suggestion) => {
+    console.log(`🏃‍♂️ Starting workout: "${suggestion.workout.name}"`);
     setSelectedWorkout(suggestion);
     setShowWorkoutModal(true);
   };
 
   const handleCompleteWorkout = async (workoutData) => {
     try {
+      console.log("💪 Completing workout:", workoutData.name);
+
       const response = await fetch(
         "http://127.0.0.1:5000/api/complete_workout",
         {
@@ -174,25 +314,53 @@ function QuickWorkout({ userId }) {
       if (response.ok) {
         setShowWorkoutModal(false);
         setSelectedWorkout(null);
-        alert("Workout completed successfully!");
 
-        // Trigger a refresh event that the parent Fitness component can listen to
-        window.dispatchEvent(new CustomEvent("workoutCompleted"));
+        setFeedbackMessage("🎉 Workout completed successfully!");
+        setTimeout(() => setFeedbackMessage(""), 3000);
+
+        console.log(
+          "📡 Triggering workoutCompleted event for dashboard refresh"
+        );
+        window.dispatchEvent(
+          new CustomEvent("workoutCompleted", {
+            detail: { workoutData, userId },
+          })
+        );
 
         return true;
+      } else {
+        const errorData = await response.json();
+        console.error(
+          "❌ Failed to complete workout:",
+          response.status,
+          errorData
+        );
+        setFeedbackMessage(
+          `⚠️ Failed to complete workout: ${errorData.error || "Unknown error"}`
+        );
+        setTimeout(() => setFeedbackMessage(""), 5000);
+        return false;
       }
-      return false;
     } catch (error) {
-      console.error("Error completing workout:", error);
+      console.error("❌ Error completing workout:", error);
+      setFeedbackMessage(
+        "⚠️ Network error completing workout. Please try again."
+      );
+      setTimeout(() => setFeedbackMessage(""), 5000);
       return false;
     }
   };
 
   const resetFilters = () => {
+    console.log("🔄 Resetting all filters and excluded workouts");
     setExcludedWorkouts([]);
     setDuration(30);
     setFocus("full_body");
     setEquipment([]);
+    setFeedbackMessage(
+      "🔄 Filters reset! Finding fresh workout suggestions..."
+    );
+    setTimeout(() => setFeedbackMessage(""), 3000);
   };
 
   const containerStyle = {
@@ -214,7 +382,59 @@ function QuickWorkout({ userId }) {
     <div style={containerStyle}>
       <h2 style={{ margin: "0 0 2rem 0", color: "#2d3748" }}>Quick Workout</h2>
 
-      {/* Workout Criteria Form */}
+      {feedbackMessage && (
+        <div
+          style={{
+            backgroundColor: feedbackMessage.includes("⚠️")
+              ? "#fed7d7"
+              : "#e6fffa",
+            border: `1px solid ${
+              feedbackMessage.includes("⚠️") ? "#fc8181" : "#81e6d9"
+            }`,
+            color: feedbackMessage.includes("⚠️") ? "#c53030" : "#234e52",
+            padding: "12px 16px",
+            borderRadius: "8px",
+            marginBottom: "1rem",
+            fontSize: "14px",
+            fontWeight: "500",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          <span>{feedbackMessage}</span>
+          {processingFeedback && (
+            <div
+              style={{
+                width: "16px",
+                height: "16px",
+                border: "2px solid transparent",
+                borderTop: "2px solid currentColor",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+          )}
+        </div>
+      )}
+
+      {process.env.NODE_ENV === "development" &&
+        excludedWorkouts.length > 0 && (
+          <div
+            style={{
+              backgroundColor: "#fff5f5",
+              border: "1px solid #feb2b2",
+              color: "#c53030",
+              padding: "8px 12px",
+              borderRadius: "6px",
+              marginBottom: "1rem",
+              fontSize: "12px",
+            }}
+          >
+            🐛 Debug: Excluded workouts: {excludedWorkouts.join(", ")}
+          </div>
+        )}
+
       <div style={cardStyle}>
         <h3 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
           What kind of workout are you looking for?
@@ -228,7 +448,6 @@ function QuickWorkout({ userId }) {
             marginBottom: "1.5rem",
           }}
         >
-          {/* Duration Slider */}
           <div>
             <label
               style={{
@@ -270,7 +489,6 @@ function QuickWorkout({ userId }) {
             </div>
           </div>
 
-          {/* Focus Area */}
           <div>
             <label
               style={{
@@ -312,7 +530,6 @@ function QuickWorkout({ userId }) {
           </div>
         </div>
 
-        {/* Equipment Selection */}
         <div style={{ marginBottom: "1.5rem" }}>
           <label
             style={{
@@ -362,7 +579,6 @@ function QuickWorkout({ userId }) {
           </div>
         </div>
 
-        {/* Action Buttons */}
         <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
           <button
             onClick={fetchSuggestions}
@@ -402,7 +618,6 @@ function QuickWorkout({ userId }) {
         </div>
       </div>
 
-      {/* Workout Suggestions */}
       {isLoading ? (
         <div style={{ textAlign: "center", padding: "2rem" }}>
           <div
@@ -416,15 +631,32 @@ function QuickWorkout({ userId }) {
               margin: "0 auto 1rem auto",
             }}
           ></div>
-          <div style={{ color: "#718096" }}>Finding perfect workouts...</div>
+          <div style={{ color: "#718096" }}>
+            Finding perfect workouts for {duration} minutes...
+          </div>
         </div>
       ) : suggestions.length === 0 ? (
         <div style={cardStyle}>
           <div style={{ textAlign: "center", padding: "2rem" }}>
+            <div style={{ fontSize: "48px", marginBottom: "1rem" }}>🔍</div>
             <h3 style={{ color: "#4a5568" }}>No workouts found</h3>
             <p style={{ color: "#718096", marginBottom: "1rem" }}>
-              Try adjusting your criteria or equipment selection.
+              Try adjusting your criteria or equipment selection. We're looking
+              for workouts that are exactly {duration} minutes long.
             </p>
+            {excludedWorkouts.length > 0 && (
+              <p
+                style={{
+                  color: "#e53e3e",
+                  fontSize: "14px",
+                  marginBottom: "1rem",
+                }}
+              >
+                You've excluded {excludedWorkouts.length} workout
+                {excludedWorkouts.length !== 1 ? "s" : ""}. Try resetting your
+                filters to see more options.
+              </p>
+            )}
             <button
               onClick={resetFilters}
               style={{
@@ -442,21 +674,43 @@ function QuickWorkout({ userId }) {
         </div>
       ) : (
         <div style={{ display: "grid", gap: "1.5rem" }}>
+          <div
+            style={{
+              fontSize: "14px",
+              color: "#4a5568",
+              backgroundColor: "#f7fafc",
+              padding: "0.75rem",
+              borderRadius: "6px",
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            Found {suggestions.length} workout
+            {suggestions.length !== 1 ? "s" : ""} for {duration} minutes •{" "}
+            {focus.replace("_", " ")} focus
+            {excludedWorkouts.length > 0 && (
+              <span style={{ color: "#e53e3e" }}>
+                {" "}
+                • {excludedWorkouts.length} excluded
+              </span>
+            )}
+          </div>
           {suggestions.map((suggestion, index) => (
             <WorkoutSuggestionCard
-              key={index}
+              key={`${suggestion.workout.name}-${index}`}
               suggestion={suggestion}
               onLike={(workoutName) => handleWorkoutFeedback(workoutName, true)}
               onDislike={(workoutName) =>
                 handleWorkoutFeedback(workoutName, false)
               }
               onStart={() => handleStartWorkout(suggestion)}
+              isProcessingFeedback={
+                processingFeedback === suggestion.workout.name
+              }
             />
           ))}
         </div>
       )}
 
-      {/* Workout Modal */}
       {showWorkoutModal && selectedWorkout && (
         <QuickWorkoutModal
           suggestion={selectedWorkout}
@@ -464,13 +718,41 @@ function QuickWorkout({ userId }) {
           onComplete={handleCompleteWorkout}
         />
       )}
+
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-5px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }
 
-// Workout Suggestion Card Component
-function WorkoutSuggestionCard({ suggestion, onLike, onDislike, onStart }) {
+// Enhanced Workout Suggestion Card Component with Visual Preview
+function WorkoutSuggestionCard({
+  suggestion,
+  onLike,
+  onDislike,
+  onStart,
+  isProcessingFeedback,
+}) {
   const { workout, match_reason } = suggestion;
+  const [showPreview, setShowPreview] = useState(false);
 
   const getIntensityColor = (intensity) => {
     switch (intensity) {
@@ -491,12 +773,20 @@ function WorkoutSuggestionCard({ suggestion, onLike, onDislike, onStart }) {
     }
   };
 
+  const getExerciseImage = (exerciseName) => {
+    const key = exerciseName.toLowerCase();
+    return EXERCISE_IMAGES[key] || EXERCISE_IMAGES["default"];
+  };
+
   const cardStyle = {
     backgroundColor: "white",
     padding: "2rem",
     borderRadius: "12px",
     border: "1px solid #e2e8f0",
     boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    opacity: isProcessingFeedback ? 0.7 : 1,
+    transition: "opacity 0.2s",
+    position: "relative",
   };
 
   return (
@@ -510,15 +800,215 @@ function WorkoutSuggestionCard({ suggestion, onLike, onDislike, onStart }) {
         }}
       >
         <div style={{ flex: 1 }}>
-          <h3
+          <div
             style={{
-              margin: "0 0 0.5rem 0",
-              color: "#2d3748",
-              fontSize: "20px",
+              display: "flex",
+              alignItems: "center",
+              gap: "1rem",
+              marginBottom: "0.5rem",
             }}
           >
-            {workout.name}
-          </h3>
+            <h3 style={{ margin: 0, color: "#2d3748", fontSize: "20px" }}>
+              {workout.name}
+            </h3>
+
+            {/* View Button with Hover Preview */}
+            <div
+              style={{ position: "relative", display: "inline-block" }}
+              onMouseEnter={() => setShowPreview(true)}
+              onMouseLeave={() => setShowPreview(false)}
+            >
+              <button
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "6px 12px",
+                  backgroundColor: "#4299e1",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "500",
+                  transition: "all 0.2s",
+                }}
+                onMouseOver={(e) =>
+                  (e.target.style.backgroundColor = "#3182ce")
+                }
+                onMouseOut={(e) => (e.target.style.backgroundColor = "#4299e1")}
+              >
+                <Eye size={14} />
+                View
+              </button>
+
+              {/* Hover Preview Modal */}
+              {showPreview && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "100%",
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    marginTop: "8px",
+                    backgroundColor: "white",
+                    border: "1px solid #e2e8f0",
+                    borderRadius: "12px",
+                    boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
+                    padding: "1rem",
+                    width: "400px",
+                    maxWidth: "90vw",
+                    zIndex: 1000,
+                    animation: "fadeIn 0.2s ease-out",
+                  }}
+                >
+                  <h4
+                    style={{
+                      margin: "0 0 1rem 0",
+                      color: "#2d3748",
+                      fontSize: "16px",
+                    }}
+                  >
+                    Workout Preview: {workout.name}
+                  </h4>
+
+                  {workout.exercises && workout.exercises.length > 0 ? (
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: "0.75rem",
+                        maxHeight: "300px",
+                        overflowY: "auto",
+                      }}
+                    >
+                      {workout.exercises.slice(0, 4).map((exercise, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.75rem",
+                            padding: "0.5rem",
+                            backgroundColor: "#f7fafc",
+                            borderRadius: "8px",
+                            border: "1px solid #e2e8f0",
+                          }}
+                        >
+                          <img
+                            src={getExerciseImage(exercise.name)}
+                            alt={exercise.name}
+                            style={{
+                              width: "60px",
+                              height: "45px",
+                              borderRadius: "6px",
+                              objectFit: "cover",
+                              flexShrink: 0,
+                            }}
+                            onError={(e) => {
+                              e.target.src = EXERCISE_IMAGES["default"];
+                            }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <div
+                              style={{
+                                fontWeight: "600",
+                                color: "#2d3748",
+                                fontSize: "14px",
+                              }}
+                            >
+                              {exercise.name}
+                            </div>
+                            {exercise.sets && exercise.reps && (
+                              <div
+                                style={{ fontSize: "12px", color: "#718096" }}
+                              >
+                                {exercise.sets} sets × {exercise.reps} reps
+                              </div>
+                            )}
+                          </div>
+                          {exercise.rest && (
+                            <div
+                              style={{
+                                fontSize: "11px",
+                                color: "#4a5568",
+                                backgroundColor: "#e2e8f0",
+                                padding: "2px 6px",
+                                borderRadius: "4px",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {exercise.rest} rest
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      {workout.exercises.length > 4 && (
+                        <div
+                          style={{
+                            textAlign: "center",
+                            padding: "0.5rem",
+                            color: "#718096",
+                            fontSize: "12px",
+                          }}
+                        >
+                          +{workout.exercises.length - 4} more exercises...
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        padding: "2rem",
+                        color: "#718096",
+                      }}
+                    >
+                      <div style={{ fontSize: "40px", marginBottom: "0.5rem" }}>
+                        💪
+                      </div>
+                      <div>Full workout details available when you start</div>
+                    </div>
+                  )}
+
+                  <div
+                    style={{
+                      marginTop: "1rem",
+                      paddingTop: "1rem",
+                      borderTop: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr 1fr",
+                        gap: "1rem",
+                        fontSize: "12px",
+                      }}
+                    >
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontWeight: "bold", color: "#4299e1" }}>
+                          {workout.duration} min
+                        </div>
+                        <div style={{ color: "#718096" }}>Duration</div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontWeight: "bold", color: "#ed8936" }}>
+                          {workout.calories_burned}
+                        </div>
+                        <div style={{ color: "#718096" }}>Calories</div>
+                      </div>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontWeight: "bold", color: "#9f7aea" }}>
+                          {workout.exercises?.length || 0}
+                        </div>
+                        <div style={{ color: "#718096" }}>Exercises</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
 
           <div
             style={{
@@ -601,33 +1091,54 @@ function WorkoutSuggestionCard({ suggestion, onLike, onDislike, onStart }) {
         <div style={{ display: "flex", gap: "0.5rem", marginLeft: "1rem" }}>
           <button
             onClick={() => onDislike(workout.name)}
+            disabled={isProcessingFeedback}
             style={{
               padding: "8px",
-              backgroundColor: "#fed7d7",
+              backgroundColor: isProcessingFeedback ? "#fed7d7" : "#fed7d7",
               color: "#c53030",
               border: "none",
               borderRadius: "6px",
-              cursor: "pointer",
+              cursor: isProcessingFeedback ? "not-allowed" : "pointer",
               fontSize: "16px",
+              transition: "all 0.2s",
+              position: "relative",
             }}
             title="Don't show this workout again"
+            onMouseOver={(e) =>
+              !isProcessingFeedback &&
+              (e.target.style.backgroundColor = "#feb2b2")
+            }
+            onMouseOut={(e) =>
+              !isProcessingFeedback &&
+              (e.target.style.backgroundColor = "#fed7d7")
+            }
           >
-            <FaThumbsDown />
+            {isProcessingFeedback ? "⏳" : <FaThumbsDown />}
           </button>
           <button
             onClick={() => onLike(workout.name)}
+            disabled={isProcessingFeedback}
             style={{
               padding: "8px",
-              backgroundColor: "#c6f6d5",
+              backgroundColor: isProcessingFeedback ? "#c6f6d5" : "#c6f6d5",
               color: "#22543d",
               border: "none",
               borderRadius: "6px",
-              cursor: "pointer",
+              cursor: isProcessingFeedback ? "not-allowed" : "pointer",
               fontSize: "16px",
+              transition: "all 0.2s",
             }}
             title="Like this workout"
+            onMouseOver={(e) =>
+              !isProcessingFeedback &&
+              (e.target.style.backgroundColor = "#9ae6b4")
+            }
+            onMouseOut={(e) =>
+              !isProcessingFeedback &&
+              (e.target.style.backgroundColor = "#c6f6d5")
+            }
           >
-            <FaThumbsUp />
+            {isProcessingFeedback ? "⏳" : <FaThumbsUp />}
           </button>
         </div>
       </div>
@@ -647,48 +1158,7 @@ function WorkoutSuggestionCard({ suggestion, onLike, onDislike, onStart }) {
           </h4>
           <div style={{ display: "grid", gap: "0.75rem" }}>
             {workout.exercises.map((exercise, idx) => (
-              <div
-                key={idx}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "0.75rem",
-                  backgroundColor: "white",
-                  borderRadius: "6px",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontWeight: "bold",
-                      color: "#2d3748",
-                      fontSize: "14px",
-                    }}
-                  >
-                    {exercise.name}
-                  </div>
-                  {exercise.sets && exercise.reps && (
-                    <div style={{ fontSize: "12px", color: "#718096" }}>
-                      {exercise.sets} sets × {exercise.reps} reps
-                    </div>
-                  )}
-                </div>
-                {exercise.rest && (
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      color: "#4a5568",
-                      backgroundColor: "#e2e8f0",
-                      padding: "2px 6px",
-                      borderRadius: "4px",
-                    }}
-                  >
-                    {exercise.rest} rest
-                  </div>
-                )}
-              </div>
+              <ExerciseCard key={idx} exercise={exercise} />
             ))}
           </div>
         </div>
@@ -709,22 +1179,27 @@ function WorkoutSuggestionCard({ suggestion, onLike, onDislike, onStart }) {
       {/* Start Workout Button */}
       <button
         onClick={onStart}
+        disabled={isProcessingFeedback}
         style={{
           width: "100%",
           padding: "12px 24px",
-          backgroundColor: "#48bb78",
+          backgroundColor: isProcessingFeedback ? "#a0aec0" : "#48bb78",
           color: "white",
           border: "none",
           borderRadius: "8px",
-          cursor: "pointer",
+          cursor: isProcessingFeedback ? "not-allowed" : "pointer",
           fontSize: "16px",
           fontWeight: "bold",
           transition: "background-color 0.2s",
         }}
-        onMouseOver={(e) => (e.target.style.backgroundColor = "#38a169")}
-        onMouseOut={(e) => (e.target.style.backgroundColor = "#48bb78")}
+        onMouseOver={(e) =>
+          !isProcessingFeedback && (e.target.style.backgroundColor = "#38a169")
+        }
+        onMouseOut={(e) =>
+          !isProcessingFeedback && (e.target.style.backgroundColor = "#48bb78")
+        }
       >
-        Start This Workout
+        {isProcessingFeedback ? "Processing..." : "Start This Workout"}
       </button>
     </div>
   );
@@ -767,7 +1242,7 @@ function QuickWorkoutModal({ suggestion, onClose, onComplete }) {
     try {
       const workoutData = {
         name: suggestion.workout.name,
-        type: "strength", // Default type for quick workouts
+        type: "strength",
         duration: actualDuration,
         intensity: suggestion.workout.intensity || "moderate",
         notes: workoutNotes,
@@ -874,66 +1349,26 @@ function QuickWorkoutModal({ suggestion, onClose, onComplete }) {
         </div>
 
         {/* Exercise List */}
-        {suggestion.workout.exercises && (
-          <div
-            style={{
-              backgroundColor: "#f7fafc",
-              padding: "1.5rem",
-              borderRadius: "8px",
-              marginBottom: "1.5rem",
-            }}
-          >
-            <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
-              Exercises to Complete:
-            </h3>
-            <div style={{ display: "grid", gap: "0.75rem" }}>
-              {suggestion.workout.exercises.map((exercise, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    padding: "1rem",
-                    backgroundColor: "white",
-                    borderRadius: "6px",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontWeight: "bold",
-                        color: "#2d3748",
-                        fontSize: "14px",
-                      }}
-                    >
-                      {exercise.name}
-                    </div>
-                    {exercise.sets && exercise.reps && (
-                      <div style={{ fontSize: "12px", color: "#718096" }}>
-                        {exercise.sets} sets × {exercise.reps} reps
-                      </div>
-                    )}
-                  </div>
-                  {exercise.rest && (
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "#4a5568",
-                        backgroundColor: "#e2e8f0",
-                        padding: "4px 8px",
-                        borderRadius: "4px",
-                      }}
-                    >
-                      Rest: {exercise.rest}
-                    </div>
-                  )}
-                </div>
-              ))}
+        {suggestion.workout.exercises &&
+          suggestion.workout.exercises.length > 0 && (
+            <div
+              style={{
+                backgroundColor: "#f7fafc",
+                padding: "1.5rem",
+                borderRadius: "8px",
+                marginBottom: "1.5rem",
+              }}
+            >
+              <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
+                Exercises to Complete:
+              </h3>
+              <div style={{ display: "grid", gap: "0.75rem" }}>
+                {suggestion.workout.exercises.map((exercise, idx) => (
+                  <ExerciseCard key={idx} exercise={exercise} />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
         {/* Completion Form */}
         <div style={{ marginBottom: "1.5rem" }}>
@@ -1072,7 +1507,7 @@ function QuickWorkoutModal({ suggestion, onClose, onComplete }) {
             color: "#4a5568",
           }}
         >
-          <strong>💡 Quick Workout Tips:</strong>
+          <strong> Quick Workout Tips:</strong>
           <ul style={{ margin: "0.5rem 0 0 1rem", paddingLeft: "1rem" }}>
             <li>Focus on proper form over speed</li>
             <li>Take the suggested rest times between exercises</li>
@@ -1082,6 +1517,253 @@ function QuickWorkoutModal({ suggestion, onClose, onComplete }) {
           </ul>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Individual Exercise Card Component with View Button
+function ExerciseCard({ exercise }) {
+  const [showPreview, setShowPreview] = useState(false);
+
+  const getExerciseImage = (exerciseName) => {
+    const key = exerciseName.toLowerCase();
+    return EXERCISE_IMAGES[key] || EXERCISE_IMAGES["default"];
+  };
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "0.75rem",
+        backgroundColor: "white",
+        borderRadius: "6px",
+        border: "1px solid #e2e8f0",
+        position: "relative",
+      }}
+    >
+      <div style={{ flex: 1 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ flex: 1 }}>
+            <div
+              style={{
+                fontWeight: "bold",
+                color: "#2d3748",
+                fontSize: "14px",
+              }}
+            >
+              {exercise.name}
+            </div>
+            {exercise.sets && exercise.reps && (
+              <div style={{ fontSize: "12px", color: "#718096" }}>
+                {exercise.sets} sets × {exercise.reps} reps
+              </div>
+            )}
+          </div>
+
+          {/* View Button for Individual Exercise */}
+          <div
+            style={{ position: "relative", display: "inline-block" }}
+            onMouseEnter={() => setShowPreview(true)}
+            onMouseLeave={() => setShowPreview(false)}
+          >
+            <button
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                padding: "4px 8px",
+                backgroundColor: "#4299e1",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "11px",
+                fontWeight: "500",
+                transition: "all 0.2s",
+              }}
+              onMouseOver={(e) => (e.target.style.backgroundColor = "#3182ce")}
+              onMouseOut={(e) => (e.target.style.backgroundColor = "#4299e1")}
+            >
+              <Eye size={12} />
+              View
+            </button>
+
+            {/* Individual Exercise Preview Modal */}
+            {showPreview && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: "0",
+                  marginTop: "8px",
+                  backgroundColor: "white",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
+                  padding: "1.5rem",
+                  width: "320px",
+                  zIndex: 1000,
+                  animation: "fadeIn 0.2s ease-out",
+                }}
+              >
+                <h4
+                  style={{
+                    margin: "0 0 1rem 0",
+                    color: "#2d3748",
+                    fontSize: "16px",
+                  }}
+                >
+                  {exercise.name}
+                </h4>
+
+                <div style={{ textAlign: "center", marginBottom: "1rem" }}>
+                  <img
+                    src={getExerciseImage(exercise.name)}
+                    alt={exercise.name}
+                    style={{
+                      width: "200px",
+                      height: "150px",
+                      borderRadius: "8px",
+                      objectFit: "cover",
+                      border: "1px solid #e2e8f0",
+                    }}
+                    onError={(e) => {
+                      e.target.src = EXERCISE_IMAGES["default"];
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "grid", gap: "0.5rem" }}>
+                  {exercise.sets && exercise.reps && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "14px",
+                          color: "#4a5568",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Sets × Reps:
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "14px",
+                          color: "#2d3748",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {exercise.sets} × {exercise.reps}
+                      </span>
+                    </div>
+                  )}
+
+                  {exercise.rest && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "14px",
+                          color: "#4a5568",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Rest:
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "14px",
+                          color: "#2d3748",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {exercise.rest}
+                      </span>
+                    </div>
+                  )}
+
+                  {exercise.difficulty && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: "14px",
+                          color: "#4a5568",
+                          fontWeight: "600",
+                        }}
+                      >
+                        Difficulty:
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "12px",
+                          color: "white",
+                          backgroundColor:
+                            exercise.difficulty <= 2
+                              ? "#48bb78"
+                              : exercise.difficulty <= 3
+                              ? "#ed8936"
+                              : "#e53e3e",
+                          padding: "2px 6px",
+                          borderRadius: "4px",
+                          fontWeight: "bold",
+                        }}
+                      >
+                        {exercise.difficulty}/5
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{
+                    marginTop: "1rem",
+                    paddingTop: "1rem",
+                    borderTop: "1px solid #e2e8f0",
+                    fontSize: "12px",
+                    color: "#718096",
+                    textAlign: "center",
+                  }}
+                >
+                  Focus on proper form and controlled movement
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {exercise.rest && (
+        <div
+          style={{
+            fontSize: "12px",
+            color: "#4a5568",
+            backgroundColor: "#e2e8f0",
+            padding: "2px 6px",
+            borderRadius: "4px",
+            marginLeft: "0.5rem",
+          }}
+        >
+          {exercise.rest} rest
+        </div>
+      )}
     </div>
   );
 }

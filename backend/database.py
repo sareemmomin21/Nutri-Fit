@@ -1459,3 +1459,252 @@ def get_combined_dashboard_data(user_id):
     }
    
     return combined_data
+
+def save_workout_preference(user_id, workout_name, preference):
+    """Save a workout preference (liked or disliked)"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        INSERT OR REPLACE INTO workout_preferences
+        (user_id, workout_name, preference)
+        VALUES (?, ?, ?)
+        """, (user_id, workout_name, preference))
+        
+        conn.commit()
+
+
+def get_user_custom_workouts(user_id):
+    """Get all custom workouts for a user"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        SELECT id, plan_name, plan_data, created_at
+        FROM workout_plans
+        WHERE user_id = ? AND plan_name LIKE 'Custom:%'
+        ORDER BY created_at DESC
+        """, (user_id,))
+        
+        workouts = []
+        for row in c.fetchall():
+            try:
+                workout_data = json.loads(row[2])
+                workouts.append({
+                    'id': row[0],
+                    'name': row[1].replace('Custom: ', ''),
+                    'workout_data': workout_data,
+                    'created_at': row[3]
+                })
+            except json.JSONDecodeError:
+                print(f"Error parsing workout data for workout ID {row[0]}")
+                continue
+        
+        return workouts
+
+
+def delete_custom_workout(user_id, workout_id):
+    """Delete a custom workout"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        DELETE FROM workout_plans
+        WHERE id = ? AND user_id = ? AND plan_name LIKE 'Custom:%'
+        """, (workout_id, user_id))
+        
+        conn.commit()
+        return c.rowcount > 0
+
+
+def save_workout_session(user_id, workout_data):
+    """Save a completed workout session"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        INSERT INTO workout_sessions
+        (user_id, workout_name, workout_type, duration_minutes, calories_burned,
+         difficulty_level, date_completed, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            workout_data['name'],
+            workout_data.get('type', 'strength'),
+            workout_data['duration'],
+            workout_data.get('calories_burned', 0),
+            workout_data.get('intensity', 'moderate'),
+            workout_data.get('date_completed', datetime.now().strftime('%Y-%m-%d')),
+            workout_data.get('notes', '')
+        ))
+        
+        workout_session_id = c.lastrowid
+        
+        # Save individual exercises if provided
+        if 'exercises' in workout_data and workout_data['exercises']:
+            for exercise in workout_data['exercises']:
+                c.execute("""
+                INSERT INTO exercise_performance
+                (user_id, workout_session_id, exercise_name, sets, reps, weight_lb,
+                 rest_seconds, date_performed)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    user_id,
+                    workout_session_id,
+                    exercise.get('name', ''),
+                    exercise.get('sets', 0),
+                    exercise.get('reps', 0),
+                    exercise.get('weight', 0),
+                    exercise.get('rest_seconds', 0),
+                    workout_data.get('date_completed', datetime.now().strftime('%Y-%m-%d'))
+                ))
+        
+        conn.commit()
+        return workout_session_id
+
+
+def get_recent_workouts(user_id, limit=10):
+    """Get recent workout sessions for a user"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        SELECT workout_name, workout_type, duration_minutes, calories_burned,
+               difficulty_level, date_completed, notes
+        FROM workout_sessions
+        WHERE user_id = ?
+        ORDER BY date_completed DESC, created_at DESC
+        LIMIT ?
+        """, (user_id, limit))
+        
+        workouts = []
+        for row in c.fetchall():
+            workouts.append({
+                'name': row[0],
+                'type': row[1],
+                'duration': row[2],
+                'calories_burned': row[3],
+                'intensity': row[4],
+                'date_completed': row[5],
+                'notes': row[6]
+            })
+        
+        return workouts
+
+
+def get_workout_stats(user_id, days_back=30):
+    """Get workout statistics for the dashboard"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get stats for the specified time period
+        since_date = (datetime.now() - timedelta(days=days_back)).strftime('%Y-%m-%d')
+        
+        c.execute("""
+        SELECT 
+            COUNT(*) as total_workouts,
+            COALESCE(SUM(duration_minutes), 0) as total_minutes,
+            COALESCE(SUM(calories_burned), 0) as total_calories,
+            COALESCE(AVG(duration_minutes), 0) as avg_duration
+        FROM workout_sessions
+        WHERE user_id = ? AND date_completed >= ?
+        """, (user_id, since_date))
+        
+        stats = c.fetchone()
+        
+        return {
+            'total_workouts': stats[0] if stats else 0,
+            'total_minutes': int(stats[1]) if stats else 0,
+            'total_calories': int(stats[2]) if stats else 0,
+            'avg_duration': round(stats[3], 1) if stats else 0
+        }
+
+
+def save_custom_workout(user_id, workout_data):
+    """Save a custom workout plan"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Convert workout data to JSON string
+        workout_json = json.dumps(workout_data)
+        
+        c.execute("""
+        INSERT INTO workout_plans
+        (user_id, plan_name, plan_data)
+        VALUES (?, ?, ?)
+        """, (user_id, f"Custom: {workout_data.get('name', 'Custom Workout')}", workout_json))
+        
+        conn.commit()
+        return c.lastrowid
+
+
+def get_dashboard_data(user_id):
+    """Get comprehensive dashboard data for a user"""
+    profile = get_user_profile(user_id)
+    if not profile:
+        return None
+    
+    current_day = get_user_current_day(user_id)
+    day_info = get_day_display_info(user_id, current_day)
+    
+    # Get nutrition data
+    daily_totals = get_daily_totals(user_id, current_day)
+    meal_progress = get_meal_progress(user_id)
+    
+    # Get fitness data
+    recent_workouts = get_recent_workouts(user_id, 5)
+    workout_stats = get_workout_stats(user_id, 7)  # Last 7 days
+    
+    # Calculate remaining calories
+    calories_goal = profile.get('calorie_goal', 2000)
+    calories_eaten = daily_totals.get('total_eaten', 0)
+    calories_remaining = calories_goal - calories_eaten
+    
+    # Calculate progress percentages
+    calorie_progress = min(100, (calories_eaten / calories_goal * 100)) if calories_goal > 0 else 0
+    
+    # Macro goals
+    protein_goal = profile.get('protein_goal', 150)
+    carbs_goal = profile.get('carbs_goal', 250)
+    fat_goal = profile.get('fat_goal', 70)
+    
+    nutrients = daily_totals.get('nutrients', {})
+    protein_eaten = nutrients.get('protein', 0)
+    carbs_eaten = nutrients.get('carbohydrates', 0)
+    fat_eaten = nutrients.get('fat', 0)
+    
+    macro_progress = {
+        'protein': {
+            'eaten': protein_eaten,
+            'goal': protein_goal,
+            'remaining': protein_goal - protein_eaten,
+            'percentage': min(100, (protein_eaten / protein_goal * 100)) if protein_goal > 0 else 0
+        },
+        'carbohydrates': {
+            'eaten': carbs_eaten,
+            'goal': carbs_goal,
+            'remaining': carbs_goal - carbs_eaten,
+            'percentage': min(100, (carbs_eaten / carbs_goal * 100)) if carbs_goal > 0 else 0
+        },
+        'fat': {
+            'eaten': fat_eaten,
+            'goal': fat_goal,
+            'remaining': fat_goal - fat_eaten,
+            'percentage': min(100, (fat_eaten / fat_goal * 100)) if fat_goal > 0 else 0
+        }
+    }
+    
+    return {
+        'user_profile': profile,
+        'day_info': day_info,
+        'calories': {
+            'goal': calories_goal,
+            'eaten': calories_eaten,
+            'remaining': calories_remaining,
+            'progress_percentage': calorie_progress
+        },
+        'macros': macro_progress,
+        'meal_progress': meal_progress,
+        'recent_workouts': recent_workouts,
+        'workout_stats': workout_stats
+    }

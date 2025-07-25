@@ -1048,6 +1048,9 @@ def get_progression_suggestions_endpoint():
         print(f"Error getting progression suggestions: {e}")
         return jsonify({"error": "Failed to get progression suggestions"}), 500
 
+# Add these new endpoints to your existing app.py
+
+# Replace the existing custom workout endpoint in app.py with this updated version
 
 @app.route("/api/create_custom_workout", methods=["POST"])
 def create_custom_workout_endpoint():
@@ -1156,87 +1159,67 @@ def get_user_custom_workouts_endpoint():
 
 @app.route("/api/get_quick_workout_suggestions", methods=["POST"])
 def get_quick_workout_suggestions():
-    """Get quick workout suggestions based on time, focus, and equipment"""
+    """Get quick workout suggestions based on time, focus, and equipment with enhanced filtering"""
     data = request.json
     user_id = data.get("user_id")
     duration = data.get("duration", 30)
     focus = data.get("focus", "full_body")
     equipment = data.get("equipment", [])
     excluded_workouts = data.get("excluded_workouts", [])
-    
+
+    print(f"🔍 Quick workout request:")
+    print(f"   User: {user_id}")
+    print(f"   Duration: {duration} min")
+    print(f"   Focus: {focus}")
+    print(f"   Equipment: {equipment}")
+    print(f"   Excluded: {excluded_workouts}")
+
     if not user_id:
         return jsonify({"error": "User ID required"}), 400
-    
+
     try:
         from fitness_utils import get_quick_workout_suggestions
+        from database import get_user_profile
         
         profile = get_user_profile(user_id)
+        if not profile:
+            print(f"⚠️ No profile found for user {user_id}, using defaults")
+            profile = {"fitness_experience": "beginner"}
+        
         suggestions = get_quick_workout_suggestions(
             profile, duration, focus, equipment, excluded_workouts
         )
         
-        return jsonify(suggestions)
-    except Exception as e:
-        print(f"Error getting quick workout suggestions: {e}")
-        return jsonify({"error": "Failed to get suggestions"}), 500
-
-
-@app.route("/api/quick_workout_feedback", methods=["POST"])
-def quick_workout_feedback():
-    """Handle like/dislike feedback for quick workouts"""
-    data = request.json
-    user_id = data.get("user_id")
-    workout_name = data.get("workout_name")
-    liked = data.get("liked")
-    
-    if not all([user_id, workout_name]) or liked is None:
-        return jsonify({"error": "User ID, workout name, and liked status required"}), 400
-    
-    try:
-        # Store workout preference in database
-        with sqlite3.connect(DB_PATH) as conn:
-            c = conn.cursor()
-            
-            preference = 'liked' if liked else 'disliked'
-            
-            # Remove any existing preference for this workout
-            c.execute("""
-            DELETE FROM workout_preferences
-            WHERE user_id = ? AND workout_name = ?
-            """, (user_id, workout_name))
-            
-            # Add new preference
-            c.execute("""
-            INSERT INTO workout_preferences (user_id, workout_name, preference)
-            VALUES (?, ?, ?)
-            """, (user_id, workout_name, preference))
-            
-            conn.commit()
-            
-            print(f"Successfully saved workout preference: {workout_name} -> {preference} for user {user_id}")
+        print(f"✅ Found {len(suggestions)} suggestions for user {user_id}")
         
-        return jsonify({"success": True, "message": "Preference updated"})
+        # Filter out any None suggestions
+        valid_suggestions = [s for s in suggestions if s and s.get('workout')]
+        
+        return jsonify(valid_suggestions)
+        
     except Exception as e:
-        print(f"Error updating workout preference: {e}")
-        return jsonify({"error": "Failed to update preference"}), 500
-
-# Add these endpoints to your app.py
+        error_msg = f"Error getting suggestions: {str(e)}"
+        print(f"❌ {error_msg}")
+        return jsonify({"error": error_msg}), 500
+    
 
 @app.route("/api/get_workout_preferences", methods=["POST"])
 def get_workout_preferences():
-    """Get user's workout preferences (likes/dislikes)"""
+    """Get user's workout preferences (likes/dislikes) with enhanced error handling"""
     data = request.json
     user_id = data.get("user_id")
-    
+
     if not user_id:
         return jsonify({"error": "User ID required"}), 400
-    
+
     try:
         from database import get_user_workout_preferences
         preferences = get_user_workout_preferences(user_id)
+        print(f"✅ Retrieved workout preferences for user {user_id}: {len(preferences.get('liked', []))} liked, {len(preferences.get('disliked', []))} disliked")
         return jsonify(preferences)
     except Exception as e:
-        print(f"Error fetching workout preferences: {e}")
+        print(f"❌ Error fetching workout preferences: {e}")
+        # Return empty preferences instead of error to not break the UI
         return jsonify({"liked": [], "disliked": []})
 
 
