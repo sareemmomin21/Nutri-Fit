@@ -20,10 +20,11 @@ from database import (
     #gamification functions
     search_users, get_user_friends, add_friend, remove_friend,
     fetch_weekly_challenges,
-    insert_custom_challenge,
     # friend challenge functions
     create_friend_challenge, get_friend_challenges, respond_to_friend_challenge,
     update_friend_challenge_progress, get_friend_preferences,
+    get_friends_leaderboard,
+    create_challenge, update_challenge_progress
 )
 
 from fitness_utils import (
@@ -33,7 +34,7 @@ from fitness_utils import (
 )
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+CORS(app)  # Enable CORS for all routes
 
 @app.route("/api/hello")
 def hello():
@@ -1268,7 +1269,7 @@ def update_challenge_progress_endpoint():
     if not user_id or not challenge_id or progress is None:
         return jsonify({"error": "user_id, challenge_id, and progress required"}), 400
     
-    ok, msg = update_friend_challenge_progress(user_id, challenge_id, int(progress))
+    ok, msg = update_challenge_progress(user_id, challenge_id, int(progress))
     return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
 
 
@@ -1327,18 +1328,129 @@ def add_custom_challenge_endpoint():
     user_id     = data.get("user_id")
     title       = (data.get("title") or "").strip()
     description = (data.get("description") or "").strip()
+    deadline    = data.get("deadline")
+    max_progress = data.get("max_progress", 100)
 
     if not user_id or not title:
         return jsonify({"error": "user_id & title required"}), 400
 
-    # insert into DB and return the new record
-    new_challenge = insert_custom_challenge(user_id, title, description)
-    return jsonify(new_challenge), 200
+    # Use the new create_challenge function
+    challenge_id = create_challenge(user_id, title, description, deadline, max_progress)
+    return jsonify({"id": challenge_id, "success": True}), 200
 
 
+# ---------------------------
+# MESSAGING ENDPOINTS
+# ---------------------------
+
+@app.route("/api/send_message", methods=["POST"])
+def send_message_endpoint():
+    data = request.json or {}
+    sender_id = data.get("user_id")
+    receiver_id = data.get("friend_id")
+    content = (data.get("content") or "").strip()
+    if not sender_id or not receiver_id or not content:
+        return jsonify({"error": "user_id, friend_id, and content required"}), 400
+    try:
+        msg_id = send_message(sender_id, receiver_id, content)
+        return jsonify({"success": True, "message_id": msg_id})
+    except Exception as e:
+        print(f"Error sending message: {e}")
+        return jsonify({"error": "Failed to send message"}), 500
+
+@app.route("/api/get_messages", methods=["POST"])
+def get_messages_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+    limit = int(data.get("limit", 50))
+    if not user_id or not friend_id:
+        return jsonify({"error": "user_id and friend_id required"}), 400
+    try:
+        messages = get_messages(user_id, friend_id, limit)
+        return jsonify(messages)
+    except Exception as e:
+        print(f"Error fetching messages: {e}")
+        return jsonify({"error": "Failed to fetch messages"}), 500
+
+
+# ---------------------------
+# ADVANCED FRIENDS FEATURES ENDPOINTS
+# ---------------------------
+
+@app.route("/api/get_friend_activities", methods=["POST"])
+def get_friend_activities_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    limit = int(data.get("limit", 20))
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    try:
+        activities = get_friend_activities(user_id, limit)
+        return jsonify(activities)
+    except Exception as e:
+        print(f"Error fetching friend activities: {e}")
+        return jsonify({"error": "Failed to fetch activities"}), 500
+
+@app.route("/api/get_friend_badges", methods=["POST"])
+def get_friend_badges_endpoint():
+    data = request.json or {}
+    friend_id = data.get("friend_id")
+    if not friend_id:
+        return jsonify({"error": "friend_id required"}), 400
+    try:
+        badges = get_friend_badges(friend_id)
+        return jsonify(badges)
+    except Exception as e:
+        print(f"Error fetching friend badges: {e}")
+        return jsonify({"error": "Failed to fetch badges"}), 500
+
+@app.route("/api/set_friend_reminder", methods=["POST"])
+def set_friend_reminder_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+    message = data.get("message", "")
+    remind_at = data.get("remind_at")
+    if not user_id or not friend_id or not remind_at:
+        return jsonify({"error": "user_id, friend_id, and remind_at required"}), 400
+    try:
+        reminder_id = set_friend_reminder(user_id, friend_id, message, remind_at)
+        return jsonify({"success": True, "reminder_id": reminder_id})
+    except Exception as e:
+        print(f"Error setting friend reminder: {e}")
+        return jsonify({"error": "Failed to set reminder"}), 500
+
+@app.route("/api/get_friend_reminders", methods=["POST"])
+def get_friend_reminders_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    try:
+        reminders = get_friend_reminders(user_id)
+        return jsonify(reminders)
+    except Exception as e:
+        print(f"Error fetching friend reminders: {e}")
+        return jsonify({"error": "Failed to fetch reminders"}), 500
+
+@app.route("/api/get_friends_leaderboard", methods=["POST"])
+def get_friends_leaderboard_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    metric = data.get("metric", "streak")
+    limit = int(data.get("limit", 10))
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    try:
+        leaderboard = get_friends_leaderboard(user_id, metric, limit)
+        return jsonify(leaderboard)
+    except Exception as e:
+        print(f"Error fetching leaderboard: {e}")
+        return jsonify({"error": "Failed to fetch leaderboard"}), 500
 
 
 if __name__ == "__main__":
     init_db()
     init_fitness_tables()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(debug=True)
