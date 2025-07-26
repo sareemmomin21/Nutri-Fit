@@ -244,22 +244,66 @@ def init_fitness_tables():
 
 
 def get_user_workout_preferences(user_id):
-    """Get user's workout preferences (likes/dislikes)"""
+    """Get user's workout preferences (likes/dislikes) - ENHANCED VERSION"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        try:
+            c.execute("""
+            SELECT workout_name, preference
+            FROM workout_preferences
+            WHERE user_id = ?
+            ORDER BY created_at DESC
+            """, (user_id,))
+            
+            preferences = {'liked': [], 'disliked': []}
+            for workout_name, preference in c.fetchall():
+                if preference in preferences:
+                    preferences[preference].append(workout_name)
+            
+            print(f"📊 Retrieved preferences for user {user_id}: {len(preferences['liked'])} liked, {len(preferences['disliked'])} disliked")
+            return preferences
+        
+        except Exception as e:
+            print(f"❌ Error getting workout preferences: {e}")
+            return {'liked': [], 'disliked': []}
+
+def remove_workout_preference(user_id, workout_name):
+    """Remove a workout preference"""
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
         
         c.execute("""
-        SELECT workout_name, preference
-        FROM workout_preferences 
-        WHERE user_id = ?
-        """, (user_id,))
+        DELETE FROM workout_preferences
+        WHERE user_id = ? AND workout_name = ?
+        """, (user_id, workout_name))
         
-        preferences = {'liked': [], 'disliked': []}
-        for workout_name, preference in c.fetchall():
-            preferences[preference].append(workout_name)
+        removed_count = c.rowcount
+        conn.commit()
         
-        return preferences
-    
+        print(f"🗑️ Removed {removed_count} preference(s) for workout '{workout_name}' for user {user_id}")
+        return removed_count > 0
+
+def get_all_disliked_workouts(user_id):
+    """Get all workouts that the user has disliked - for filtering suggestions"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        try:
+            c.execute("""
+            SELECT workout_name
+            FROM workout_preferences
+            WHERE user_id = ? AND preference = 'disliked'
+            """, (user_id,))
+            
+            disliked = [row[0] for row in c.fetchall()]
+            print(f"🚫 User {user_id} has disliked {len(disliked)} workouts")
+            return disliked
+        
+        except Exception as e:
+            print(f"❌ Error getting disliked workouts: {e}")
+            return []
+        
 def get_user_current_day(user_id):
     """Get current day number for user"""
     with sqlite3.connect(DB_PATH) as conn:
@@ -1252,18 +1296,13 @@ def save_workout_plan(user_id, plan_name, plan_data):
     """Save a workout plan for the user"""
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
-       
-        # Deactivate current active plan
-        c.execute("""
-        UPDATE workout_plans SET is_active = FALSE WHERE user_id = ?
-        """, (user_id,))
-       
-        # Insert new plan
+        
+        # Insert new plan (don't deactivate others for custom workouts)
         c.execute("""
         INSERT INTO workout_plans (user_id, plan_name, plan_data, is_active)
-        VALUES (?, ?, ?, TRUE)
-        """, (user_id, plan_name, json.dumps(plan_data)))
-       
+        VALUES (?, ?, ?, ?)
+        """, (user_id, plan_name, json.dumps(plan_data), True))
+        
         conn.commit()
         return c.lastrowid
 
@@ -1461,17 +1500,26 @@ def get_combined_dashboard_data(user_id):
     return combined_data
 
 def save_workout_preference(user_id, workout_name, preference):
-    """Save a workout preference (liked or disliked)"""
+    """Save a workout preference (liked or disliked) - FIXED VERSION"""
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
         
+        # First, remove any existing preference for this workout to avoid duplicates
         c.execute("""
-        INSERT OR REPLACE INTO workout_preferences
+        DELETE FROM workout_preferences
+        WHERE user_id = ? AND workout_name = ?
+        """, (user_id, workout_name))
+        
+        # Then insert the new preference
+        c.execute("""
+        INSERT INTO workout_preferences
         (user_id, workout_name, preference)
         VALUES (?, ?, ?)
         """, (user_id, workout_name, preference))
         
         conn.commit()
+        
+        print(f"✅ Saved workout preference: {workout_name} -> {preference} for user {user_id}")
 
 
 def get_user_custom_workouts(user_id):
@@ -1480,7 +1528,7 @@ def get_user_custom_workouts(user_id):
         c = conn.cursor()
         
         c.execute("""
-        SELECT id, plan_name, plan_data, created_at
+        SELECT id, plan_name, plan_data, created_at, is_active
         FROM workout_plans
         WHERE user_id = ? AND plan_name LIKE 'Custom:%'
         ORDER BY created_at DESC
@@ -1489,18 +1537,20 @@ def get_user_custom_workouts(user_id):
         workouts = []
         for row in c.fetchall():
             try:
-                workout_data = json.loads(row[2])
+                plan_data = json.loads(row[2])
                 workouts.append({
                     'id': row[0],
                     'name': row[1].replace('Custom: ', ''),
-                    'workout_data': workout_data,
-                    'created_at': row[3]
+                    'workout_data': plan_data,
+                    'created_at': row[3],
+                    'is_active': row[4]
                 })
             except json.JSONDecodeError:
                 print(f"Error parsing workout data for workout ID {row[0]}")
                 continue
         
         return workouts
+
 
 
 def delete_custom_workout(user_id, workout_id):

@@ -1,284 +1,796 @@
 import React, { useState, useEffect } from "react";
 import FitnessDashboard from "./FitnessDashboard";
-import CustomWorkoutModal from "./CustomWorkoutModal";
 import QuickWorkout from "./QuickWorkout";
 
-// Workout History Tab Component
-function WorkoutHistoryTab({ history, isLoading }) {
-  const cardStyle = {
-    backgroundColor: "#f8fafc",
-    padding: "1.5rem",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    marginBottom: "1rem",
+// Custom Workout Creation Modal Component
+function CustomWorkoutCreationModal({ onClose, onCreate }) {
+  const [workoutName, setWorkoutName] = useState("");
+  const [estimatedCalories, setEstimatedCalories] = useState("");
+  const [estimatedDuration, setEstimatedDuration] = useState("");
+  const [workoutType, setWorkoutType] = useState("strength");
+  const [intensity, setIntensity] = useState("moderate");
+  const [exercises, setExercises] = useState([]);
+  const [newExercise, setNewExercise] = useState({
+    name: "",
+    sets: "",
+    reps: "",
+    rest: "60s",
+    weight: "",
+    notes: "",
+  });
+  const [isCreating, setIsCreating] = useState(false);
+
+  const modalOverlayStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2000,
   };
 
-  if (isLoading) {
-    return (
-      <div style={{ textAlign: "center", padding: "2rem" }}>
-        <div>Loading workout history...</div>
-      </div>
-    );
-  }
+  const modalStyle = {
+    backgroundColor: "white",
+    borderRadius: "12px",
+    padding: "2rem",
+    maxWidth: "700px",
+    width: "90%",
+    maxHeight: "85vh",
+    overflowY: "auto",
+    position: "relative",
+  };
 
-  if (!history || history.length === 0) {
-    return (
-      <div style={cardStyle}>
-        <h3>No workout history yet</h3>
-        <p>Complete your first workout to see your progress history here.</p>
-      </div>
-    );
-  }
+  const workoutTypes = [
+    { value: "strength", label: "Strength Training" },
+    { value: "cardio", label: "Cardio" },
+    { value: "flexibility", label: "Flexibility/Yoga" },
+    { value: "hiit", label: "HIIT" },
+    { value: "sports", label: "Sports" },
+    { value: "other", label: "Other" },
+  ];
 
-  // Group workouts by date
-  const groupedHistory = history.reduce((acc, workout) => {
-    const date = workout.date.toDateString();
-    if (!acc[date]) acc[date] = [];
-    acc[date].push(workout);
-    return acc;
-  }, {});
+  const intensityLevels = [
+    { value: "light", label: "Light" },
+    { value: "moderate", label: "Moderate" },
+    { value: "vigorous", label: "Vigorous" },
+    { value: "extreme", label: "Extreme" },
+  ];
+
+  const addExercise = () => {
+    if (newExercise.name.trim()) {
+      setExercises([...exercises, { ...newExercise, id: Date.now() }]);
+      setNewExercise({
+        name: "",
+        sets: "",
+        reps: "",
+        rest: "60s",
+        weight: "",
+        notes: "",
+      });
+    }
+  };
+
+  const removeExercise = (id) => {
+    setExercises(exercises.filter((ex) => ex.id !== id));
+  };
+
+  const handleCreate = async () => {
+    if (!workoutName.trim()) {
+      alert("Please enter a workout name");
+      return;
+    }
+
+    if (!estimatedCalories || estimatedCalories < 1) {
+      alert("Please enter estimated calories burned");
+      return;
+    }
+
+    if (!estimatedDuration || estimatedDuration < 1) {
+      alert("Please enter estimated duration in minutes");
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const success = await onCreate({
+        workout_name: workoutName,
+        workout_type: workoutType,
+        estimated_calories: parseInt(estimatedCalories),
+        estimated_duration: parseInt(estimatedDuration),
+        intensity: intensity,
+        exercises: exercises.map((ex) => ({
+          name: ex.name,
+          sets: ex.sets ? parseInt(ex.sets) : undefined,
+          reps: ex.reps,
+          rest: ex.rest,
+          weight: ex.weight,
+          notes: ex.notes,
+        })),
+      });
+
+      if (success) {
+        onClose();
+      }
+    } finally {
+      setIsCreating(false);
+    }
+  };
 
   return (
-    <div>
-      <h2 style={{ marginBottom: "2rem", color: "#2d3748" }}>
-        Workout History
-      </h2>
+    <div style={modalOverlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: "1rem",
+            right: "1rem",
+            background: "none",
+            border: "none",
+            fontSize: "24px",
+            cursor: "pointer",
+            color: "#718096",
+          }}
+        >
+          ×
+        </button>
 
-      <div style={{ display: "grid", gap: "1.5rem" }}>
-        {Object.entries(groupedHistory).map(([date, workouts]) => (
+        <h2 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
+          Create Custom Workout
+        </h2>
+
+        {/* Basic Workout Info */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "1rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              Workout Name *
+            </label>
+            <input
+              type="text"
+              value={workoutName}
+              onChange={(e) => setWorkoutName(e.target.value)}
+              placeholder="e.g., My Morning Routine"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+              }}
+            />
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              Workout Type *
+            </label>
+            <select
+              value={workoutType}
+              onChange={(e) => setWorkoutType(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+              }}
+            >
+              {workoutTypes.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              Intensity Level *
+            </label>
+            <select
+              value={intensity}
+              onChange={(e) => setIntensity(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+              }}
+            >
+              {intensityLevels.map((level) => (
+                <option key={level.value} value={level.value}>
+                  {level.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              Duration (minutes) *
+            </label>
+            <input
+              type="number"
+              value={estimatedDuration}
+              onChange={(e) => setEstimatedDuration(e.target.value)}
+              placeholder="e.g., 45"
+              min="1"
+              max="300"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+              }}
+            />
+          </div>
+
+          <div>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "0.5rem",
+                fontWeight: "bold",
+              }}
+            >
+              Estimated Calories Burned *
+            </label>
+            <input
+              type="number"
+              value={estimatedCalories}
+              onChange={(e) => setEstimatedCalories(e.target.value)}
+              placeholder="e.g., 250"
+              min="1"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #e2e8f0",
+                borderRadius: "6px",
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Exercises Section */}
+        <div style={{ marginBottom: "1.5rem" }}>
+          <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
+            Exercises (Optional)
+          </h3>
+
+          {/* Add Exercise Form */}
           <div
-            key={date}
             style={{
-              backgroundColor: "white",
-              padding: "1.5rem",
-              borderRadius: "12px",
-              border: "1px solid #e2e8f0",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+              backgroundColor: "#f7fafc",
+              padding: "1rem",
+              borderRadius: "8px",
+              marginBottom: "1rem",
             }}
           >
-            <h3
-              style={{
-                margin: "0 0 1rem 0",
-                color: "#2d3748",
-                borderBottom: "1px solid #e2e8f0",
-                paddingBottom: "0.5rem",
-              }}
-            >
-              {date}
-            </h3>
-
-            {workouts.map((workout, index) => (
-              <div
-                key={index}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  padding: "1rem",
-                  backgroundColor: "#f8fafc",
-                  borderRadius: "8px",
-                  marginBottom: "0.5rem",
-                  border: "1px solid #e2e8f0",
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div
-                    style={{
-                      fontWeight: "bold",
-                      color: "#2d3748",
-                      marginBottom: "0.25rem",
-                    }}
-                  >
-                    {workout.name}
-                  </div>
-                  <div style={{ fontSize: "14px", color: "#718096" }}>
-                    {workout.type} • {workout.difficulty_level}
-                  </div>
-                  {workout.notes && (
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "#4a5568",
-                        marginTop: "0.25rem",
-                        fontStyle: "italic",
-                      }}
-                    >
-                      "{workout.notes}"
-                    </div>
-                  )}
-                </div>
-
-                <div
-                  style={{ display: "flex", gap: "1rem", alignItems: "center" }}
-                >
-                  <div style={{ textAlign: "center" }}>
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        fontWeight: "bold",
-                        color: "#4299e1",
-                      }}
-                    >
-                      {workout.duration}
-                    </div>
-                    <div style={{ fontSize: "12px", color: "#718096" }}>
-                      min
-                    </div>
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div
-                      style={{
-                        fontSize: "16px",
-                        fontWeight: "bold",
-                        color: "#ed8936",
-                      }}
-                    >
-                      {workout.calories_burned}
-                    </div>
-                    <div style={{ fontSize: "12px", color: "#718096" }}>
-                      cal
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Daily Summary */}
             <div
               style={{
-                marginTop: "1rem",
-                padding: "1rem",
-                backgroundColor: "#e6fffa",
-                borderRadius: "8px",
-                border: "1px solid #81e6d9",
+                display: "grid",
+                gridTemplateColumns: "2fr 1fr 1fr 1fr",
+                gap: "0.5rem",
+                marginBottom: "0.5rem",
               }}
             >
-              <div
+              <input
+                type="text"
+                value={newExercise.name}
+                onChange={(e) =>
+                  setNewExercise({ ...newExercise, name: e.target.value })
+                }
+                placeholder="Exercise name"
                 style={{
-                  fontSize: "14px",
-                  fontWeight: "bold",
-                  color: "#234e52",
+                  padding: "6px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "4px",
+                }}
+              />
+              <input
+                type="number"
+                value={newExercise.sets}
+                onChange={(e) =>
+                  setNewExercise({ ...newExercise, sets: e.target.value })
+                }
+                placeholder="Sets"
+                style={{
+                  padding: "6px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "4px",
+                }}
+              />
+              <input
+                type="text"
+                value={newExercise.reps}
+                onChange={(e) =>
+                  setNewExercise({ ...newExercise, reps: e.target.value })
+                }
+                placeholder="Reps/Time"
+                style={{
+                  padding: "6px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "4px",
+                }}
+              />
+              <input
+                type="text"
+                value={newExercise.weight}
+                onChange={(e) =>
+                  setNewExercise({ ...newExercise, weight: e.target.value })
+                }
+                placeholder="Weight (optional)"
+                style={{
+                  padding: "6px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "4px",
+                }}
+              />
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 2fr",
+                gap: "0.5rem",
+                marginBottom: "0.5rem",
+              }}
+            >
+              <select
+                value={newExercise.rest}
+                onChange={(e) =>
+                  setNewExercise({ ...newExercise, rest: e.target.value })
+                }
+                style={{
+                  padding: "6px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "4px",
                 }}
               >
-                Daily Total: {workouts.reduce((sum, w) => sum + w.duration, 0)}{" "}
-                minutes •{" "}
-                {workouts.reduce((sum, w) => sum + w.calories_burned, 0)}{" "}
-                calories
+                <option value="30s">30s rest</option>
+                <option value="45s">45s rest</option>
+                <option value="60s">60s rest</option>
+                <option value="90s">90s rest</option>
+                <option value="120s">2min rest</option>
+                <option value="180s">3min rest</option>
+              </select>
+              <input
+                type="text"
+                value={newExercise.notes}
+                onChange={(e) =>
+                  setNewExercise({ ...newExercise, notes: e.target.value })
+                }
+                placeholder="Notes (e.g., slow tempo, focus on form)"
+                style={{
+                  padding: "6px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "4px",
+                }}
+              />
+            </div>
+
+            <button
+              onClick={addExercise}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#48bb78",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "bold",
+              }}
+            >
+              Add Exercise
+            </button>
+          </div>
+
+          {/* Exercise List */}
+          {exercises.length > 0 && (
+            <div style={{ marginBottom: "1rem" }}>
+              <h4 style={{ margin: "0 0 0.5rem 0", color: "#2d3748" }}>
+                Added Exercises ({exercises.length}):
+              </h4>
+              <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                {exercises.map((exercise) => (
+                  <div
+                    key={exercise.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      padding: "0.75rem",
+                      backgroundColor: "white",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: "6px",
+                      marginBottom: "0.5rem",
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: "14px", fontWeight: "bold" }}>
+                        {exercise.name}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#718096",
+                          marginTop: "0.25rem",
+                        }}
+                      >
+                        {exercise.sets && exercise.reps && (
+                          <span>
+                            {exercise.sets} sets × {exercise.reps} reps
+                          </span>
+                        )}
+                        {exercise.weight && <span> • {exercise.weight}</span>}
+                        {exercise.rest && <span> • {exercise.rest} rest</span>}
+                      </div>
+                      {exercise.notes && (
+                        <div
+                          style={{
+                            fontSize: "12px",
+                            color: "#4a5568",
+                            marginTop: "0.25rem",
+                            fontStyle: "italic",
+                          }}
+                        >
+                          {exercise.notes}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => removeExercise(exercise.id)}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "#e53e3e",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        marginLeft: "0.5rem",
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        ))}
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div
+          style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}
+        >
+          <button
+            onClick={onClose}
+            disabled={isCreating}
+            style={{
+              padding: "12px 24px",
+              backgroundColor: "#e2e8f0",
+              color: "#4a5568",
+              border: "none",
+              borderRadius: "8px",
+              cursor: isCreating ? "not-allowed" : "pointer",
+              fontSize: "16px",
+              fontWeight: "bold",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleCreate}
+            disabled={
+              isCreating ||
+              !workoutName.trim() ||
+              !estimatedCalories ||
+              !estimatedDuration
+            }
+            style={{
+              padding: "12px 24px",
+              backgroundColor:
+                isCreating ||
+                !workoutName.trim() ||
+                !estimatedCalories ||
+                !estimatedDuration
+                  ? "#a0aec0"
+                  : "#9f7aea",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor:
+                isCreating ||
+                !workoutName.trim() ||
+                !estimatedCalories ||
+                !estimatedDuration
+                  ? "not-allowed"
+                  : "pointer",
+              fontSize: "16px",
+              fontWeight: "bold",
+            }}
+          >
+            {isCreating ? "Creating..." : "Create Workout"}
+          </button>
+        </div>
+
+        {/* Help Text */}
+        <div
+          style={{
+            marginTop: "1.5rem",
+            padding: "1rem",
+            backgroundColor: "#edf2f7",
+            borderRadius: "8px",
+            fontSize: "14px",
+            color: "#4a5568",
+          }}
+        >
+          <strong>Tips for creating your workout:</strong>
+          <ul style={{ margin: "0.5rem 0 0 1rem", paddingLeft: "1rem" }}>
+            <li>Choose a descriptive name that you'll recognize later</li>
+            <li>Select the workout type that best matches your routine</li>
+            <li>Estimate calories based on your body weight and intensity</li>
+            <li>Adding exercises helps track your routine and progress</li>
+            <li>You can create different versions for progression</li>
+          </ul>
+        </div>
       </div>
     </div>
   );
 }
 
-// Fitness Goals Tab Component
-function FitnessGoalsTab({ goals, isLoading, onAddGoal, userId }) {
-  const [showAddGoalForm, setShowAddGoalForm] = useState(false);
-  const [newGoal, setNewGoal] = useState({
-    goal_type: "",
-    goal_value: "",
-    target_date: "",
-  });
+// Custom Workout Completion Modal Component
+function CustomWorkoutCompletionModal({ workout, onClose, onComplete }) {
+  const [workoutNotes, setWorkoutNotes] = useState("");
+  const [actualDuration, setActualDuration] = useState(
+    workout?.workout_data?.duration || 30
+  );
+  const [isCompleting, setIsCompleting] = useState(false);
 
-  const cardStyle = {
-    backgroundColor: "#f8fafc",
-    padding: "1.5rem",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    marginBottom: "1rem",
+  const modalOverlayStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 2000,
   };
 
-  const goalTypes = [
-    { value: "workouts_per_week", label: "Workouts per Week" },
-    { value: "minutes_per_week", label: "Minutes per Week" },
-    { value: "calories_burned", label: "Calories Burned" },
-    { value: "weight_loss", label: "Weight Loss (lbs)" },
-    { value: "weight_gain", label: "Weight Gain (lbs)" },
-    { value: "strength_goal", label: "Strength Goal" },
-  ];
+  const modalStyle = {
+    backgroundColor: "white",
+    borderRadius: "12px",
+    padding: "2rem",
+    maxWidth: "700px",
+    width: "90%",
+    maxHeight: "85vh",
+    overflowY: "auto",
+    position: "relative",
+  };
 
-  const handleAddGoal = async (e) => {
-    e.preventDefault();
-    if (!newGoal.goal_type || !newGoal.goal_value) return;
+  const handleComplete = async () => {
+    setIsCompleting(true);
+    try {
+      const workoutData = {
+        name: workout.workout_data.name || workout.name,
+        type: workout.workout_data.type || "strength",
+        duration: actualDuration,
+        intensity: workout.workout_data.intensity || "moderate",
+        notes: workoutNotes,
+        exercises: workout.workout_data.exercises || [],
+        date_completed: new Date().toISOString().split("T")[0],
+      };
 
-    const success = await onAddGoal(newGoal);
-    if (success) {
-      setNewGoal({ goal_type: "", goal_value: "", target_date: "" });
-      setShowAddGoalForm(false);
+      const success = await onComplete(workoutData);
+      if (!success) {
+        alert("Failed to complete workout. Please try again.");
+      }
+    } finally {
+      setIsCompleting(false);
     }
   };
 
-  const calculateProgress = (goal) => {
-    if (!goal.target || goal.target === 0) return 0;
-    return Math.min((goal.current / goal.target) * 100, 100);
-  };
-
-  const getProgressColor = (progress) => {
-    if (progress >= 100) return "#48bb78";
-    if (progress >= 75) return "#38a169";
-    if (progress >= 50) return "#ed8936";
-    return "#4299e1";
-  };
-
-  if (isLoading) {
-    return (
-      <div style={{ textAlign: "center", padding: "2rem" }}>
-        <div>Loading fitness goals...</div>
-      </div>
-    );
-  }
-
   return (
-    <div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "2rem",
-        }}
-      >
-        <h2 style={{ margin: "0", color: "#2d3748" }}>Fitness Goals</h2>
+    <div style={modalOverlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
         <button
-          onClick={() => setShowAddGoalForm(!showAddGoalForm)}
+          onClick={onClose}
           style={{
-            padding: "8px 16px",
-            backgroundColor: "#48bb78",
-            color: "white",
+            position: "absolute",
+            top: "1rem",
+            right: "1rem",
+            background: "none",
             border: "none",
-            borderRadius: "6px",
+            fontSize: "24px",
             cursor: "pointer",
-            fontSize: "14px",
-            fontWeight: "bold",
+            color: "#718096",
           }}
         >
-          Add Goal
+          ×
         </button>
-      </div>
 
-      {/* Add Goal Form */}
-      {showAddGoalForm && (
-        <form
-          onSubmit={handleAddGoal}
+        <h2 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
+          Complete Workout: {workout.workout_data.name || workout.name}
+        </h2>
+
+        {/* Workout Overview */}
+        <div
           style={{
-            backgroundColor: "white",
+            backgroundColor: "#f7fafc",
             padding: "1.5rem",
-            borderRadius: "12px",
-            border: "1px solid #e2e8f0",
-            marginBottom: "2rem",
-            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            borderRadius: "8px",
+            marginBottom: "1.5rem",
           }}
         >
-          <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
-            Add New Goal
-          </h3>
-
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "1fr 1fr 1fr",
+              gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+              gap: "1rem",
+              marginBottom: "1rem",
+            }}
+          >
+            <div style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: "#4299e1",
+                }}
+              >
+                {workout.workout_data.duration}
+              </div>
+              <div style={{ fontSize: "12px", color: "#718096" }}>
+                planned minutes
+              </div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: "#ed8936",
+                }}
+              >
+                {workout.workout_data.calories_burned}
+              </div>
+              <div style={{ fontSize: "12px", color: "#718096" }}>
+                estimated calories
+              </div>
+            </div>
+            <div style={{ textAlign: "center" }}>
+              <div
+                style={{
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  color: "#9f7aea",
+                }}
+              >
+                {workout.workout_data.exercises?.length || 0}
+              </div>
+              <div style={{ fontSize: "12px", color: "#718096" }}>
+                exercises
+              </div>
+            </div>
+          </div>
+
+          <div style={{ fontSize: "14px", color: "#4a5568" }}>
+            <strong>Type:</strong> {workout.workout_data.type || "Custom"} •{" "}
+            <strong>Intensity:</strong>{" "}
+            {workout.workout_data.intensity || "Moderate"}
+          </div>
+        </div>
+
+        {/* Exercise List */}
+        {workout.workout_data.exercises &&
+          workout.workout_data.exercises.length > 0 && (
+            <div
+              style={{
+                backgroundColor: "#f7fafc",
+                padding: "1.5rem",
+                borderRadius: "8px",
+                marginBottom: "1.5rem",
+              }}
+            >
+              <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
+                Exercises to Complete:
+              </h3>
+              <div style={{ display: "grid", gap: "0.75rem" }}>
+                {workout.workout_data.exercises.map((exercise, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      padding: "1rem",
+                      backgroundColor: "white",
+                      borderRadius: "6px",
+                      border: "1px solid #e2e8f0",
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontWeight: "bold",
+                          color: "#2d3748",
+                          fontSize: "14px",
+                        }}
+                      >
+                        {exercise.name}
+                      </div>
+                      {exercise.sets && exercise.reps && (
+                        <div style={{ fontSize: "12px", color: "#718096" }}>
+                          {exercise.sets} sets × {exercise.reps} reps
+                        </div>
+                      )}
+                      {exercise.weight && (
+                        <div style={{ fontSize: "12px", color: "#4a5568" }}>
+                          Weight: {exercise.weight}
+                        </div>
+                      )}
+                    </div>
+                    {exercise.rest && (
+                      <div
+                        style={{
+                          fontSize: "12px",
+                          color: "#4a5568",
+                          backgroundColor: "#e2e8f0",
+                          padding: "4px 8px",
+                          borderRadius: "4px",
+                        }}
+                      >
+                        Rest: {exercise.rest}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        {/* Completion Form */}
+        <div style={{ marginBottom: "1.5rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
               gap: "1rem",
               marginBottom: "1rem",
             }}
@@ -291,57 +803,22 @@ function FitnessGoalsTab({ goals, isLoading, onAddGoal, userId }) {
                   fontWeight: "bold",
                 }}
               >
-                Goal Type
-              </label>
-              <select
-                value={newGoal.goal_type}
-                onChange={(e) =>
-                  setNewGoal({ ...newGoal, goal_type: e.target.value })
-                }
-                style={{
-                  width: "100%",
-                  padding: "8px",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "6px",
-                }}
-                required
-              >
-                <option value="">Select goal type</option>
-                {goalTypes.map((type) => (
-                  <option key={type.value} value={type.value}>
-                    {type.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "0.5rem",
-                  fontWeight: "bold",
-                }}
-              >
-                Target Value
+                Actual Duration (minutes)
               </label>
               <input
                 type="number"
-                value={newGoal.goal_value}
-                onChange={(e) =>
-                  setNewGoal({ ...newGoal, goal_value: e.target.value })
-                }
+                value={actualDuration}
+                onChange={(e) => setActualDuration(parseInt(e.target.value))}
                 style={{
                   width: "100%",
                   padding: "8px",
                   border: "1px solid #e2e8f0",
                   borderRadius: "6px",
                 }}
-                required
                 min="1"
+                max="180"
               />
             </div>
-
             <div>
               <label
                 style={{
@@ -350,164 +827,125 @@ function FitnessGoalsTab({ goals, isLoading, onAddGoal, userId }) {
                   fontWeight: "bold",
                 }}
               >
-                Target Date (optional)
+                Estimated Calories Burned
               </label>
               <input
-                type="date"
-                value={newGoal.target_date}
-                onChange={(e) =>
-                  setNewGoal({ ...newGoal, target_date: e.target.value })
-                }
+                type="text"
+                value={Math.round(
+                  (actualDuration / workout.workout_data.duration) *
+                    workout.workout_data.calories_burned
+                )}
+                disabled
                 style={{
                   width: "100%",
                   padding: "8px",
                   border: "1px solid #e2e8f0",
                   borderRadius: "6px",
+                  backgroundColor: "#f7fafc",
                 }}
               />
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "1rem" }}>
-            <button
-              type="submit"
+          <div style={{ marginBottom: "1rem" }}>
+            <label
               style={{
-                padding: "8px 16px",
-                backgroundColor: "#48bb78",
-                color: "white",
-                border: "none",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "14px",
+                display: "block",
+                marginBottom: "0.5rem",
                 fontWeight: "bold",
               }}
             >
-              Add Goal
-            </button>
-            <button
-              type="button"
-              onClick={() => setShowAddGoalForm(false)}
+              Workout Notes (optional)
+            </label>
+            <textarea
+              value={workoutNotes}
+              onChange={(e) => setWorkoutNotes(e.target.value)}
+              placeholder="How did the workout feel? Any modifications made?"
               style={{
-                padding: "8px 16px",
-                backgroundColor: "#e2e8f0",
-                color: "#4a5568",
-                border: "none",
+                width: "100%",
+                height: "80px",
+                padding: "8px",
+                border: "1px solid #e2e8f0",
                 borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "14px",
-                fontWeight: "bold",
+                resize: "vertical",
               }}
-            >
-              Cancel
-            </button>
+            />
           </div>
-        </form>
-      )}
-
-      {/* Goals List */}
-      {goals.length === 0 ? (
-        <div style={cardStyle}>
-          <h3>No fitness goals set yet</h3>
-          <p>Add your first fitness goal to start tracking your progress!</p>
         </div>
-      ) : (
-        <div style={{ display: "grid", gap: "1rem" }}>
-          {goals.map((goal, index) => {
-            const progress = calculateProgress(goal);
-            const progressColor = getProgressColor(progress);
-            const goalTypeLabel =
-              goalTypes.find((t) => t.value === goal.type)?.label || goal.type;
 
-            return (
-              <div
-                key={index}
-                style={{
-                  backgroundColor: "white",
-                  padding: "1.5rem",
-                  borderRadius: "12px",
-                  border: "1px solid #e2e8f0",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-                }}
-              >
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: "1rem",
-                  }}
-                >
-                  <div>
-                    <h4 style={{ margin: "0 0 0.25rem 0", color: "#2d3748" }}>
-                      {goalTypeLabel}
-                    </h4>
-                    <div style={{ fontSize: "14px", color: "#718096" }}>
-                      {goal.current} / {goal.target}
-                      {goal.target_date && (
-                        <span>
-                          {" "}
-                          • Target:{" "}
-                          {new Date(goal.target_date).toLocaleDateString()}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {goal.achieved && (
-                    <div
-                      style={{
-                        backgroundColor: "#c6f6d5",
-                        color: "#22543d",
-                        padding: "4px 8px",
-                        borderRadius: "12px",
-                        fontSize: "12px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      ✓ ACHIEVED
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ marginBottom: "0.5rem" }}>
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "20px",
-                      backgroundColor: "#e2e8f0",
-                      borderRadius: "10px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <div
-                      style={{
-                        width: `${progress}%`,
-                        height: "100%",
-                        backgroundColor: progressColor,
-                        transition: "width 0.3s ease",
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "#4a5568",
-                    textAlign: "right",
-                  }}
-                >
-                  {progress.toFixed(1)}% complete
-                </div>
-              </div>
-            );
-          })}
+        {/* Action Buttons */}
+        <div
+          style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}
+        >
+          <button
+            onClick={onClose}
+            disabled={isCompleting}
+            style={{
+              padding: "12px 24px",
+              backgroundColor: "#e2e8f0",
+              color: "#4a5568",
+              border: "none",
+              borderRadius: "8px",
+              cursor: isCompleting ? "not-allowed" : "pointer",
+              fontSize: "16px",
+              fontWeight: "bold",
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleComplete}
+            disabled={isCompleting}
+            style={{
+              padding: "12px 24px",
+              backgroundColor: isCompleting ? "#a0aec0" : "#48bb78",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: isCompleting ? "not-allowed" : "pointer",
+              fontSize: "16px",
+              fontWeight: "bold",
+            }}
+          >
+            {isCompleting ? "Completing..." : "Complete Workout"}
+          </button>
         </div>
-      )}
+
+        {/* Workout Tips */}
+        <div
+          style={{
+            marginTop: "1.5rem",
+            padding: "1rem",
+            backgroundColor: "#edf2f7",
+            borderRadius: "8px",
+            fontSize: "14px",
+            color: "#4a5568",
+          }}
+        >
+          <strong>💡 Custom Workout Tips:</strong>
+          <ul style={{ margin: "0.5rem 0 0 1rem", paddingLeft: "1rem" }}>
+            <li>
+              Follow the planned sets and reps, but adjust weight as needed
+            </li>
+            <li>Take adequate rest between sets as specified</li>
+            <li>Focus on proper form over heavy weights</li>
+            <li>
+              Modify exercises if needed to match your current fitness level
+            </li>
+            <li>Stay hydrated and listen to your body</li>
+          </ul>
+        </div>
+      </div>
     </div>
   );
 }
-function CustomWorkoutsSection({ userId, onCompleteWorkout }) {
+
+// Custom Workouts Section Component
+function CustomWorkoutsSection({
+  userId,
+  onCompleteWorkout,
+  onRefreshWorkouts,
+}) {
   const [customWorkouts, setCustomWorkouts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
@@ -518,6 +956,13 @@ function CustomWorkoutsSection({ userId, onCompleteWorkout }) {
       fetchCustomWorkouts();
     }
   }, [userId]);
+
+  // Add effect to listen for refresh events
+  useEffect(() => {
+    if (onRefreshWorkouts) {
+      fetchCustomWorkouts();
+    }
+  }, [onRefreshWorkouts]);
 
   const fetchCustomWorkouts = async () => {
     try {
@@ -814,9 +1259,9 @@ function CustomWorkoutsSection({ userId, onCompleteWorkout }) {
         </button>
       </div>
 
-      {/* Workout Modal */}
+      {/* Workout Completion Modal */}
       {showWorkoutModal && selectedWorkout && (
-        <CustomWorkoutModal
+        <CustomWorkoutCompletionModal
           workout={selectedWorkout}
           onClose={() => setShowWorkoutModal(false)}
           onComplete={handleCompleteWorkout}
@@ -837,6 +1282,7 @@ function WorkoutsTab({
   const [showWorkoutModal, setShowWorkoutModal] = useState(false);
   const [showCustomWorkoutModal, setShowCustomWorkoutModal] = useState(false);
   const [completingWorkout, setCompletingWorkout] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0); // Add refresh trigger
 
   const cardStyle = {
     backgroundColor: "#f8fafc",
@@ -906,6 +1352,8 @@ function WorkoutsTab({
         const data = await response.json();
         alert("Custom workout created successfully!");
         setShowCustomWorkoutModal(false);
+        // Trigger refresh of custom workouts
+        setRefreshTrigger((prev) => prev + 1);
         return true;
       } else {
         alert("Failed to create custom workout. Please try again.");
@@ -948,6 +1396,13 @@ function WorkoutsTab({
         </button>
       </div>
 
+      {/* Custom Workouts Section - Pass refresh trigger */}
+      <CustomWorkoutsSection
+        userId={userId}
+        onCompleteWorkout={onCompleteWorkout}
+        onRefreshWorkouts={refreshTrigger}
+      />
+
       {recommendations.length === 0 ? (
         <div style={cardStyle}>
           <h3>No recommendations available</h3>
@@ -977,9 +1432,9 @@ function WorkoutsTab({
         />
       )}
 
-      {/* Custom Workout Modal */}
+      {/* Custom Workout Creation Modal */}
       {showCustomWorkoutModal && (
-        <CustomWorkoutModal
+        <CustomWorkoutCreationModal
           onClose={() => setShowCustomWorkoutModal(false)}
           onCreate={handleCreateCustomWorkout}
         />
@@ -1417,6 +1872,512 @@ function WorkoutModal({ workout, onClose, onComplete, isCompleting }) {
   );
 }
 
+// Workout History Tab Component (Fixed)
+function WorkoutHistoryTab({ history, isLoading }) {
+  const cardStyle = {
+    backgroundColor: "#f8fafc",
+    padding: "1.5rem",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    marginBottom: "1rem",
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: "center", padding: "2rem" }}>
+        <div>Loading workout history...</div>
+      </div>
+    );
+  }
+
+  if (!history || history.length === 0) {
+    return (
+      <div style={cardStyle}>
+        <h3>No workout history yet</h3>
+        <p>Complete your first workout to see your progress history here.</p>
+      </div>
+    );
+  }
+
+  // Group workouts by date
+  const groupedHistory = history.reduce((acc, workout) => {
+    const date = workout.date.toDateString();
+    if (!acc[date]) acc[date] = [];
+    acc[date].push(workout);
+    return acc;
+  }, {});
+
+  return (
+    <div>
+      <h2 style={{ marginBottom: "2rem", color: "#2d3748" }}>
+        Workout History
+      </h2>
+
+      <div style={{ display: "grid", gap: "1.5rem" }}>
+        {Object.entries(groupedHistory).map(([date, workouts]) => (
+          <div
+            key={date}
+            style={{
+              backgroundColor: "white",
+              padding: "1.5rem",
+              borderRadius: "12px",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+            }}
+          >
+            <h3
+              style={{
+                margin: "0 0 1rem 0",
+                color: "#2d3748",
+                borderBottom: "1px solid #e2e8f0",
+                paddingBottom: "0.5rem",
+              }}
+            >
+              {date}
+            </h3>
+
+            {workouts.map((workout, index) => (
+              <div
+                key={index}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "1rem",
+                  backgroundColor: "#f8fafc",
+                  borderRadius: "8px",
+                  marginBottom: "0.5rem",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div
+                    style={{
+                      fontWeight: "bold",
+                      color: "#2d3748",
+                      marginBottom: "0.25rem",
+                    }}
+                  >
+                    {workout.name}
+                  </div>
+                  <div style={{ fontSize: "14px", color: "#718096" }}>
+                    {workout.type} •{" "}
+                    {workout.difficulty_level || workout.intensity}
+                  </div>
+                  {workout.notes && (
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "#4a5568",
+                        marginTop: "0.25rem",
+                        fontStyle: "italic",
+                      }}
+                    >
+                      "{workout.notes}"
+                    </div>
+                  )}
+                </div>
+
+                <div
+                  style={{ display: "flex", gap: "1rem", alignItems: "center" }}
+                >
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                        color: "#4299e1",
+                      }}
+                    >
+                      {workout.duration}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#718096" }}>
+                      min
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "center" }}>
+                    <div
+                      style={{
+                        fontSize: "16px",
+                        fontWeight: "bold",
+                        color: "#ed8936",
+                      }}
+                    >
+                      {workout.calories_burned}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#718096" }}>
+                      cal
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Daily Summary */}
+            <div
+              style={{
+                marginTop: "1rem",
+                padding: "1rem",
+                backgroundColor: "#e6fffa",
+                borderRadius: "8px",
+                border: "1px solid #81e6d9",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "bold",
+                  color: "#234e52",
+                }}
+              >
+                Daily Total: {workouts.reduce((sum, w) => sum + w.duration, 0)}{" "}
+                minutes •{" "}
+                {workouts.reduce((sum, w) => sum + w.calories_burned, 0)}{" "}
+                calories
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Fitness Goals Tab Component
+function FitnessGoalsTab({ goals, isLoading, onAddGoal, userId }) {
+  const [showAddGoalForm, setShowAddGoalForm] = useState(false);
+  const [newGoal, setNewGoal] = useState({
+    goal_type: "",
+    goal_value: "",
+    target_date: "",
+  });
+
+  const cardStyle = {
+    backgroundColor: "#f8fafc",
+    padding: "1.5rem",
+    borderRadius: "12px",
+    border: "1px solid #e2e8f0",
+    marginBottom: "1rem",
+  };
+
+  const goalTypes = [
+    { value: "workouts_per_week", label: "Workouts per Week" },
+    { value: "minutes_per_week", label: "Minutes per Week" },
+    { value: "calories_burned", label: "Calories Burned" },
+    { value: "weight_loss", label: "Weight Loss (lbs)" },
+    { value: "weight_gain", label: "Weight Gain (lbs)" },
+    { value: "strength_goal", label: "Strength Goal" },
+  ];
+
+  const handleAddGoal = async (e) => {
+    e.preventDefault();
+    if (!newGoal.goal_type || !newGoal.goal_value) return;
+
+    const success = await onAddGoal(newGoal);
+    if (success) {
+      setNewGoal({ goal_type: "", goal_value: "", target_date: "" });
+      setShowAddGoalForm(false);
+    }
+  };
+
+  const calculateProgress = (goal) => {
+    if (!goal.target || goal.target === 0) return 0;
+    return Math.min((goal.current / goal.target) * 100, 100);
+  };
+
+  const getProgressColor = (progress) => {
+    if (progress >= 100) return "#48bb78";
+    if (progress >= 75) return "#38a169";
+    if (progress >= 50) return "#ed8936";
+    return "#4299e1";
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ textAlign: "center", padding: "2rem" }}>
+        <div>Loading fitness goals...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "2rem",
+        }}
+      >
+        <h2 style={{ margin: "0", color: "#2d3748" }}>Fitness Goals</h2>
+        <button
+          onClick={() => setShowAddGoalForm(!showAddGoalForm)}
+          style={{
+            padding: "8px 16px",
+            backgroundColor: "#48bb78",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "14px",
+            fontWeight: "bold",
+          }}
+        >
+          Add Goal
+        </button>
+      </div>
+
+      {/* Add Goal Form */}
+      {showAddGoalForm && (
+        <form
+          onSubmit={handleAddGoal}
+          style={{
+            backgroundColor: "white",
+            padding: "1.5rem",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+            marginBottom: "2rem",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
+            Add New Goal
+          </h3>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr 1fr",
+              gap: "1rem",
+              marginBottom: "1rem",
+            }}
+          >
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Goal Type
+              </label>
+              <select
+                value={newGoal.goal_type}
+                onChange={(e) =>
+                  setNewGoal({ ...newGoal, goal_type: e.target.value })
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "6px",
+                }}
+                required
+              >
+                <option value="">Select goal type</option>
+                {goalTypes.map((type) => (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Target Value
+              </label>
+              <input
+                type="number"
+                value={newGoal.goal_value}
+                onChange={(e) =>
+                  setNewGoal({ ...newGoal, goal_value: e.target.value })
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "6px",
+                }}
+                required
+                min="1"
+              />
+            </div>
+
+            <div>
+              <label
+                style={{
+                  display: "block",
+                  marginBottom: "0.5rem",
+                  fontWeight: "bold",
+                }}
+              >
+                Target Date (optional)
+              </label>
+              <input
+                type="date"
+                value={newGoal.target_date}
+                onChange={(e) =>
+                  setNewGoal({ ...newGoal, target_date: e.target.value })
+                }
+                style={{
+                  width: "100%",
+                  padding: "8px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "6px",
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: "1rem" }}>
+            <button
+              type="submit"
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#48bb78",
+                color: "white",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "bold",
+              }}
+            >
+              Add Goal
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowAddGoalForm(false)}
+              style={{
+                padding: "8px 16px",
+                backgroundColor: "#e2e8f0",
+                color: "#4a5568",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "bold",
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Goals List */}
+      {goals.length === 0 ? (
+        <div style={cardStyle}>
+          <h3>No fitness goals set yet</h3>
+          <p>Add your first fitness goal to start tracking your progress!</p>
+        </div>
+      ) : (
+        <div style={{ display: "grid", gap: "1rem" }}>
+          {goals.map((goal, index) => {
+            const progress = calculateProgress(goal);
+            const progressColor = getProgressColor(progress);
+            const goalTypeLabel =
+              goalTypes.find((t) => t.value === goal.type)?.label || goal.type;
+
+            return (
+              <div
+                key={index}
+                style={{
+                  backgroundColor: "white",
+                  padding: "1.5rem",
+                  borderRadius: "12px",
+                  border: "1px solid #e2e8f0",
+                  boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginBottom: "1rem",
+                  }}
+                >
+                  <div>
+                    <h4 style={{ margin: "0 0 0.25rem 0", color: "#2d3748" }}>
+                      {goalTypeLabel}
+                    </h4>
+                    <div style={{ fontSize: "14px", color: "#718096" }}>
+                      {goal.current} / {goal.target}
+                      {goal.target_date && (
+                        <span>
+                          {" "}
+                          • Target:{" "}
+                          {new Date(goal.target_date).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {goal.achieved && (
+                    <div
+                      style={{
+                        backgroundColor: "#c6f6d5",
+                        color: "#22543d",
+                        padding: "4px 8px",
+                        borderRadius: "12px",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                      }}
+                    >
+                      ✓ ACHIEVED
+                    </div>
+                  )}
+                </div>
+
+                <div style={{ marginBottom: "0.5rem" }}>
+                  <div
+                    style={{
+                      width: "100%",
+                      height: "20px",
+                      backgroundColor: "#e2e8f0",
+                      borderRadius: "10px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${progress}%`,
+                        height: "100%",
+                        backgroundColor: progressColor,
+                        transition: "width 0.3s ease",
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    fontSize: "14px",
+                    color: "#4a5568",
+                    textAlign: "right",
+                  }}
+                >
+                  {progress.toFixed(1)}% complete
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Workout Plan Tab Component
 function WorkoutPlanTab({ plan, isLoading, onCompleteWorkout, userId }) {
   const [selectedDay, setSelectedDay] = useState(null);
@@ -1548,6 +2509,7 @@ function WorkoutPlanTab({ plan, isLoading, onCompleteWorkout, userId }) {
   );
 }
 
+// Main Fitness Component (Fixed)
 export default function Fitness() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [dashboardData, setDashboardData] = useState(null);
@@ -1940,25 +2902,12 @@ export default function Fitness() {
         {activeTab === "quick" && <QuickWorkout userId={userId} />}
 
         {activeTab === "workouts" && (
-          <div>
-            <h2 style={{ margin: "0 0 2rem 0", color: "#2d3748" }}>
-              Recommended Workouts
-            </h2>
-
-            {/* Custom Workouts Section */}
-            <CustomWorkoutsSection
-              userId={userId}
-              onCompleteWorkout={completeWorkout}
-            />
-
-            {/* Regular Workouts Section */}
-            <WorkoutsTab
-              recommendations={workoutRecommendations}
-              isLoading={loadingStates.recommendations}
-              onCompleteWorkout={completeWorkout}
-              userId={userId}
-            />
-          </div>
+          <WorkoutsTab
+            recommendations={workoutRecommendations}
+            isLoading={loadingStates.recommendations}
+            onCompleteWorkout={completeWorkout}
+            userId={userId}
+          />
         )}
 
         {activeTab === "plan" && (
@@ -1986,6 +2935,18 @@ export default function Fitness() {
           />
         )}
       </div>
+
+      {/* Add CSS for spinning animation */}
+      <style jsx>{`
+        @keyframes spin {
+          0% {
+            transform: rotate(0deg);
+          }
+          100% {
+            transform: rotate(360deg);
+          }
+        }
+      `}</style>
     </div>
   );
 }

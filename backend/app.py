@@ -1,5 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+import sqlite3
+import json
+from database import DB_PATH  
 from nutrition_utils import (
     search_food_autocomplete, search_food_comprehensive, scale_food_nutrition,
     get_meal_suggestions
@@ -1050,7 +1053,6 @@ def get_progression_suggestions_endpoint():
 
 # Add these new endpoints to your existing app.py
 
-# Replace the existing custom workout endpoint in app.py with this updated version
 
 @app.route("/api/create_custom_workout", methods=["POST"])
 def create_custom_workout_endpoint():
@@ -1120,7 +1122,7 @@ def create_custom_workout_endpoint():
 # Also add this endpoint to handle getting user's custom workouts specifically
 @app.route("/api/get_user_custom_workouts", methods=["POST"])
 def get_user_custom_workouts_endpoint():
-    """Get user's saved custom workouts"""
+    """Get all custom workouts for a user"""
     data = request.json
     user_id = data.get("user_id")
     
@@ -1128,9 +1130,6 @@ def get_user_custom_workouts_endpoint():
         return jsonify({"error": "User ID required"}), 400
     
     try:
-        import sqlite3
-        import json
-        
         with sqlite3.connect(DB_PATH) as conn:
             c = conn.cursor()
             c.execute("""
@@ -1142,20 +1141,23 @@ def get_user_custom_workouts_endpoint():
             
             custom_workouts = []
             for row in c.fetchall():
-                plan_data = json.loads(row[2])
-                custom_workouts.append({
-                    'id': row[0],
-                    'name': row[1].replace('Custom: ', ''),
-                    'workout_data': plan_data,
-                    'created_at': row[3],
-                    'is_active': row[4]
-                })
+                try:
+                    plan_data = json.loads(row[2])
+                    custom_workouts.append({
+                        'id': row[0],
+                        'name': row[1].replace('Custom: ', ''),
+                        'workout_data': plan_data,
+                        'created_at': row[3],
+                        'is_active': row[4]
+                    })
+                except json.JSONDecodeError:
+                    print(f"Error parsing workout data for workout ID {row[0]}")
+                    continue
             
             return jsonify(custom_workouts)
     except Exception as e:
         print(f"Error getting custom workouts: {e}")
         return jsonify({"error": "Failed to get custom workouts"}), 500
-
 
 @app.route("/api/get_quick_workout_suggestions", methods=["POST"])
 def get_quick_workout_suggestions():
@@ -1202,7 +1204,65 @@ def get_quick_workout_suggestions():
         print(f"❌ {error_msg}")
         return jsonify({"error": error_msg}), 500
     
+@app.route("/api/quick_workout_feedback", methods=["POST"])
+def quick_workout_feedback():
+    """Save workout preference (liked or disliked) with enhanced handling"""
+    data = request.json
+    user_id = data.get("user_id")
+    workout_name = data.get("workout_name")
+    liked = data.get("liked")
+    
+    print(f"📝 Saving workout feedback:")
+    print(f"   User: {user_id}")
+    print(f"   Workout: {workout_name}")
+    print(f"   Liked: {liked}")
+    
+    if not all([user_id, workout_name]) or liked is None:
+        return jsonify({"error": "User ID, workout name, and preference required"}), 400
+    
+    try:
+        from database import save_workout_preference
+        
+        preference = 'liked' if liked else 'disliked'
+        save_workout_preference(user_id, workout_name, preference)
+        
+        return jsonify({
+            "success": True, 
+            "message": f"Workout {'liked' if liked else 'disliked'} successfully",
+            "workout_name": workout_name,
+            "preference": preference
+        })
+    except Exception as e:
+        print(f"❌ Error saving workout feedback: {e}")
+        return jsonify({"error": "Failed to save workout preference"}), 500
 
+@app.route("/api/remove_workout_preference", methods=["POST"])
+def remove_workout_preference():
+    """Remove a workout preference"""
+    data = request.json
+    user_id = data.get("user_id")
+    workout_name = data.get("workout_name")
+    
+    if not all([user_id, workout_name]):
+        return jsonify({"error": "User ID and workout name required"}), 400
+    
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute("""
+            DELETE FROM workout_preferences 
+            WHERE user_id = ? AND workout_name = ?
+            """, (user_id, workout_name))
+            conn.commit()
+            
+            if c.rowcount > 0:
+                return jsonify({"success": True, "message": "Preference removed"})
+            else:
+                return jsonify({"error": "Preference not found"}), 404
+    except Exception as e:
+        print(f"Error removing workout preference: {e}")
+        return jsonify({"error": "Failed to remove preference"}), 500
+    
 @app.route("/api/get_workout_preferences", methods=["POST"])
 def get_workout_preferences():
     """Get user's workout preferences (likes/dislikes) with enhanced error handling"""

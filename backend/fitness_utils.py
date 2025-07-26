@@ -2,7 +2,7 @@ import random
 from datetime import datetime, timedelta
 import json
 
-# MASSIVELY EXPANDED QUICK WORKOUT DATABASE - Organized by focus area and exact duration
+# EXPANDED QUICK WORKOUT DATABASE 
 QUICK_WORKOUT_DATABASE = {
     'upper_body': {
         '10_min': [
@@ -2013,10 +2013,28 @@ def format_custom_workout_for_recommendations(custom_workout_data):
     }
 
 def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excluded_workouts):
-    """Get quick workout suggestions with EXACT duration matching from both databases"""
+    """Get quick workout suggestions with EXACT duration matching from both databases - FIXED VERSION"""
     suggestions = []
     
-    # 1. GET WORKOUTS FROM QUICK WORKOUT DATABASE WITH EXACT DURATION MATCHING
+    # 1. GET USER PREFERENCES AND FILTER OUT DISLIKED WORKOUTS FIRST
+    user_id = user_profile.get('id') if user_profile else None
+    disliked_workouts = set()
+    
+    if user_id:
+        try:
+            from database import get_user_workout_preferences
+            preferences = get_user_workout_preferences(user_id)
+            disliked_workouts = set(preferences.get('disliked', []))
+            print(f"🚫 User has {len(disliked_workouts)} disliked workouts: {list(disliked_workouts)}")
+        except Exception as e:
+            print(f"⚠️ Error getting user preferences: {e}")
+            disliked_workouts = set()
+    
+    # Combine excluded workouts with user's dislikes
+    all_excluded = set(excluded_workouts) | disliked_workouts
+    print(f"🚫 Total excluded workouts: {len(all_excluded)}")
+    
+    # 2. GET WORKOUTS FROM QUICK WORKOUT DATABASE WITH EXACT DURATION MATCHING
     
     # Map duration to exact keys in our database
     duration_key = f'{duration}_min'
@@ -2025,24 +2043,28 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
     focus_workouts = QUICK_WORKOUT_DATABASE.get(focus, {})
     exact_duration_workouts = focus_workouts.get(duration_key, [])
     
-    # Filter by equipment availability
+    # Filter by equipment availability and preferences
     for workout in exact_duration_workouts:
         workout_equipment = workout.get('equipment', ['none'])
+        
+        # Skip if workout is disliked or excluded
+        if workout['name'] in all_excluded:
+            print(f"⏭️ Skipping excluded/disliked workout: {workout['name']}")
+            continue
         
         # Check if user has required equipment
         if ('none' in workout_equipment or 
             (equipment and any(eq in equipment for eq in workout_equipment)) or
             (not equipment and 'none' in workout_equipment)):
             
-            if workout['name'] not in excluded_workouts:
-                suggestions.append({
-                    'workout': workout,
-                    'score': calculate_quick_workout_score(workout, user_profile, duration),
-                    'match_reason': get_match_reason(workout, duration, focus, equipment),
-                    'source': 'quick_database'
-                })
+            suggestions.append({
+                'workout': workout,
+                'score': calculate_quick_workout_score(workout, user_profile, duration),
+                'match_reason': get_match_reason(workout, duration, focus, equipment),
+                'source': 'quick_database'
+            })
     
-    # 2. ALSO CHECK OTHER DURATION CATEGORIES FOR CLOSE MATCHES (±5 minutes)
+    # 3. ALSO CHECK OTHER DURATION CATEGORIES FOR CLOSE MATCHES (±5 minutes)
     all_duration_keys = ['10_min', '15_min', '20_min', '30_min', '45_min']
     target_durations = {
         '10_min': 10, '15_min': 15, '20_min': 20, '30_min': 30, '45_min': 45
@@ -2054,20 +2076,23 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
             if abs(dur_value - duration) <= 5:  # Within 5 minutes
                 close_workouts = focus_workouts.get(dur_key, [])
                 for workout in close_workouts:
+                    # Skip if workout is disliked or excluded
+                    if workout['name'] in all_excluded:
+                        continue
+                        
                     workout_equipment = workout.get('equipment', ['none'])
                     if ('none' in workout_equipment or 
                         (equipment and any(eq in equipment for eq in workout_equipment)) or
                         (not equipment and 'none' in workout_equipment)):
                         
-                        if workout['name'] not in excluded_workouts:
-                            suggestions.append({
-                                'workout': workout,
-                                'score': calculate_quick_workout_score(workout, user_profile, duration) - 5,  # Small penalty for inexact match
-                                'match_reason': f"Close match ({workout['duration']} min) • " + get_match_reason(workout, duration, focus, equipment),
-                                'source': 'quick_database'
-                            })
+                        suggestions.append({
+                            'workout': workout,
+                            'score': calculate_quick_workout_score(workout, user_profile, duration) - 5,  # Small penalty for inexact match
+                            'match_reason': f"Close match ({workout['duration']} min) • " + get_match_reason(workout, duration, focus, equipment),
+                            'source': 'quick_database'
+                        })
     
-    # 3. GET COMPATIBLE WORKOUTS FROM MAIN WORKOUT DATABASE (only if we need more suggestions)
+    # 4. GET COMPATIBLE WORKOUTS FROM MAIN WORKOUT DATABASE (only if we need more suggestions)
     if len(suggestions) < 5:
         experience = user_profile.get('fitness_experience', 'beginner') if user_profile else 'beginner'
         
@@ -2090,6 +2115,10 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                 for equipment_type, workouts in strength_workouts.items():
                     if isinstance(workouts, list):
                         for workout in workouts:
+                            # Skip if workout is disliked or excluded
+                            if workout['name'] in all_excluded:
+                                continue
+                                
                             # Check EXACT duration first, then allow small differences
                             duration_diff = abs(workout['duration'] - duration)
                             if duration_diff <= 10:  # Allow 10 minute flexibility for main database
@@ -2101,8 +2130,7 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                                     (not equipment and 'none' in workout_equipment)
                                 )
                                 
-                                if (equipment_compatible and 
-                                    workout['name'] not in excluded_workouts and
+                                if (equipment_compatible and
                                     workout['name'] not in [s['workout']['name'] for s in suggestions]):
                                     
                                     # Check if workout matches focus area
@@ -2133,6 +2161,10 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                 cardio_workouts = WORKOUT_DATABASE.get('cardio', {}).get(experience, [])
                 
                 for workout in cardio_workouts:
+                    # Skip if workout is disliked or excluded
+                    if workout['name'] in all_excluded:
+                        continue
+                        
                     # Check duration compatibility
                     duration_diff = abs(workout['duration'] - duration)
                     if duration_diff <= 10:
@@ -2145,7 +2177,6 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                         )
                         
                         if (equipment_compatible and 
-                            workout['name'] not in excluded_workouts and
                             workout['name'] not in [s['workout']['name'] for s in suggestions]):
                             
                             duration_penalty = duration_diff * 2
@@ -2158,20 +2189,6 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                                 'source': 'main_database'
                             })
     
-    # 4. GET USER PREFERENCES AND FILTER OUT DISLIKED WORKOUTS
-    user_id = user_profile.get('id') if user_profile else None
-    disliked_workouts = set()
-    if user_id:
-        try:
-            from database import get_user_workout_preferences
-            preferences = get_user_workout_preferences(user_id)
-            disliked_workouts = set(preferences.get('disliked', []))
-        except:
-            pass
-    
-    # Filter out disliked workouts
-    suggestions = [s for s in suggestions if s['workout']['name'] not in disliked_workouts]
-    
     # 5. ADD FLEXIBILITY WORKOUTS IF REQUESTED
     if focus == 'flexibility':
         flexibility_workouts = WORKOUT_DATABASE.get('flexibility', {}).get(
@@ -2179,6 +2196,10 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
         )
         
         for workout in flexibility_workouts:
+            # Skip if workout is disliked or excluded
+            if workout['name'] in all_excluded:
+                continue
+                
             duration_diff = abs(workout['duration'] - duration)
             if duration_diff <= 10:
                 workout_equipment = workout.get('equipment', ['none'])
@@ -2188,9 +2209,7 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                 )
                 
                 if (equipment_compatible and 
-                    workout['name'] not in excluded_workouts and
-                    workout['name'] not in [s['workout']['name'] for s in suggestions] and
-                    workout['name'] not in disliked_workouts):
+                    workout['name'] not in [s['workout']['name'] for s in suggestions]):
                     
                     duration_penalty = duration_diff * 2
                     base_score = calculate_quick_workout_score(workout, user_profile, duration)
@@ -2202,8 +2221,23 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
                         'source': 'main_database'
                     })
     
-    # Score and sort workouts (prioritize exact duration matches)
+    # 6. Score and sort workouts (prioritize exact duration matches and user preferences)
     suggestions.sort(key=lambda x: x['score'], reverse=True)
+    
+    # Apply user likes bonus
+    if user_id:
+        try:
+            from database import get_user_workout_preferences
+            preferences = get_user_workout_preferences(user_id)
+            liked_workouts = set(preferences.get('liked', []))
+            
+            # Boost score for liked workouts
+            for suggestion in suggestions:
+                if suggestion['workout']['name'] in liked_workouts:
+                    suggestion['score'] += 15  # Boost liked workouts
+                    suggestion['match_reason'] = "❤️ You liked this workout • " + suggestion['match_reason']
+        except:
+            pass
     
     # Return top suggestions with variety, prioritizing exact duration matches
     final_suggestions = []
@@ -2218,6 +2252,7 @@ def get_quick_workout_suggestions(user_profile, duration, focus, equipment, excl
     if remaining_slots > 0:
         final_suggestions.extend(close_matches[:remaining_slots])
     
+    print(f"✅ Returning {len(final_suggestions)} filtered suggestions (excluded {len(all_excluded)} workouts)")
     return final_suggestions[:8]  # Return up to 8 suggestions
 
 def calculate_quick_workout_score(workout, user_profile, target_duration):

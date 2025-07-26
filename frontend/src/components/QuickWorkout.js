@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { Eye } from "lucide-react";
+import { Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
 import dumbellBenchPress from "./images/dumbell-bench-press.jpg";
 import bentOverRows from "./images/bent-over-rows.png";
 import lateralRaises from "./images/lateral-raises.png";
 import bicepCurl from "./images/bicep-curls.jpg";
 import tricepExtension from "./images/tricep-extension.jpg";
 import shoulderPress from "./images/shoulder-press.jpg";
-import { FaThumbsUp, FaThumbsDown } from "react-icons/fa";
+import { FaThumbsUp, FaThumbsDown, FaLightbulb } from "react-icons/fa";
+
 // Exercise image database - you can replace these with actual image URLs
 const EXERCISE_IMAGES = {
   // Hardcoded specific exercises you requested
@@ -54,6 +55,490 @@ const EXERCISE_IMAGES = {
   default:
     "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop&crop=center",
 };
+
+// Exercise Image Modal Component
+function ExerciseImageModal({ exercise, isOpen, onClose }) {
+  if (!isOpen) return null;
+
+  const getExerciseImage = (exerciseName) => {
+    const key = exerciseName.toLowerCase();
+    return EXERCISE_IMAGES[key] || EXERCISE_IMAGES["default"];
+  };
+
+  const modalOverlayStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 3000,
+    padding: "2rem",
+  };
+
+  const modalStyle = {
+    backgroundColor: "white",
+    borderRadius: "16px",
+    padding: "2rem",
+    maxWidth: "500px",
+    width: "100%",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    position: "relative",
+    boxShadow:
+      "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+  };
+
+  return (
+    <div style={modalOverlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: "1rem",
+            right: "1rem",
+            background: "rgba(0, 0, 0, 0.1)",
+            border: "none",
+            borderRadius: "50%",
+            width: "32px",
+            height: "32px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "#4a5568",
+            transition: "all 0.2s",
+          }}
+          onMouseOver={(e) => {
+            e.target.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
+          }}
+        >
+          <X size={16} />
+        </button>
+
+        <h3
+          style={{
+            margin: "0 0 1.5rem 0",
+            color: "#2d3748",
+            fontSize: "20px",
+            fontWeight: "600",
+          }}
+        >
+          {exercise.name}
+        </h3>
+
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <img
+            src={getExerciseImage(exercise.name)}
+            alt={exercise.name}
+            style={{
+              width: "100%",
+              maxWidth: "400px",
+              height: "250px",
+              borderRadius: "12px",
+              objectFit: "cover",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            }}
+            onError={(e) => {
+              e.target.src = EXERCISE_IMAGES["default"];
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gap: "1rem",
+            backgroundColor: "#f7fafc",
+            padding: "1.5rem",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          {exercise.sets && exercise.reps && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "#4a5568",
+                  fontWeight: "600",
+                }}
+              >
+                Sets × Reps:
+              </span>
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "#2d3748",
+                  fontWeight: "bold",
+                  backgroundColor: "white",
+                  padding: "4px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                {exercise.sets} × {exercise.reps}
+              </span>
+            </div>
+          )}
+
+          {exercise.rest && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "#4a5568",
+                  fontWeight: "600",
+                }}
+              >
+                Rest Time:
+              </span>
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "#2d3748",
+                  fontWeight: "bold",
+                  backgroundColor: "white",
+                  padding: "4px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                {exercise.rest}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <div
+          style={{
+            marginTop: "1.5rem",
+            padding: "1rem",
+            backgroundColor: "#edf2f7",
+            borderRadius: "8px",
+            fontSize: "14px",
+            color: "#4a5568",
+            textAlign: "center",
+            fontStyle: "italic",
+          }}
+        >
+          <FaLightbulb /> Focus on proper form and controlled movement for best
+          results
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// All Exercises Modal Component
+function AllExercisesModal({ exercises, isOpen, onClose }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (!isOpen || !exercises || exercises.length === 0) return null;
+
+  const getExerciseImage = (exerciseName) => {
+    const key = exerciseName.toLowerCase();
+    return EXERCISE_IMAGES[key] || EXERCISE_IMAGES["default"];
+  };
+
+  const nextExercise = () => {
+    setCurrentIndex((prev) => (prev + 1) % exercises.length);
+  };
+
+  const prevExercise = () => {
+    setCurrentIndex((prev) => (prev - 1 + exercises.length) % exercises.length);
+  };
+
+  const modalOverlayStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 3000,
+    padding: "2rem",
+  };
+
+  const modalStyle = {
+    backgroundColor: "white",
+    borderRadius: "16px",
+    padding: "2rem",
+    maxWidth: "600px",
+    width: "100%",
+    maxHeight: "90vh",
+    overflowY: "auto",
+    position: "relative",
+    boxShadow:
+      "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+  };
+
+  const currentExercise = exercises[currentIndex];
+
+  return (
+    <div style={modalOverlayStyle} onClick={onClose}>
+      <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: "1rem",
+            right: "1rem",
+            background: "rgba(0, 0, 0, 0.1)",
+            border: "none",
+            borderRadius: "50%",
+            width: "32px",
+            height: "32px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "pointer",
+            color: "#4a5568",
+            transition: "all 0.2s",
+          }}
+          onMouseOver={(e) => {
+            e.target.style.backgroundColor = "rgba(0, 0, 0, 0.2)";
+          }}
+          onMouseOut={(e) => {
+            e.target.style.backgroundColor = "rgba(0, 0, 0, 0.1)";
+          }}
+        >
+          <X size={16} />
+        </button>
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <h3
+            style={{
+              margin: 0,
+              color: "#2d3748",
+              fontSize: "20px",
+              fontWeight: "600",
+            }}
+          >
+            All Exercises
+          </h3>
+          <div
+            style={{
+              backgroundColor: "#e2e8f0",
+              color: "#4a5568",
+              padding: "4px 12px",
+              borderRadius: "6px",
+              fontSize: "14px",
+              fontWeight: "600",
+            }}
+          >
+            {currentIndex + 1} of {exercises.length}
+          </div>
+        </div>
+
+        <div style={{ textAlign: "center", marginBottom: "1.5rem" }}>
+          <h4
+            style={{
+              margin: "0 0 1rem 0",
+              color: "#2d3748",
+              fontSize: "18px",
+              fontWeight: "600",
+            }}
+          >
+            {currentExercise.name}
+          </h4>
+
+          <img
+            src={getExerciseImage(currentExercise.name)}
+            alt={currentExercise.name}
+            style={{
+              width: "100%",
+              maxWidth: "400px",
+              height: "250px",
+              borderRadius: "12px",
+              objectFit: "cover",
+              border: "1px solid #e2e8f0",
+              boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.1)",
+            }}
+            onError={(e) => {
+              e.target.src = EXERCISE_IMAGES["default"];
+            }}
+          />
+        </div>
+
+        <div
+          style={{
+            display: "grid",
+            gap: "1rem",
+            backgroundColor: "#f7fafc",
+            padding: "1.5rem",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+            marginBottom: "1.5rem",
+          }}
+        >
+          {currentExercise.sets && currentExercise.reps && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "#4a5568",
+                  fontWeight: "600",
+                }}
+              >
+                Sets × Reps:
+              </span>
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "#2d3748",
+                  fontWeight: "bold",
+                  backgroundColor: "white",
+                  padding: "4px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                {currentExercise.sets} × {currentExercise.reps}
+              </span>
+            </div>
+          )}
+
+          {currentExercise.rest && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "#4a5568",
+                  fontWeight: "600",
+                }}
+              >
+                Rest Time:
+              </span>
+              <span
+                style={{
+                  fontSize: "16px",
+                  color: "#2d3748",
+                  fontWeight: "bold",
+                  backgroundColor: "white",
+                  padding: "4px 12px",
+                  borderRadius: "6px",
+                  border: "1px solid #e2e8f0",
+                }}
+              >
+                {currentExercise.rest}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Navigation Controls */}
+        <div style={{ display: "flex", justifyContent: "center", gap: "1rem" }}>
+          <button
+            onClick={prevExercise}
+            disabled={exercises.length <= 1}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "8px 16px",
+              backgroundColor: exercises.length <= 1 ? "#e2e8f0" : "#4299e1",
+              color: exercises.length <= 1 ? "#a0aec0" : "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: exercises.length <= 1 ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              fontWeight: "600",
+              transition: "all 0.2s",
+            }}
+            onMouseOver={(e) => {
+              if (exercises.length > 1) {
+                e.target.style.backgroundColor = "#3182ce";
+              }
+            }}
+            onMouseOut={(e) => {
+              if (exercises.length > 1) {
+                e.target.style.backgroundColor = "#4299e1";
+              }
+            }}
+          >
+            <ChevronLeft size={16} />
+            Previous
+          </button>
+
+          <button
+            onClick={nextExercise}
+            disabled={exercises.length <= 1}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "8px 16px",
+              backgroundColor: exercises.length <= 1 ? "#e2e8f0" : "#4299e1",
+              color: exercises.length <= 1 ? "#a0aec0" : "white",
+              border: "none",
+              borderRadius: "8px",
+              cursor: exercises.length <= 1 ? "not-allowed" : "pointer",
+              fontSize: "14px",
+              fontWeight: "600",
+              transition: "all 0.2s",
+            }}
+            onMouseOver={(e) => {
+              if (exercises.length > 1) {
+                e.target.style.backgroundColor = "#3182ce";
+              }
+            }}
+            onMouseOut={(e) => {
+              if (exercises.length > 1) {
+                e.target.style.backgroundColor = "#4299e1";
+              }
+            }}
+          >
+            Next
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Quick Workout Component with Enhanced Like/Dislike Functionality
 function QuickWorkout({ userId }) {
@@ -197,7 +682,7 @@ function QuickWorkout({ userId }) {
     try {
       console.log(
         `Submitting ${
-          liked ? "LIKE 👍" : "DISLIKE 👎"
+          liked ? "LIKE " : "DISLIKE "
         } for workout: "${workoutName}"`
       );
       console.log(`📤 Request payload:`, {
@@ -206,10 +691,11 @@ function QuickWorkout({ userId }) {
         liked: liked,
       });
 
+      // Show immediate feedback
       setFeedbackMessage(
         liked
-          ? `👍 Liked "${workoutName}"! We'll show you more workouts like this.`
-          : `👎 Disliked "${workoutName}". We'll avoid suggesting this workout in the future.`
+          ? `Liked "${workoutName}"! We'll show you more workouts like this.`
+          : `Disliked "${workoutName}". This workout will no longer appear in your suggestions.`
       );
 
       const response = await fetch(
@@ -248,11 +734,16 @@ function QuickWorkout({ userId }) {
           });
 
           setFeedbackMessage(
-            `👎 "${workoutName}" disliked and removed from suggestions. Finding new workouts...`
+            ` "${workoutName}" has been removed from your suggestions and won't appear again.`
           );
+
+          // Immediately refetch suggestions to remove the disliked workout
+          setTimeout(() => {
+            fetchSuggestions();
+          }, 1000);
         } else {
           setFeedbackMessage(
-            `👍 "${workoutName}" added to your liked workouts!`
+            ` "${workoutName}" added to your liked workouts! You'll see more workouts like this.`
           );
         }
 
@@ -422,16 +913,10 @@ function QuickWorkout({ userId }) {
         excludedWorkouts.length > 0 && (
           <div
             style={{
-              backgroundColor: "#fff5f5",
-              border: "1px solid #feb2b2",
               color: "#c53030",
-              padding: "8px 12px",
-              borderRadius: "6px",
-              marginBottom: "1rem",
-              fontSize: "12px",
             }}
           >
-            🐛 Debug: Excluded workouts: {excludedWorkouts.join(", ")}
+            Debug: Excluded workouts: {excludedWorkouts.join(", ")}
           </div>
         )}
 
@@ -753,6 +1238,7 @@ function WorkoutSuggestionCard({
 }) {
   const { workout, match_reason } = suggestion;
   const [showPreview, setShowPreview] = useState(false);
+  const [showAllExercises, setShowAllExercises] = useState(false);
 
   const getIntensityColor = (intensity) => {
     switch (intensity) {
@@ -943,16 +1429,31 @@ function WorkoutSuggestionCard({
                         </div>
                       ))}
                       {workout.exercises.length > 4 && (
-                        <div
+                        <button
+                          onClick={() => setShowAllExercises(true)}
                           style={{
                             textAlign: "center",
-                            padding: "0.5rem",
-                            color: "#718096",
-                            fontSize: "12px",
+                            padding: "0.75rem",
+                            color: "#4299e1",
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            backgroundColor: "#ebf8ff",
+                            border: "1px solid #bee3f8",
+                            borderRadius: "8px",
+                            cursor: "pointer",
+                            transition: "all 0.2s",
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.backgroundColor = "#dbeafe";
+                            e.target.style.borderColor = "#93c5fd";
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.backgroundColor = "#ebf8ff";
+                            e.target.style.borderColor = "#bee3f8";
                           }}
                         >
-                          +{workout.exercises.length - 4} more exercises...
-                        </div>
+                          View {workout.exercises.length - 4} more exercises...
+                        </button>
                       )}
                     </div>
                   ) : (
@@ -1201,6 +1702,13 @@ function WorkoutSuggestionCard({
       >
         {isProcessingFeedback ? "Processing..." : "Start This Workout"}
       </button>
+
+      {/* All Exercises Modal */}
+      <AllExercisesModal
+        exercises={workout.exercises}
+        isOpen={showAllExercises}
+        onClose={() => setShowAllExercises(false)}
+      />
     </div>
   );
 }
@@ -1521,14 +2029,9 @@ function QuickWorkoutModal({ suggestion, onClose, onComplete }) {
   );
 }
 
-// Individual Exercise Card Component with View Button
+// Individual Exercise Card Component with Clickable View Button
 function ExerciseCard({ exercise }) {
-  const [showPreview, setShowPreview] = useState(false);
-
-  const getExerciseImage = (exerciseName) => {
-    const key = exerciseName.toLowerCase();
-    return EXERCISE_IMAGES[key] || EXERCISE_IMAGES["default"];
-  };
+  const [showImageModal, setShowImageModal] = useState(false);
 
   return (
     <div
@@ -1543,210 +2046,55 @@ function ExerciseCard({ exercise }) {
         position: "relative",
       }}
     >
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-          <div style={{ flex: 1 }}>
-            <div
-              style={{
-                fontWeight: "bold",
-                color: "#2d3748",
-                fontSize: "14px",
-              }}
-            >
-              {exercise.name}
-            </div>
-            {exercise.sets && exercise.reps && (
-              <div style={{ fontSize: "12px", color: "#718096" }}>
-                {exercise.sets} sets × {exercise.reps} reps
-              </div>
-            )}
-          </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "0.75rem",
+          flex: 1,
+        }}
+      >
+        {/* View Button on the left */}
+        <button
+          onClick={() => setShowImageModal(true)}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "32px",
+            height: "32px",
+            backgroundColor: "#4299e1",
+            color: "white",
+            border: "none",
+            borderRadius: "6px",
+            cursor: "pointer",
+            fontSize: "12px",
+            fontWeight: "500",
+            transition: "all 0.2s",
+            flexShrink: 0,
+          }}
+          title="View exercise image"
+          onMouseOver={(e) => (e.target.style.backgroundColor = "#3182ce")}
+          onMouseOut={(e) => (e.target.style.backgroundColor = "#4299e1")}
+        >
+          <Eye size={14} />
+        </button>
 
-          {/* View Button for Individual Exercise */}
+        <div style={{ flex: 1 }}>
           <div
-            style={{ position: "relative", display: "inline-block" }}
-            onMouseEnter={() => setShowPreview(true)}
-            onMouseLeave={() => setShowPreview(false)}
+            style={{
+              fontWeight: "bold",
+              color: "#2d3748",
+              fontSize: "14px",
+            }}
           >
-            <button
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                padding: "4px 8px",
-                backgroundColor: "#4299e1",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-                fontSize: "11px",
-                fontWeight: "500",
-                transition: "all 0.2s",
-              }}
-              onMouseOver={(e) => (e.target.style.backgroundColor = "#3182ce")}
-              onMouseOut={(e) => (e.target.style.backgroundColor = "#4299e1")}
-            >
-              <Eye size={12} />
-              View
-            </button>
-
-            {/* Individual Exercise Preview Modal */}
-            {showPreview && (
-              <div
-                style={{
-                  position: "absolute",
-                  top: "100%",
-                  right: "0",
-                  marginTop: "8px",
-                  backgroundColor: "white",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "12px",
-                  boxShadow: "0 8px 25px rgba(0,0,0,0.15)",
-                  padding: "1.5rem",
-                  width: "320px",
-                  zIndex: 1000,
-                  animation: "fadeIn 0.2s ease-out",
-                }}
-              >
-                <h4
-                  style={{
-                    margin: "0 0 1rem 0",
-                    color: "#2d3748",
-                    fontSize: "16px",
-                  }}
-                >
-                  {exercise.name}
-                </h4>
-
-                <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-                  <img
-                    src={getExerciseImage(exercise.name)}
-                    alt={exercise.name}
-                    style={{
-                      width: "200px",
-                      height: "150px",
-                      borderRadius: "8px",
-                      objectFit: "cover",
-                      border: "1px solid #e2e8f0",
-                    }}
-                    onError={(e) => {
-                      e.target.src = EXERCISE_IMAGES["default"];
-                    }}
-                  />
-                </div>
-
-                <div style={{ display: "grid", gap: "0.5rem" }}>
-                  {exercise.sets && exercise.reps && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "14px",
-                          color: "#4a5568",
-                          fontWeight: "600",
-                        }}
-                      >
-                        Sets × Reps:
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "14px",
-                          color: "#2d3748",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {exercise.sets} × {exercise.reps}
-                      </span>
-                    </div>
-                  )}
-
-                  {exercise.rest && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "14px",
-                          color: "#4a5568",
-                          fontWeight: "600",
-                        }}
-                      >
-                        Rest:
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "14px",
-                          color: "#2d3748",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {exercise.rest}
-                      </span>
-                    </div>
-                  )}
-
-                  {exercise.difficulty && (
-                    <div
-                      style={{
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: "14px",
-                          color: "#4a5568",
-                          fontWeight: "600",
-                        }}
-                      >
-                        Difficulty:
-                      </span>
-                      <span
-                        style={{
-                          fontSize: "12px",
-                          color: "white",
-                          backgroundColor:
-                            exercise.difficulty <= 2
-                              ? "#48bb78"
-                              : exercise.difficulty <= 3
-                              ? "#ed8936"
-                              : "#e53e3e",
-                          padding: "2px 6px",
-                          borderRadius: "4px",
-                          fontWeight: "bold",
-                        }}
-                      >
-                        {exercise.difficulty}/5
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    marginTop: "1rem",
-                    paddingTop: "1rem",
-                    borderTop: "1px solid #e2e8f0",
-                    fontSize: "12px",
-                    color: "#718096",
-                    textAlign: "center",
-                  }}
-                >
-                  Focus on proper form and controlled movement
-                </div>
-              </div>
-            )}
+            {exercise.name}
           </div>
+          {exercise.sets && exercise.reps && (
+            <div style={{ fontSize: "12px", color: "#718096" }}>
+              {exercise.sets} sets × {exercise.reps} reps
+            </div>
+          )}
         </div>
       </div>
 
@@ -1759,11 +2107,19 @@ function ExerciseCard({ exercise }) {
             padding: "2px 6px",
             borderRadius: "4px",
             marginLeft: "0.5rem",
+            flexShrink: 0,
           }}
         >
           {exercise.rest} rest
         </div>
       )}
+
+      {/* Exercise Image Modal */}
+      <ExerciseImageModal
+        exercise={exercise}
+        isOpen={showImageModal}
+        onClose={() => setShowImageModal(false)}
+      />
     </div>
   );
 }

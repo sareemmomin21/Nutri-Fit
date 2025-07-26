@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaThumbsUp, FaThumbsDown, FaRegLightbulb } from "react-icons/fa";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -1490,8 +1491,64 @@ function FoodPreferencesTab({ preferences, onRefresh }) {
   );
 }
 
-// NEW: Workout Preferences Tab Component
+// Enhanced Workout Preferences Tab Component with ability to remove preferences
 function WorkoutPreferencesTab({ preferences, onRefresh }) {
+  const [isRemoving, setIsRemoving] = useState(null);
+  const [message, setMessage] = useState({ type: "", text: "" });
+
+  const userId = localStorage.getItem("nutrifit_user_id");
+
+  const handleRemovePreference = async (workoutName, preferenceType) => {
+    if (
+      !window.confirm(
+        `Remove "${workoutName}" from your ${preferenceType} workouts?`
+      )
+    ) {
+      return;
+    }
+
+    setIsRemoving(workoutName);
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/remove_workout_preference",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            workout_name: workoutName,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        setMessage({
+          type: "success",
+          text: `"${workoutName}" removed from your ${preferenceType} workouts!`,
+        });
+        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+
+        // Refresh the preferences
+        onRefresh();
+      } else {
+        const errorData = await response.json();
+        setMessage({
+          type: "error",
+          text: errorData.error || "Failed to remove preference",
+        });
+      }
+    } catch (error) {
+      console.error("Error removing preference:", error);
+      setMessage({
+        type: "error",
+        text: "Network error. Please try again.",
+      });
+    } finally {
+      setIsRemoving(null);
+    }
+  };
+
   const cardStyle = {
     backgroundColor: "#f7fafc",
     padding: "1.5rem",
@@ -1530,6 +1587,19 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
     gap: "4px",
   });
 
+  const removeButtonStyle = (disabled) => ({
+    padding: "4px 8px",
+    backgroundColor: disabled ? "#e2e8f0" : "#e53e3e",
+    color: disabled ? "#a0aec0" : "white",
+    border: "none",
+    borderRadius: "4px",
+    cursor: disabled ? "not-allowed" : "pointer",
+    fontSize: "12px",
+    fontWeight: "bold",
+    marginLeft: "8px",
+    opacity: disabled ? 0.6 : 1,
+  });
+
   return (
     <div>
       <div
@@ -1542,6 +1612,24 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
       >
         <h3 style={{ margin: "0", color: "#2d3748" }}>Workout Preferences</h3>
       </div>
+
+      {/* Message */}
+      {message.text && (
+        <div
+          style={{
+            backgroundColor: message.type === "success" ? "#c6f6d5" : "#fed7d7",
+            border: `1px solid ${
+              message.type === "success" ? "#48bb78" : "#e53e3e"
+            }`,
+            color: message.type === "success" ? "#22543d" : "#c53030",
+            padding: "12px",
+            borderRadius: "8px",
+            marginBottom: "1rem",
+          }}
+        >
+          {message.text}
+        </div>
+      )}
 
       {/* How It Works */}
       <div
@@ -1558,8 +1646,8 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
         </h4>
         <p style={{ margin: "0", fontSize: "14px", color: "#234e52" }}>
           Your workout preferences are learned when you use the{" "}
-          <strong>Quick Workout</strong> feature. When you like () or dislike ()
-          a workout, the system remembers your preferences:
+          <strong>Quick Workout</strong> feature. When you like or dislike a
+          workout, the system remembers your preferences:
         </p>
         <ul
           style={{
@@ -1576,6 +1664,7 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
             <strong>Disliked workouts</strong> will be excluded from future
             suggestions
           </li>
+          <li>You can remove any preference using the "Remove" button below</li>
           <li>The system gets smarter the more you use it!</li>
         </ul>
       </div>
@@ -1603,14 +1692,25 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
                 gap: "8px",
               }}
             >
-              Liked Workouts ({preferences.liked?.length || 0})
+              <FaThumbsUp /> Liked Workouts ({preferences.liked?.length || 0})
             </h5>
             {preferences.liked?.length > 0 ? (
               <ul style={listStyle}>
                 {preferences.liked.map((workout, index) => (
                   <li key={index} style={itemStyle}>
                     <span style={{ fontWeight: "500" }}>{workout}</span>
-                    <span style={badgeStyle("liked")}>Liked</span>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <span style={badgeStyle("liked")}>
+                        <FaThumbsUp /> Liked
+                      </span>
+                      <button
+                        onClick={() => handleRemovePreference(workout, "liked")}
+                        disabled={isRemoving === workout}
+                        style={removeButtonStyle(isRemoving === workout)}
+                      >
+                        {isRemoving === workout ? "..." : "Remove"}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1624,7 +1724,6 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "32px", marginBottom: "0.5rem" }}></div>
                 <p
                   style={{ color: "#718096", fontStyle: "italic", margin: "0" }}
                 >
@@ -1654,14 +1753,28 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
                 gap: "8px",
               }}
             >
-              Disliked Workouts ({preferences.disliked?.length || 0})
+              <FaThumbsDown /> Disliked Workouts (
+              {preferences.disliked?.length || 0})
             </h5>
             {preferences.disliked?.length > 0 ? (
               <ul style={listStyle}>
                 {preferences.disliked.map((workout, index) => (
                   <li key={index} style={itemStyle}>
                     <span style={{ fontWeight: "500" }}>{workout}</span>
-                    <span style={badgeStyle("disliked")}>❌ Disliked</span>
+                    <div style={{ display: "flex", alignItems: "center" }}>
+                      <span style={badgeStyle("disliked")}>
+                        <FaThumbsDown /> Disliked
+                      </span>
+                      <button
+                        onClick={() =>
+                          handleRemovePreference(workout, "disliked")
+                        }
+                        disabled={isRemoving === workout}
+                        style={removeButtonStyle(isRemoving === workout)}
+                      >
+                        {isRemoving === workout ? "..." : "Remove"}
+                      </button>
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -1675,7 +1788,6 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
                   textAlign: "center",
                 }}
               >
-                <div style={{ fontSize: "32px", marginBottom: "0.5rem" }}></div>
                 <p
                   style={{ color: "#718096", fontStyle: "italic", margin: "0" }}
                 >
@@ -1706,10 +1818,10 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
         }}
       >
         <p style={{ margin: "0", fontSize: "14px", color: "#4a5568" }}>
-          <strong> Want to set workout preferences?</strong>
+          <strong>Want to set workout preferences?</strong>
           <br />
-          Go to <strong>Fitness → Quick Workout</strong> and use the like () and
-          dislike () buttons on workout suggestions. Your preferences will
+          Go to <strong>Fitness → Quick Workout</strong> and use the like and
+          dislike buttons on workout suggestions. Your preferences will
           automatically appear here!
         </p>
       </div>
@@ -1762,6 +1874,10 @@ function CustomWorkoutsTab({
         </h3>
         <a
           href="/fitness"
+          onClick={(e) => {
+            e.preventDefault();
+            window.location.href = "/fitness";
+          }}
           style={createWorkoutButtonStyle}
           onMouseOver={(e) => (e.target.style.backgroundColor = "#805ad5")}
           onMouseOut={(e) => (e.target.style.backgroundColor = "#9f7aea")}
@@ -1785,9 +1901,9 @@ function CustomWorkoutsTab({
         </h4>
         <p style={{ margin: "0", fontSize: "14px", color: "#22543d" }}>
           Custom workouts are workouts you've created using the workout builder.
-          You can start them directly from here, or manage them. To create new
-          custom workouts, go to <strong>Fitness → Workouts</strong> and click
-          "Create Custom Workout".
+          You can start them directly from here, edit them, or manage them. To
+          create new custom workouts, go to <strong>Fitness → Workouts</strong>{" "}
+          and click "Create Custom Workout".
         </p>
       </div>
 
@@ -1795,7 +1911,7 @@ function CustomWorkoutsTab({
       {customWorkouts.length === 0 ? (
         <div style={cardStyle}>
           <div style={{ textAlign: "center", padding: "2rem" }}>
-            <div style={{ fontSize: "48px", marginBottom: "1rem" }}></div>
+            <div style={{ fontSize: "48px", marginBottom: "1rem" }}>🏋️‍♂️</div>
             <h4 style={{ color: "#4a5568", margin: "0 0 1rem 0" }}>
               No Custom Workouts Yet
             </h4>
@@ -1806,6 +1922,10 @@ function CustomWorkoutsTab({
             </p>
             <a
               href="/fitness"
+              onClick={(e) => {
+                e.preventDefault();
+                window.location.href = "/fitness";
+              }}
               style={createWorkoutButtonStyle}
               onMouseOver={(e) => (e.target.style.backgroundColor = "#805ad5")}
               onMouseOut={(e) => (e.target.style.backgroundColor = "#9f7aea")}
@@ -1920,10 +2040,10 @@ function CustomWorkoutsTab({
                     }}
                   >
                     <strong>Type:</strong>{" "}
-                    {workout.workout_data.type || "Custom"} •
-                    <strong> Created:</strong>{" "}
-                    {new Date(workout.created_at).toLocaleDateString()} •
-                    <strong> Intensity:</strong>{" "}
+                    {workout.workout_data.type || "Custom"} •{" "}
+                    <strong>Created:</strong>{" "}
+                    {new Date(workout.created_at).toLocaleDateString()} •{" "}
+                    <strong>Intensity:</strong>{" "}
                     {workout.workout_data.intensity || "Moderate"}
                   </div>
                 </div>
@@ -2019,7 +2139,10 @@ function CustomWorkoutsTab({
                             textAlign: "center",
                             padding: "0.5rem",
                           }}
-                        ></div>
+                        >
+                          +{workout.workout_data.exercises.length - 4} more
+                          exercises
+                        </div>
                       )}
                     </div>
                   </div>
@@ -2028,11 +2151,51 @@ function CustomWorkoutsTab({
           ))}
         </div>
       )}
+
+      {/* Tips Section */}
+      <div
+        style={{
+          backgroundColor: "#edf2f7",
+          padding: "1rem",
+          borderRadius: "8px",
+          border: "1px solid #cbd5e0",
+          marginTop: "1.5rem",
+        }}
+      >
+        <h4 style={{ margin: "0 0 0.5rem 0", color: "#2d3748" }}>
+          <FaRegLightbulb /> Managing Custom Workouts
+        </h4>
+        <ul
+          style={{
+            margin: "0",
+            paddingLeft: "1.5rem",
+            fontSize: "14px",
+            color: "#4a5568",
+          }}
+        >
+          <li>
+            Click <strong>"Start"</strong> to begin a workout and track your
+            progress
+          </li>
+          <li>
+            Use <strong>"Delete"</strong> to permanently remove workouts you no
+            longer need
+          </li>
+          <li>
+            Custom workouts also appear in your recommended workouts in the
+            Fitness section
+          </li>
+          <li>
+            You can create unlimited custom workouts to match your specific
+            training needs
+          </li>
+        </ul>
+      </div>
     </div>
   );
 }
 
-// Custom Workout Modal Component
+// Also update the CustomWorkoutModal component for completing workouts in settings
 function CustomWorkoutModal({ workout, onClose, onComplete }) {
   const [workoutNotes, setWorkoutNotes] = useState("");
   const [actualDuration, setActualDuration] = useState(
@@ -2171,8 +2334,8 @@ function CustomWorkoutModal({ workout, onClose, onComplete }) {
           </div>
 
           <div style={{ fontSize: "14px", color: "#4a5568" }}>
-            <strong>Type:</strong> {workout.workout_data.type || "Custom"} •
-            <strong> Intensity:</strong>{" "}
+            <strong>Type:</strong> {workout.workout_data.type || "Custom"} •{" "}
+            <strong>Intensity:</strong>{" "}
             {workout.workout_data.intensity || "Moderate"}
           </div>
         </div>
@@ -2399,3 +2562,371 @@ function CustomWorkoutModal({ workout, onClose, onComplete }) {
     </div>
   );
 }
+
+// // Custom Workout Modal Component
+// function CustomWorkoutModal({ workout, onClose, onComplete }) {
+//   const [workoutNotes, setWorkoutNotes] = useState("");
+//   const [actualDuration, setActualDuration] = useState(
+//     workout.workout_data.duration
+//   );
+//   const [isCompleting, setIsCompleting] = useState(false);
+
+//   const modalOverlayStyle = {
+//     position: "fixed",
+//     top: 0,
+//     left: 0,
+//     right: 0,
+//     bottom: 0,
+//     backgroundColor: "rgba(0, 0, 0, 0.5)",
+//     display: "flex",
+//     justifyContent: "center",
+//     alignItems: "center",
+//     zIndex: 2000,
+//   };
+
+//   const modalStyle = {
+//     backgroundColor: "white",
+//     borderRadius: "12px",
+//     padding: "2rem",
+//     maxWidth: "700px",
+//     width: "90%",
+//     maxHeight: "85vh",
+//     overflowY: "auto",
+//     position: "relative",
+//   };
+
+//   const handleComplete = async () => {
+//     setIsCompleting(true);
+//     try {
+//       const workoutData = {
+//         name: workout.workout_data.name || workout.name,
+//         type: workout.workout_data.type || "strength",
+//         duration: actualDuration,
+//         intensity: workout.workout_data.intensity || "moderate",
+//         notes: workoutNotes,
+//         exercises: workout.workout_data.exercises || [],
+//         date_completed: new Date().toISOString().split("T")[0],
+//       };
+
+//       const success = await onComplete(workoutData);
+//       if (!success) {
+//         alert("Failed to complete workout. Please try again.");
+//       }
+//     } finally {
+//       setIsCompleting(false);
+//     }
+//   };
+
+//   return (
+//     <div style={modalOverlayStyle} onClick={onClose}>
+//       <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
+//         <button
+//           onClick={onClose}
+//           style={{
+//             position: "absolute",
+//             top: "1rem",
+//             right: "1rem",
+//             background: "none",
+//             border: "none",
+//             fontSize: "24px",
+//             cursor: "pointer",
+//             color: "#718096",
+//           }}
+//         >
+//           ×
+//         </button>
+
+//         <h2 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
+//           Complete Workout: {workout.workout_data.name || workout.name}
+//         </h2>
+
+//         {/* Workout Overview */}
+//         <div
+//           style={{
+//             backgroundColor: "#f7fafc",
+//             padding: "1.5rem",
+//             borderRadius: "8px",
+//             marginBottom: "1.5rem",
+//           }}
+//         >
+//           <div
+//             style={{
+//               display: "grid",
+//               gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
+//               gap: "1rem",
+//               marginBottom: "1rem",
+//             }}
+//           >
+//             <div style={{ textAlign: "center" }}>
+//               <div
+//                 style={{
+//                   fontSize: "18px",
+//                   fontWeight: "bold",
+//                   color: "#4299e1",
+//                 }}
+//               >
+//                 {workout.workout_data.duration}
+//               </div>
+//               <div style={{ fontSize: "12px", color: "#718096" }}>
+//                 planned minutes
+//               </div>
+//             </div>
+//             <div style={{ textAlign: "center" }}>
+//               <div
+//                 style={{
+//                   fontSize: "18px",
+//                   fontWeight: "bold",
+//                   color: "#ed8936",
+//                 }}
+//               >
+//                 {workout.workout_data.calories_burned}
+//               </div>
+//               <div style={{ fontSize: "12px", color: "#718096" }}>
+//                 estimated calories
+//               </div>
+//             </div>
+//             <div style={{ textAlign: "center" }}>
+//               <div
+//                 style={{
+//                   fontSize: "18px",
+//                   fontWeight: "bold",
+//                   color: "#9f7aea",
+//                 }}
+//               >
+//                 {workout.workout_data.exercises?.length || 0}
+//               </div>
+//               <div style={{ fontSize: "12px", color: "#718096" }}>
+//                 exercises
+//               </div>
+//             </div>
+//           </div>
+
+//           <div style={{ fontSize: "14px", color: "#4a5568" }}>
+//             <strong>Type:</strong> {workout.workout_data.type || "Custom"} •
+//             <strong> Intensity:</strong>{" "}
+//             {workout.workout_data.intensity || "Moderate"}
+//           </div>
+//         </div>
+
+//         {/* Exercise List */}
+//         {workout.workout_data.exercises &&
+//           workout.workout_data.exercises.length > 0 && (
+//             <div
+//               style={{
+//                 backgroundColor: "#f7fafc",
+//                 padding: "1.5rem",
+//                 borderRadius: "8px",
+//                 marginBottom: "1.5rem",
+//               }}
+//             >
+//               <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
+//                 Exercises to Complete:
+//               </h3>
+//               <div style={{ display: "grid", gap: "0.75rem" }}>
+//                 {workout.workout_data.exercises.map((exercise, idx) => (
+//                   <div
+//                     key={idx}
+//                     style={{
+//                       display: "flex",
+//                       justifyContent: "space-between",
+//                       alignItems: "center",
+//                       padding: "1rem",
+//                       backgroundColor: "white",
+//                       borderRadius: "6px",
+//                       border: "1px solid #e2e8f0",
+//                     }}
+//                   >
+//                     <div>
+//                       <div
+//                         style={{
+//                           fontWeight: "bold",
+//                           color: "#2d3748",
+//                           fontSize: "14px",
+//                         }}
+//                       >
+//                         {exercise.name}
+//                       </div>
+//                       {exercise.sets && exercise.reps && (
+//                         <div style={{ fontSize: "12px", color: "#718096" }}>
+//                           {exercise.sets} sets × {exercise.reps} reps
+//                         </div>
+//                       )}
+//                       {exercise.weight && (
+//                         <div style={{ fontSize: "12px", color: "#4a5568" }}>
+//                           Weight: {exercise.weight}
+//                         </div>
+//                       )}
+//                     </div>
+//                     {exercise.rest && (
+//                       <div
+//                         style={{
+//                           fontSize: "12px",
+//                           color: "#4a5568",
+//                           backgroundColor: "#e2e8f0",
+//                           padding: "4px 8px",
+//                           borderRadius: "4px",
+//                         }}
+//                       >
+//                         Rest: {exercise.rest}
+//                       </div>
+//                     )}
+//                   </div>
+//                 ))}
+//               </div>
+//             </div>
+//           )}
+
+//         {/* Completion Form */}
+//         <div style={{ marginBottom: "1.5rem" }}>
+//           <div
+//             style={{
+//               display: "grid",
+//               gridTemplateColumns: "1fr 1fr",
+//               gap: "1rem",
+//               marginBottom: "1rem",
+//             }}
+//           >
+//             <div>
+//               <label
+//                 style={{
+//                   display: "block",
+//                   marginBottom: "0.5rem",
+//                   fontWeight: "bold",
+//                 }}
+//               >
+//                 Actual Duration (minutes)
+//               </label>
+//               <input
+//                 type="number"
+//                 value={actualDuration}
+//                 onChange={(e) => setActualDuration(parseInt(e.target.value))}
+//                 style={{
+//                   width: "100%",
+//                   padding: "8px",
+//                   border: "1px solid #e2e8f0",
+//                   borderRadius: "6px",
+//                 }}
+//                 min="1"
+//                 max="180"
+//               />
+//             </div>
+//             <div>
+//               <label
+//                 style={{
+//                   display: "block",
+//                   marginBottom: "0.5rem",
+//                   fontWeight: "bold",
+//                 }}
+//               >
+//                 Estimated Calories Burned
+//               </label>
+//               <input
+//                 type="text"
+//                 value={Math.round(
+//                   (actualDuration / workout.workout_data.duration) *
+//                     workout.workout_data.calories_burned
+//                 )}
+//                 disabled
+//                 style={{
+//                   width: "100%",
+//                   padding: "8px",
+//                   border: "1px solid #e2e8f0",
+//                   borderRadius: "6px",
+//                   backgroundColor: "#f7fafc",
+//                 }}
+//               />
+//             </div>
+//           </div>
+
+//           <div style={{ marginBottom: "1rem" }}>
+//             <label
+//               style={{
+//                 display: "block",
+//                 marginBottom: "0.5rem",
+//                 fontWeight: "bold",
+//               }}
+//             >
+//               Workout Notes (optional)
+//             </label>
+//             <textarea
+//               value={workoutNotes}
+//               onChange={(e) => setWorkoutNotes(e.target.value)}
+//               placeholder="How did the workout feel? Any modifications made?"
+//               style={{
+//                 width: "100%",
+//                 height: "80px",
+//                 padding: "8px",
+//                 border: "1px solid #e2e8f0",
+//                 borderRadius: "6px",
+//                 resize: "vertical",
+//               }}
+//             />
+//           </div>
+//         </div>
+
+//         {/* Action Buttons */}
+//         <div
+//           style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}
+//         >
+//           <button
+//             onClick={onClose}
+//             disabled={isCompleting}
+//             style={{
+//               padding: "12px 24px",
+//               backgroundColor: "#e2e8f0",
+//               color: "#4a5568",
+//               border: "none",
+//               borderRadius: "8px",
+//               cursor: isCompleting ? "not-allowed" : "pointer",
+//               fontSize: "16px",
+//               fontWeight: "bold",
+//             }}
+//           >
+//             Cancel
+//           </button>
+//           <button
+//             onClick={handleComplete}
+//             disabled={isCompleting}
+//             style={{
+//               padding: "12px 24px",
+//               backgroundColor: isCompleting ? "#a0aec0" : "#48bb78",
+//               color: "white",
+//               border: "none",
+//               borderRadius: "8px",
+//               cursor: isCompleting ? "not-allowed" : "pointer",
+//               fontSize: "16px",
+//               fontWeight: "bold",
+//             }}
+//           >
+//             {isCompleting ? "Completing..." : "Complete Workout"}
+//           </button>
+//         </div>
+
+//         {/* Workout Tips */}
+//         <div
+//           style={{
+//             marginTop: "1.5rem",
+//             padding: "1rem",
+//             backgroundColor: "#edf2f7",
+//             borderRadius: "8px",
+//             fontSize: "14px",
+//             color: "#4a5568",
+//           }}
+//         >
+//           <strong>💡 Custom Workout Tips:</strong>
+//           <ul style={{ margin: "0.5rem 0 0 1rem", paddingLeft: "1rem" }}>
+//             <li>
+//               Follow the planned sets and reps, but adjust weight as needed
+//             </li>
+//             <li>Take adequate rest between sets as specified</li>
+//             <li>Focus on proper form over heavy weights</li>
+//             <li>
+//               Modify exercises if needed to match your current fitness level
+//             </li>
+//             <li>Stay hydrated and listen to your body</li>
+//           </ul>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// }
