@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import FitnessDashboard from "./FitnessDashboard";
 import QuickWorkout from "./QuickWorkout";
+import WorkoutHistory from "./WorkoutHistory";
 
 // Custom Workout Creation Modal Component
 function CustomWorkoutCreationModal({ onClose, onCreate }) {
@@ -2529,6 +2530,7 @@ export default function Fitness() {
 
   const userId = localStorage.getItem("nutrifit_user_id");
 
+  // In your main Fitness component useEffect
   useEffect(() => {
     if (userId) {
       fetchDashboardData();
@@ -2539,17 +2541,37 @@ export default function Fitness() {
       fetchRecoveryInfo();
     }
 
-    // Listen for workout completion events from QuickWorkout component
-    const handleWorkoutCompleted = () => {
+    // Enhanced event listeners for better integration
+    const handleWorkoutCompleted = (event) => {
+      console.log("Workout completed event:", event.detail);
       fetchDashboardData();
       fetchWorkoutHistory();
       fetchRecoveryInfo();
     };
 
+    const handleDashboardRefresh = () => {
+      console.log("Dashboard refresh requested");
+      fetchDashboardData();
+    };
+
+    const handleFitnessDataUpdate = (event) => {
+      console.log("Fitness data update:", event.detail);
+      // Refresh all fitness data when historical workouts are added
+      fetchDashboardData();
+      fetchWorkoutHistory();
+      fetchRecoveryInfo();
+      fetchFitnessGoals(); // Goals might be affected by new workouts
+    };
+
+    // Add all event listeners
     window.addEventListener("workoutCompleted", handleWorkoutCompleted);
+    window.addEventListener("dashboardRefresh", handleDashboardRefresh);
+    window.addEventListener("fitnessDataUpdate", handleFitnessDataUpdate);
 
     return () => {
       window.removeEventListener("workoutCompleted", handleWorkoutCompleted);
+      window.removeEventListener("dashboardRefresh", handleDashboardRefresh);
+      window.removeEventListener("fitnessDataUpdate", handleFitnessDataUpdate);
     };
   }, [userId]);
 
@@ -2928,12 +2950,7 @@ export default function Fitness() {
           />
         )}
 
-        {activeTab === "history" && (
-          <WorkoutHistoryTab
-            history={workoutHistory}
-            isLoading={loadingStates.history}
-          />
-        )}
+        {activeTab === "history" && <WorkoutHistory userId={userId} />}
       </div>
 
       {/* Add CSS for spinning animation */}

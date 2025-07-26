@@ -124,7 +124,7 @@ function FitnessDashboard({ data, isLoading }) {
               color: "#9f7aea",
             }}
           >
-            {data.weekly_stats?.avg_duration || 0}
+            {Math.round(data.weekly_stats?.avg_duration) || 0}
           </div>
           <div style={{ color: "#718096", fontSize: "14px" }}>
             Avg Duration (min)

@@ -798,38 +798,145 @@ def get_active_workout_plan_endpoint():
         print(f"Error getting active workout plan: {e}")
         return jsonify({"error": "Failed to get active workout plan"}), 500
 
+# Replace your existing complete_workout endpoint with this enhanced version
+
 @app.route("/api/complete_workout", methods=["POST"])
 def complete_workout_endpoint():
-    """Record a completed workout"""
+    """Record a completed workout with enhanced date debugging"""
     data = request.json
     user_id = data.get("user_id")
     workout_data = data.get("workout_data")
-   
+    
+    print(f"🔍 Complete workout called with data: {data}")
+    
     if not all([user_id, workout_data]):
         return jsonify({"error": "User ID and workout data required"}), 400
-   
+    
     try:
-        # Calculate calories burned based on user profile
+        # Handle date properly - ensure it's stored as a local date
+        date_completed = workout_data.get('date_completed')
+        print(f"🔍 Original date_completed: {date_completed} (type: {type(date_completed)})")
+        
+        if date_completed:
+            # If date includes time, strip it to get just the date
+            if 'T' in str(date_completed):
+                date_completed = str(date_completed).split('T')[0]
+                print(f"🔍 After T split: {date_completed}")
+            
+            # Ensure it's in YYYY-MM-DD format and DON'T parse it as a datetime
+            # Just validate the format and use as string
+            try:
+                from datetime import datetime
+                # Validate format but don't convert
+                datetime.strptime(date_completed, '%Y-%m-%d')
+                final_date = date_completed  # Keep as string
+                print(f"🔍 Final date (as string): {final_date}")
+            except ValueError:
+                print(f"🔍 Date format invalid, using today")
+                # If parsing fails, use today's date
+                final_date = datetime.now().date().strftime('%Y-%m-%d')
+        else:
+            print(f"🔍 No date provided, using today")
+            # If no date provided, use today
+            final_date = datetime.now().date().strftime('%Y-%m-%d')
+        
+        # Update workout_data with the final date
+        workout_data['date_completed'] = final_date
+        print(f"🔍 Workout data with final date: {workout_data}")
+        
+        # Calculate calories burned based on user profile if not provided
         profile = get_user_profile(user_id)
-        if profile and profile.get('weight_lb'):
+        if profile and profile.get('weight_lb') and not workout_data.get('calories_burned'):
             estimated_calories = calculate_calories_burned(
                 workout_data.get('duration', 30),
                 profile['weight_lb'],
                 workout_data.get('intensity', 'moderate')
             )
             workout_data['calories_burned'] = estimated_calories
-       
+        
         # Save workout session
         session_id = add_workout_session(user_id, workout_data)
-       
+        
+        print(f"🔍 Workout saved with session_id: {session_id}")
+        
         return jsonify({
             "success": True,
             "session_id": session_id,
+            "date_used": final_date,
+            "debug_info": {
+                "original_date": data.get("workout_data", {}).get('date_completed'),
+                "final_date": final_date
+            },
             "message": "Workout completed successfully!"
         })
+        
     except Exception as e:
-        print(f"Error completing workout: {e}")
-        return jsonify({"error": "Failed to record workout"}), 500
+        print(f"❌ Error completing workout: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to record workout: {str(e)}"}), 500
+
+
+# Also update your add_workout_session function:
+def add_workout_session(user_id, workout_data):
+    """Add a completed workout session with enhanced date debugging"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get the date - should already be clean YYYY-MM-DD string
+        date_completed = workout_data.get('date_completed')
+        print(f"🔍 add_workout_session called with date: {date_completed}")
+        
+        # Ensure date is a string in YYYY-MM-DD format
+        if isinstance(date_completed, str):
+            # Strip any time component if present (should already be done)
+            if 'T' in date_completed:
+                date_completed = date_completed.split('T')[0]
+        
+        print(f"🔍 Final date being inserted to DB: {date_completed}")
+        
+        c.execute("""
+        INSERT INTO workout_sessions
+        (user_id, workout_name, workout_type, duration_minutes, calories_burned,
+         difficulty_level, date_completed, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            workout_data.get('name', ''),
+            workout_data.get('type', ''),
+            workout_data.get('duration', 0),
+            workout_data.get('calories_burned', 0),
+            workout_data.get('difficulty_level') or workout_data.get('intensity', 'moderate'),
+            date_completed,  # This should be YYYY-MM-DD string
+            workout_data.get('notes', '')
+        ))
+        
+        workout_session_id = c.lastrowid
+        print(f"🔍 Workout inserted with ID: {workout_session_id}")
+        
+        # Add exercise performance data if available
+        if 'exercises' in workout_data and workout_data['exercises']:
+            for exercise in workout_data['exercises']:
+                c.execute("""
+                INSERT INTO exercise_performance
+                (user_id, workout_session_id, exercise_name, sets, reps, weight_lb,
+                 rest_seconds, difficulty, date_performed, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    user_id,
+                    workout_session_id,
+                    exercise.get('name', ''),
+                    exercise.get('sets', 0),
+                    exercise.get('reps', 0),
+                    exercise.get('weight_lb') or exercise.get('weight', 0),
+                    int(str(exercise.get('rest', '60s')).replace('s', '')),
+                    exercise.get('difficulty', 1),
+                    date_completed,  # Use the same cleaned date
+                    exercise.get('notes', '')
+                ))
+        
+        conn.commit()
+        return workout_session_id
 
 @app.route("/api/get_workout_history", methods=["POST"])
 def get_workout_history_endpoint():
@@ -866,55 +973,97 @@ def get_exercise_performance_endpoint():
         print(f"Error getting exercise performance: {e}")
         return jsonify({"error": "Failed to get exercise performance"}), 500
 
+# In your Flask app.py, enhance the get_fitness_dashboard endpoint
+
+def calculate_favorite_workout_type(workouts):
+    """Calculate the most frequently used workout type"""
+    if not workouts:
+        return "None"
+    
+    type_counts = {}
+    for workout in workouts:
+        workout_type = workout.get('type') or workout.get('workout_type') or 'Other'
+        type_counts[workout_type] = type_counts.get(workout_type, 0) + 1
+    
+    if not type_counts:
+        return "None"
+    
+    # Return the most common type
+    return max(type_counts.items(), key=lambda x: x[1])[0]
+
 @app.route("/api/get_fitness_dashboard", methods=["POST"])
 def get_fitness_dashboard_endpoint():
-    """Get fitness dashboard data"""
+    """Get fitness dashboard data with proper weekly and streak calculations"""
     data = request.json
     user_id = data.get("user_id")
-   
+    
     if not user_id:
         return jsonify({"error": "User ID required"}), 400
-   
+    
     try:
-        dashboard_data = get_fitness_dashboard_data(user_id)
-        return jsonify(dashboard_data)
+        # Get workout history for calculations
+        from datetime import datetime, timedelta
+        
+        # Get all workouts for calculations
+        all_workouts = get_workout_history(user_id, 365)  # Get full year
+        
+        # Calculate current week stats (Monday to Sunday)
+        today = datetime.now()
+        start_of_week = today - timedelta(days=today.weekday())
+        start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+        end_of_week = start_of_week + timedelta(days=7)
+        
+        weekly_workouts = [
+            w for w in all_workouts 
+            if start_of_week <= w['date'] < end_of_week
+        ]
+        
+        weekly_stats = {
+            'workouts': len(weekly_workouts),
+            'total_duration': sum(w['duration'] for w in weekly_workouts),
+            'total_calories': sum(w['calories_burned'] for w in weekly_workouts),
+            'avg_duration': sum(w['duration'] for w in weekly_workouts) / len(weekly_workouts) if weekly_workouts else 0
+        }
+        
+        # Calculate consecutive days streak
+        workout_dates = set(w['date'].date() for w in all_workouts)
+        current_streak = 0
+        longest_streak = 0
+        temp_streak = 0
+        
+        # Check from today backwards
+        check_date = today.date()
+        while check_date in workout_dates:
+            current_streak += 1
+            check_date -= timedelta(days=1)
+        
+        # Calculate longest streak
+        sorted_dates = sorted(workout_dates)
+        for i, date in enumerate(sorted_dates):
+            if i == 0 or date == sorted_dates[i-1] + timedelta(days=1):
+                temp_streak += 1
+                longest_streak = max(longest_streak, temp_streak)
+            else:
+                temp_streak = 1
+        
+        return jsonify({
+            "weekly_stats": weekly_stats,
+            "streak": {
+                "current_streak": current_streak,
+                "longest_streak": longest_streak
+            },
+            "recent_workouts": all_workouts[:5],  # Most recent 5
+            "all_time_stats": {
+                "total_workouts": len(all_workouts),
+                "total_duration": sum(w['duration'] for w in all_workouts),
+                "total_calories": sum(w['calories_burned'] for w in all_workouts),
+                "favorite_type": calculate_favorite_workout_type(all_workouts)
+            }
+        })
+        
     except Exception as e:
         print(f"Error getting fitness dashboard: {e}")
         return jsonify({"error": "Failed to get fitness dashboard"}), 500
-
-@app.route("/api/get_recovery_recommendations", methods=["POST"])
-def get_recovery_recommendations_endpoint():
-    """Get recovery recommendations based on workout history"""
-    data = request.json
-    user_id = data.get("user_id")
-   
-    if not user_id:
-        return jsonify({"error": "User ID required"}), 400
-   
-    try:
-        from datetime import datetime
-        history = get_workout_history(user_id, 7)  # Last 7 days
-        recommendations = get_recovery_recommendations(history, datetime.now())
-        return jsonify(recommendations)
-    except Exception as e:
-        print(f"Error getting recovery recommendations: {e}")
-        return jsonify({"error": "Failed to get recovery recommendations"}), 500
-
-@app.route("/api/get_exercise_tips", methods=["POST"])
-def get_exercise_tips_endpoint():
-    """Get form tips and safety advice for exercises"""
-    data = request.json
-    exercise_name = data.get("exercise_name")
-   
-    if not exercise_name:
-        return jsonify({"error": "Exercise name required"}), 400
-   
-    try:
-        tips = get_exercise_tips(exercise_name)
-        return jsonify(tips)
-    except Exception as e:
-        print(f"Error getting exercise tips: {e}")
-        return jsonify({"error": "Failed to get exercise tips"}), 500
 
 
 @app.route("/api/save_custom_workout", methods=["POST"])
