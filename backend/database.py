@@ -155,7 +155,22 @@ def init_db():
             UNIQUE(user_id, food_name)
         )
         """)
-       
+
+        c.execute("PRAGMA table_info(users)")
+        columns = [column[1] for column in c.fetchall()]
+        
+        if 'dietary_restrictions' not in columns:
+            c.execute("ALTER TABLE users ADD COLUMN dietary_restrictions TEXT DEFAULT '[]'")
+            print("Added dietary_restrictions column to users table")
+        
+        # Check if dietary_restrictions exists in user_preferences table  
+        c.execute("PRAGMA table_info(user_preferences)")
+        pref_columns = [column[1] for column in c.fetchall()]
+        
+        if 'dietary_restrictions' not in pref_columns:
+            c.execute("ALTER TABLE user_preferences ADD COLUMN dietary_restrictions TEXT DEFAULT '[]'")
+            print("Added dietary_restrictions column to user_preferences table")
+
         conn.commit()
         print("Database initialized successfully")
 
@@ -741,7 +756,7 @@ def calculate_calorie_goals(bmr, activity_level, fitness_goals):
     return int(calories), protein, carbs, fat
 
 def update_user_profile(user_id, profile_data, partial_update=False):
-    """Update user profile with questionnaire data - ENHANCED for equipment handling"""
+    """Update user profile with dietary restrictions support"""
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
        
@@ -756,7 +771,6 @@ def update_user_profile(user_id, profile_data, partial_update=False):
         
         # Handle equipment processing
         if 'home_equipment' in profile_data:
-            # Convert home equipment list to comma-separated string
             if isinstance(profile_data['home_equipment'], list):
                 merged_data['available_equipment'] = ', '.join(profile_data['home_equipment'])
             else:
@@ -806,7 +820,7 @@ def update_user_profile(user_id, profile_data, partial_update=False):
        
         # Build update query for users table
         user_fields = ['first_name', 'last_name', 'date_of_birth', 'gender',
-                       'height_cm', 'weight_lb', 'activity_level']
+                       'height_cm', 'weight_lb', 'activity_level', 'dietary_restrictions']
         
         user_updates = []
         user_values = []
@@ -814,7 +828,13 @@ def update_user_profile(user_id, profile_data, partial_update=False):
         for field in user_fields:
             if field in profile_data:
                 user_updates.append(f"{field} = ?")
-                user_values.append(profile_data[field])
+                value = profile_data[field]
+                
+                # Convert dietary restrictions list to JSON string
+                if field == 'dietary_restrictions' and isinstance(value, list):
+                    value = json.dumps(value)
+                
+                user_values.append(value)
         
         # Add calculated goals if available
         if calorie_goal is not None:
@@ -874,15 +894,15 @@ def update_user_profile(user_id, profile_data, partial_update=False):
         conn.commit()
 
 def get_user_profile(user_id):
-    """Get complete user profile data - ENHANCED for equipment handling"""
+    """Get complete user profile data - ENHANCED for dietary restrictions"""
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
        
-        # Get user data
+        # Get user data including dietary restrictions from both tables
         c.execute("""
         SELECT u.*, p.has_gym_membership, p.available_equipment, p.primary_focus,
-               p.fitness_goals, p.dietary_restrictions, p.training_styles,
-               p.workout_frequency, p.workout_duration, p.fitness_experience,
+               p.fitness_goals, COALESCE(p.dietary_restrictions, u.dietary_restrictions, '[]') as dietary_restrictions, 
+               p.training_styles, p.workout_frequency, p.workout_duration, p.fitness_experience,
                p.meal_prep_time, p.cooking_skill, p.budget_preference
         FROM users u
         LEFT JOIN user_preferences p ON u.id = p.user_id
@@ -909,15 +929,54 @@ def get_user_profile(user_id):
         # Parse equipment into home_equipment list for consistency
         if profile.get('available_equipment'):
             if profile['available_equipment'] == 'gym_membership_full_access':
-                profile['home_equipment'] = []  # Gym members don't need home equipment
+                profile['home_equipment'] = []
             else:
-                # Convert comma-separated string back to list
                 profile['home_equipment'] = [eq.strip() for eq in profile['available_equipment'].split(',') if eq.strip()]
         else:
             profile['home_equipment'] = []
        
         return profile
 
+def get_user_dietary_restrictions(user_id):
+    """Get user's dietary restrictions as a list"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Try to get from user_preferences first, then users table
+        c.execute("""
+        SELECT COALESCE(p.dietary_restrictions, u.dietary_restrictions, '[]')
+        FROM users u
+        LEFT JOIN user_preferences p ON u.id = p.user_id
+        WHERE u.id = ?
+        """, (user_id,))
+        
+        result = c.fetchone()
+        if result and result[0]:
+            try:
+                restrictions = json.loads(result[0])
+                return restrictions if isinstance(restrictions, list) else []
+            except:
+                return []
+        return []
+
+def update_dietary_restrictions(user_id, restrictions):
+    """Update user's dietary restrictions"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        restrictions_json = json.dumps(restrictions) if isinstance(restrictions, list) else restrictions
+        
+        # Update in both tables for consistency
+        c.execute("""
+        UPDATE users SET dietary_restrictions = ? WHERE id = ?
+        """, (restrictions_json, user_id))
+        
+        c.execute("""
+        UPDATE user_preferences SET dietary_restrictions = ? WHERE user_id = ?
+        """, (restrictions_json, user_id))
+        
+        conn.commit()
+        
 def get_meal_progress(user_id):
     """Get meal progress with current items and smart calorie allocations"""
     with sqlite3.connect(DB_PATH) as conn:

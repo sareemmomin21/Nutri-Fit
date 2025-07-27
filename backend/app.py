@@ -5,7 +5,8 @@ import json
 from database import DB_PATH  
 from nutrition_utils import (
     search_food_autocomplete, search_food_comprehensive, scale_food_nutrition,
-    get_meal_suggestions
+    get_meal_suggestions, search_food_comprehensive_with_warnings, 
+    search_food_autocomplete_with_warnings
 )
 from database import (
     init_db, get_user_profile, get_daily_totals, get_meal_progress,
@@ -166,24 +167,38 @@ def search_food_autocomplete_endpoint():
         return jsonify([])
    
     try:
-        # Get autocomplete suggestions from all sources including USDA
-        suggestions = search_food_autocomplete(query)
+        # Get user's dietary restrictions
+        user_restrictions = get_user_dietary_restrictions(user_id) if user_id else []
+        
+        # Get autocomplete suggestions with warnings
+        suggestions = search_food_autocomplete_with_warnings(query, user_restrictions)
        
         # Add user's custom foods
         if user_id:
             custom_foods = get_user_custom_foods(user_id, query)
             for food in custom_foods:
-                suggestions.insert(0, {
+                # Add dietary warning for custom foods too
+                warning = None
+                if user_restrictions:
+                    from nutrition_utils import get_dietary_restriction_warning
+                    warning = get_dietary_restriction_warning(food['name'], user_restrictions)
+                
+                food_item = {
                     'name': food['name'],
                     'source': 'user_custom',
                     'serving': food['serving']
-                })
+                }
+                
+                if warning:
+                    food_item['dietary_warning'] = warning
+                
+                suggestions.insert(0, food_item)
        
         return jsonify(suggestions[:10])
     except Exception as e:
         print(f"Error in autocomplete search: {e}")
         return jsonify([])
-
+    
 @app.route("/api/search_food", methods=["POST"])
 def search_food_endpoint():
     data = request.json
@@ -194,13 +209,23 @@ def search_food_endpoint():
         return jsonify({"error": "Search query required"}), 400
    
     try:
-        # Search using comprehensive search (includes USDA)
-        results = search_food_comprehensive(query)
+        # Get user's dietary restrictions
+        user_restrictions = get_user_dietary_restrictions(user_id) if user_id else []
+        
+        # Search using comprehensive search with warnings
+        results = search_food_comprehensive_with_warnings(query, user_restrictions)
        
         # Add user's custom foods if they match
         if user_id:
             custom_foods = get_user_custom_foods(user_id, query)
             for food in custom_foods:
+                # Add dietary warning for custom foods
+                if user_restrictions:
+                    from nutrition_utils import get_dietary_restriction_warning
+                    warning = get_dietary_restriction_warning(food['name'], user_restrictions)
+                    if warning:
+                        food['dietary_warning'] = warning
+                
                 results.insert(0, food)
        
         return jsonify(results)
@@ -234,8 +259,11 @@ def get_meal_suggestions_endpoint():
     user_id = data.get("user_id")
    
     try:
+        # Get user's dietary restrictions
+        user_restrictions = get_user_dietary_restrictions(user_id) if user_id else []
+        
         # Get more suggestions initially to account for filtering
-        suggestions = get_meal_suggestions(meal_type, max_results=15)
+        suggestions = get_meal_suggestions(meal_type, max_results=15, user_restrictions=user_restrictions)
        
         # Filter based on user preferences if available
         if user_id:
@@ -268,6 +296,7 @@ def get_meal_suggestions_endpoint():
     except Exception as e:
         print(f"Error getting meal suggestions: {e}")
         return jsonify([])
+
 
 # Current meal management - OPTIMIZED
 @app.route("/api/add_food_to_meal", methods=["POST"])
@@ -1461,6 +1490,39 @@ def delete_custom_workout():
     except Exception as e:
         print(f"Error deleting custom workout: {e}")
         return jsonify({"error": "Failed to delete custom workout"}), 500
+    
+# Helper function to get user dietary restrictions
+def get_user_dietary_restrictions(user_id):
+    """Get user's dietary restrictions from their profile"""
+    try:
+        profile = get_user_profile(user_id)
+        if profile and profile.get('dietary_restrictions'):
+            restrictions = profile['dietary_restrictions']
+            if isinstance(restrictions, list):
+                return restrictions
+            elif isinstance(restrictions, str):
+                import json
+                return json.loads(restrictions)
+        return []
+    except Exception as e:
+        print(f"Error getting dietary restrictions: {e}")
+        return []
+
+@app.route("/api/get_dietary_restrictions", methods=["POST"])
+def get_dietary_restrictions_endpoint():
+    """Get user's dietary restrictions"""
+    data = request.json
+    user_id = data.get("user_id")
+   
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+   
+    try:
+        restrictions = get_user_dietary_restrictions(user_id)
+        return jsonify({"dietary_restrictions": restrictions})
+    except Exception as e:
+        print(f"Error getting dietary restrictions: {e}")
+        return jsonify({"dietary_restrictions": []})
     
 if __name__ == "__main__":
     init_db()
