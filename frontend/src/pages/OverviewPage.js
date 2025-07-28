@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { FaBullseye, FaTrophy, FaFire, FaUsers, FaChartBar } from "react-icons/fa";
 
 export default function OverviewPage({ userId }) {
   const [overviewLoading, setOverviewLoading] = useState(false);
@@ -142,7 +143,7 @@ export default function OverviewPage({ userId }) {
       {/* Welcome Section */}
       <div style={cardStyle}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-          <div style={sectionHeaderStyle}>🎯 Your Fitness Dashboard</div>
+          <div style={sectionHeaderStyle}><FaBullseye style={{ marginRight: "8px" }} />Your Fitness Dashboard</div>
           <button
             onClick={fetchOverview}
             style={{
@@ -185,7 +186,9 @@ export default function OverviewPage({ userId }) {
             color: "white",
             boxShadow: "0 4px 20px rgba(16, 185, 129, 0.3)"
           }}>
-            <div style={{ fontSize: "32px", marginBottom: "8px" }}>🔥</div>
+                            <div style={{ fontSize: "32px", marginBottom: "8px" }}>
+                  <FaFire />
+                </div>
             <div style={{ fontSize: "28px", fontWeight: "800", marginBottom: "4px" }}>{streak.current}</div>
             <div style={{ fontSize: "14px", opacity: 0.9 }}>Current Streak</div>
           </div>
@@ -198,7 +201,9 @@ export default function OverviewPage({ userId }) {
             color: "white",
             boxShadow: "0 4px 20px rgba(59, 130, 246, 0.3)"
           }}>
-            <div style={{ fontSize: "32px", marginBottom: "8px" }}>🏆</div>
+                            <div style={{ fontSize: "32px", marginBottom: "8px" }}>
+                  <FaTrophy />
+                </div>
             <div style={{ fontSize: "28px", fontWeight: "800", marginBottom: "4px" }}>{streak.best}</div>
             <div style={{ fontSize: "14px", opacity: 0.9 }}>Best Streak</div>
           </div>
@@ -211,7 +216,9 @@ export default function OverviewPage({ userId }) {
             color: "white",
             boxShadow: "0 4px 20px rgba(245, 158, 11, 0.3)"
           }}>
-            <div style={{ fontSize: "32px", marginBottom: "8px" }}>🏅</div>
+                            <div style={{ fontSize: "32px", marginBottom: "8px" }}>
+                  <FaTrophy />
+                </div>
             <div style={{ fontSize: "28px", fontWeight: "800", marginBottom: "4px" }}>{badges.length}</div>
             <div style={{ fontSize: "14px", opacity: 0.9 }}>Badges Earned</div>
           </div>
@@ -224,7 +231,9 @@ export default function OverviewPage({ userId }) {
             color: "white",
             boxShadow: "0 4px 20px rgba(139, 92, 246, 0.3)"
           }}>
-            <div style={{ fontSize: "32px", marginBottom: "8px" }}>👥</div>
+                            <div style={{ fontSize: "32px", marginBottom: "8px" }}>
+                  <FaUsers />
+                </div>
             <div style={{ fontSize: "28px", fontWeight: "800", marginBottom: "4px" }}>{stats.friendsCount}</div>
             <div style={{ fontSize: "14px", opacity: 0.9 }}>Friends</div>
           </div>
@@ -305,7 +314,7 @@ export default function OverviewPage({ userId }) {
 
       {/* Badges/Achievements Section */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>🏅 Your Badges & Achievements</div>
+        <div style={sectionHeaderStyle}><FaTrophy style={{ marginRight: "8px" }} />Your Badges & Achievements</div>
         {badges.length === 0 ? (
           <div style={{ 
             color: "#a0aec0",
@@ -317,7 +326,9 @@ export default function OverviewPage({ userId }) {
             borderRadius: "12px",
             border: "2px dashed #e2e8f0"
           }}>
-            <div style={{ fontSize: "48px", marginBottom: "16px", fontStyle: "normal" }}>🏆</div>
+                          <div style={{ fontSize: "48px", marginBottom: "16px", fontStyle: "normal" }}>
+                <FaTrophy />
+              </div>
             No badges earned yet
             <div style={{ fontSize: "13px", marginTop: "8px", opacity: 0.7, fontStyle: "normal" }}>
               Complete challenges and reach milestones to earn badges!
@@ -349,7 +360,9 @@ export default function OverviewPage({ userId }) {
                 e.target.style.boxShadow = "0 4px 20px rgba(245, 158, 11, 0.15)";
               }}
               >
-                <div style={{ fontSize: "48px", marginBottom: "12px" }}>🏅</div>
+                <div style={{ fontSize: "48px", marginBottom: "12px" }}>
+                  <FaTrophy />
+                </div>
                 <div style={{ 
                   fontWeight: "800", 
                   fontSize: "18px", 
@@ -381,7 +394,7 @@ export default function OverviewPage({ userId }) {
 
       {/* Quick Stats Section */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>📊 Quick Stats</div>
+        <div style={sectionHeaderStyle}><FaChartBar style={{ marginRight: "8px" }} />Quick Stats</div>
         <div style={{ 
           display: "grid", 
           gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", 
@@ -394,7 +407,9 @@ export default function OverviewPage({ userId }) {
             padding: "20px", 
             textAlign: "center" 
           }}>
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>🎯</div>
+                            <div style={{ fontSize: "24px", marginBottom: "8px" }}>
+                  <FaBullseye />
+                </div>
             <div style={{ fontSize: "20px", fontWeight: "700", color: "#0369a1" }}>
               {stats.challengesCompleted}
             </div>
@@ -408,7 +423,9 @@ export default function OverviewPage({ userId }) {
             padding: "20px", 
             textAlign: "center" 
           }}>
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>💪</div>
+                            <div style={{ fontSize: "24px", marginBottom: "8px" }}>
+                  <FaFire />
+                </div>
             <div style={{ fontSize: "20px", fontWeight: "700", color: "#15803d" }}>
               {stats.totalWorkouts}
             </div>
@@ -422,7 +439,9 @@ export default function OverviewPage({ userId }) {
             padding: "20px", 
             textAlign: "center" 
           }}>
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>🔥</div>
+                            <div style={{ fontSize: "24px", marginBottom: "8px" }}>
+                  <FaFire />
+                </div>
             <div style={{ fontSize: "20px", fontWeight: "700", color: "#a16207" }}>
               {stats.caloriesBurned.toLocaleString()}
             </div>
@@ -436,7 +455,9 @@ export default function OverviewPage({ userId }) {
             padding: "20px", 
             textAlign: "center" 
           }}>
-            <div style={{ fontSize: "24px", marginBottom: "8px" }}>👥</div>
+                            <div style={{ fontSize: "24px", marginBottom: "8px" }}>
+                  <FaUsers />
+                </div>
             <div style={{ fontSize: "20px", fontWeight: "700", color: "#7c3aed" }}>
               {stats.friendsCount}
             </div>

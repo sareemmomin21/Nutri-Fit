@@ -1,6 +1,6 @@
 // components/CustomWorkoutsTab.js
-import React from "react";
-import { FaRegLightbulb } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { FaDumbbell } from "react-icons/fa";
 
 export function CustomWorkoutsTab({
   customWorkouts,
@@ -83,7 +83,9 @@ export function CustomWorkoutsTab({
       {customWorkouts.length === 0 ? (
         <div style={cardStyle}>
           <div style={{ textAlign: "center", padding: "2rem" }}>
-            <div style={{ fontSize: "48px", marginBottom: "1rem" }}>🏋️‍♂️</div>
+            <div style={{ fontSize: "48px", marginBottom: "1rem" }}>
+          <FaDumbbell />
+        </div>
             <h4 style={{ color: "#4a5568", margin: "0 0 1rem 0" }}>
               No Custom Workouts Yet
             </h4>
@@ -130,7 +132,7 @@ export function CustomWorkoutsTab({
         }}
       >
         <h4 style={{ margin: "0 0 0.5rem 0", color: "#2d3748" }}>
-          <FaRegLightbulb /> Managing Custom Workouts
+          <FaDumbbell /> Managing Custom Workouts
         </h4>
         <ul
           style={{

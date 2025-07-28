@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { FaCalendarAlt, FaListUl, FaCheck, FaExclamationTriangle } from "react-icons/fa";
 
 // Modal for adding missing workout
 function AddMissingWorkoutModal({
@@ -954,7 +955,17 @@ function WorkoutHistory({ userId }) {
                 fontWeight: "bold",
               }}
             >
-              {viewMode === "calendar" ? "📋 List View" : "📅 Calendar View"}
+                              {viewMode === "calendar" ? (
+                  <span style={{ display: "flex", alignItems: "center" }}>
+                    <FaListUl style={{ marginRight: "4px" }} />
+                    List View
+                  </span>
+                ) : (
+                  <span style={{ display: "flex", alignItems: "center" }}>
+                    <FaCalendarAlt style={{ marginRight: "4px" }} />
+                    Calendar View
+                  </span>
+                )}
             </button>
           </div>
         </div>

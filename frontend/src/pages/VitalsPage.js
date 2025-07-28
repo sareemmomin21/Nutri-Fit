@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
+import { FaFire } from "react-icons/fa";
 import StreakIndicator from '../components/StreakIndicator';
 import VitalsChart from '../components/VitalsChart';
 import VitalsInputForm from '../components/VitalsInputForm';
@@ -64,7 +65,7 @@ const VitalsPage = () => {
         <div className="vitals-summary-card">
           <div className="vitals-summary-card-label">Current Streak</div>
           <div className="vitals-summary-card-value vitals-summary-streak">
-            <span className="vitals-summary-icon">🔥</span>
+                            <FaFire className="vitals-summary-icon" />
             {streak} days
           </div>
         </div>

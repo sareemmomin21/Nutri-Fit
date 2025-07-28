@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import FriendCard from "../components/FriendCard";
 import FriendSearch from "../components/FriendSearch";
 import FriendProfileModal from "../components/FriendProfileModal";
+import { FaUsers, FaTrophy, FaClock, FaChartBar, FaSearch } from "react-icons/fa";
 
 function ChatModal({ open, friend, userId, onClose }) {
   const [messages, setMessages] = useState([]);
@@ -562,7 +563,8 @@ export default function FriendsPage({ userId }) {
           border: "1px solid #9ae6b4"
         }}>
           <div style={{ fontSize: "14px", color: "#22543d", fontWeight: "600" }}>
-            📊 Summary: {remindersYouSet.length} reminder{remindersYouSet.length !== 1 ? 's' : ''} sent
+            <FaChartBar style={{ marginRight: "4px" }} />
+        Summary: {remindersYouSet.length} reminder{remindersYouSet.length !== 1 ? 's' : ''} sent
           </div>
         </div>
         {remindersYouSet.length === 0 ? (
@@ -633,7 +635,7 @@ export default function FriendsPage({ userId }) {
 
       {/* Reminders You Received Section */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>⏰ Reminders You Received from Friends</div>
+        <div style={sectionHeaderStyle}><FaClock style={{ marginRight: "8px" }} />Reminders You Received from Friends</div>
         <div style={{ 
           background: "#fef5e7", 
           borderRadius: "8px", 
@@ -642,7 +644,8 @@ export default function FriendsPage({ userId }) {
           border: "1px solid #f6ad55"
         }}>
           <div style={{ fontSize: "14px", color: "#c05621", fontWeight: "600" }}>
-            📊 Summary: {reminders.length} reminder{reminders.length !== 1 ? 's' : ''} received
+            <FaChartBar style={{ marginRight: "4px" }} />
+        Summary: {reminders.length} reminder{reminders.length !== 1 ? 's' : ''} received
           </div>
         </div>
         {reminders.length === 0 ? (
@@ -656,7 +659,9 @@ export default function FriendsPage({ userId }) {
             borderRadius: "12px",
             border: "2px dashed #e2e8f0"
           }}>
-            <div style={{ fontSize: "48px", marginBottom: "16px", fontStyle: "normal" }}>⏰</div>
+                            <div style={{ fontSize: "48px", marginBottom: "16px", fontStyle: "normal" }}>
+                  <FaClock />
+                </div>
             No reminders set for you
             <div style={{ fontSize: "13px", marginTop: "8px", opacity: 0.7, fontStyle: "normal" }}>
               When friends set reminders for you, they'll appear here!
@@ -712,7 +717,7 @@ export default function FriendsPage({ userId }) {
       </div>
       {/* Leaderboard Section */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>🏆 Friends Leaderboard (Streak)</div>
+        <div style={sectionHeaderStyle}><FaTrophy style={{ marginRight: "8px" }} />Friends Leaderboard (Streak)</div>
         {leaderboard.length === 0 ? (
           <div style={subtleText}>(No leaderboard data)</div>
         ) : (
@@ -751,7 +756,7 @@ export default function FriendsPage({ userId }) {
       />
       <div style={{ marginBottom: "2rem" }}>
         <h2 style={{ fontSize: 22, color: "#2d3748", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-          <span role="img" aria-label="friends">👥</span> My Friends ({friends.length})
+          <FaUsers style={{ marginRight: "8px" }} /> My Friends ({friends.length})
         </h2>
         <div style={{ height: 2, background: "#e2e8f0", margin: "12px 0 24px 0", borderRadius: 2 }} />
         {friendsLoading ? (

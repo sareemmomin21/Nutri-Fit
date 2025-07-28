@@ -7,6 +7,7 @@ import bicepCurl from "./images/bicep-curls.jpg";
 import tricepExtension from "./images/tricep-extension.jpg";
 import shoulderPress from "./images/shoulder-press.jpg";
 import { FaThumbsUp, FaThumbsDown, FaLightbulb } from "react-icons/fa";
+import { FaSearch, FaFire, FaCheck, FaExclamationTriangle } from "react-icons/fa";
 
 // Exercise image database - you can replace these with actual image URLs
 const EXERCISE_IMAGES = {
@@ -1123,7 +1124,9 @@ function QuickWorkout({ userId }) {
       ) : suggestions.length === 0 ? (
         <div style={cardStyle}>
           <div style={{ textAlign: "center", padding: "2rem" }}>
-            <div style={{ fontSize: "48px", marginBottom: "1rem" }}>🔍</div>
+            <div style={{ fontSize: "48px", marginBottom: "1rem" }}>
+          <FaSearch />
+        </div>
             <h3 style={{ color: "#4a5568" }}>No workouts found</h3>
             <p style={{ color: "#718096", marginBottom: "1rem" }}>
               Try adjusting your criteria or equipment selection. We're looking
@@ -1465,7 +1468,7 @@ function WorkoutSuggestionCard({
                       }}
                     >
                       <div style={{ fontSize: "40px", marginBottom: "0.5rem" }}>
-                        💪
+                        <FaFire />
                       </div>
                       <div>Full workout details available when you start</div>
                     </div>

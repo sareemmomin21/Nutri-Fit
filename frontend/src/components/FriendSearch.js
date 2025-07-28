@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { FaSearch } from "react-icons/fa";
 
 export default function FriendSearch({ searchQuery, setSearchQuery, searchResults, searchLoading, onSearch, onAddFriend, friends = [], requests = [], onInvite }) {
   // Helper to check if user is already a friend
@@ -9,7 +10,7 @@ export default function FriendSearch({ searchQuery, setSearchQuery, searchResult
   return (
     <div style={{ marginBottom: "2rem" }}>
       <h2 style={{ fontSize: 22, color: "#2d3748", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-        <span role="img" aria-label="search">🔍</span> Find Friends
+        <FaSearch /> Find Friends
       </h2>
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", marginBottom: "1rem" }}>
         <input

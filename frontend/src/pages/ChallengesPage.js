@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { FaBullseye, FaTrophy, FaHandshake, FaClock, FaCalendarAlt, FaCheck, FaExclamationTriangle } from "react-icons/fa";
 
 const cardStyle = {
   border: "1px solid #e2e8f0",
@@ -236,7 +237,7 @@ export default function ChallengesPage({ userId }) {
     <div>
       {/* Create Challenge Form */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>🎯 Create a Challenge</div>
+        <div style={sectionHeaderStyle}><FaBullseye style={{ marginRight: "8px" }} />Create a Challenge</div>
         <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
           {/* First Row - Title and Description */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "40px" }}>
@@ -299,8 +300,9 @@ export default function ChallengesPage({ userId }) {
                 />
               )}
               {form.deadline && (
-                <div style={{ color: "#10b981", fontSize: "13px", marginTop: "6px", fontWeight: "500" }}>
-                  📅 Deadline: {new Date(form.deadline).toLocaleString()}
+                <div style={{ color: "#10b981", fontSize: "13px", marginTop: "6px", fontWeight: "500", display: "flex", alignItems: "center" }}>
+                  <FaCalendarAlt style={{ marginRight: "4px" }} />
+                  Deadline: {new Date(form.deadline).toLocaleString()}
                 </div>
               )}
             </div>
@@ -375,13 +377,14 @@ export default function ChallengesPage({ userId }) {
             alignItems: "center",
             gap: "8px"
           }}>
-            ✅ {successMsg}
+            <FaCheck style={{ marginRight: "4px" }} />
+            {successMsg}
           </div>
         )}
       </div>
       {/* Personal Challenges */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>🏅 Your Challenges</div>
+        <div style={sectionHeaderStyle}><FaTrophy style={{ marginRight: "8px" }} />Your Challenges</div>
         {loading ? (
           <div style={subtleText}>Loading…</div>
         ) : challenges.length === 0 ? (
@@ -432,7 +435,22 @@ export default function ChallengesPage({ userId }) {
                     alignItems: "center",
                     gap: "6px"
                   }}>
-                    {expired ? "⏰ Expired" : daysLeft !== null ? `⏰ ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "📅 No deadline"}
+                    {expired ? (
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <FaExclamationTriangle style={{ marginRight: "4px", color: "#ef4444" }} />
+                        Expired
+                      </span>
+                    ) : daysLeft !== null ? (
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <FaClock style={{ marginRight: "4px" }} />
+                        {daysLeft} day{daysLeft === 1 ? "" : "s"} left
+                      </span>
+                    ) : (
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <FaCalendarAlt style={{ marginRight: "4px" }} />
+                        No deadline
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: "15px", color: "#374151", marginBottom: "12px", fontWeight: "600" }}>
                     Progress: {c.progress} / {c.max_progress}
@@ -486,7 +504,17 @@ export default function ChallengesPage({ userId }) {
                       borderRadius: "8px",
                       backgroundColor: c.completed ? "#ecfdf5" : "#f1f5f9"
                     }}>
-                      {c.completed ? "✅ Completed!" : "🔄 In Progress"}
+                      {c.completed ? (
+                        <span style={{ display: "flex", alignItems: "center" }}>
+                          <FaCheck style={{ marginRight: "4px" }} />
+                          Completed!
+                        </span>
+                      ) : (
+                        <span style={{ display: "flex", alignItems: "center" }}>
+                          <FaClock style={{ marginRight: "4px" }} />
+                          In Progress
+                        </span>
+                      )}
                     </span>
                     <button
                       onClick={() => handleDeleteChallenge(c.id)}
@@ -522,7 +550,7 @@ export default function ChallengesPage({ userId }) {
       </div>
       {/* Friend Challenges */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>🤝 Friend Challenges</div>
+        <div style={sectionHeaderStyle}><FaHandshake style={{ marginRight: "8px" }} />Friend Challenges</div>
         {/* Received */}
         {friendChallenges.received.length === 0 ? (
           <div style={subtleText}>(No friend challenges received)</div>
@@ -629,7 +657,22 @@ export default function ChallengesPage({ userId }) {
                     alignItems: "center",
                     gap: "6px"
                   }}>
-                    {expired ? "⏰ Expired" : daysLeft !== null ? `⏰ ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "📅 No deadline"}
+                    {expired ? (
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <FaExclamationTriangle style={{ marginRight: "4px", color: "#ef4444" }} />
+                        Expired
+                      </span>
+                    ) : daysLeft !== null ? (
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <FaClock style={{ marginRight: "4px" }} />
+                        {daysLeft} day{daysLeft === 1 ? "" : "s"} left
+                      </span>
+                    ) : (
+                      <span style={{ display: "flex", alignItems: "center" }}>
+                        <FaCalendarAlt style={{ marginRight: "4px" }} />
+                        No deadline
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: "15px", color: "#374151", marginBottom: "12px", fontWeight: "600" }}>
                     Progress: {c.progress} / {c.max_progress}
