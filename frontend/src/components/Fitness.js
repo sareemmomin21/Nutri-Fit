@@ -78,7 +78,7 @@ export default function Fitness() {
     try {
       setLoadingState("dashboard", true);
       const response = await fetch(
-        "http://127.0.0.1:5000/api/get_fitness_dashboard",
+        "http://127.0.0.1:5001/api/get_fitness_dashboard",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -102,7 +102,7 @@ export default function Fitness() {
     try {
       setLoadingState("recommendations", true);
       const response = await fetch(
-        "http://127.0.0.1:5000/api/get_workout_recommendations",
+        "http://127.0.0.1:5001/api/get_workout_recommendations",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -125,7 +125,7 @@ export default function Fitness() {
     try {
       setLoadingState("plan", true);
       const response = await fetch(
-        "http://127.0.0.1:5000/api/get_workout_plan",
+        "http://127.0.0.1:5001/api/get_workout_plan",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -148,7 +148,7 @@ export default function Fitness() {
     try {
       setLoadingState("history", true);
       const response = await fetch(
-        "http://127.0.0.1:5000/api/get_workout_history",
+        "http://127.0.0.1:5001/api/get_workout_history",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -171,7 +171,7 @@ export default function Fitness() {
     try {
       setLoadingState("goals", true);
       const response = await fetch(
-        "http://127.0.0.1:5000/api/get_fitness_goals",
+        "http://127.0.0.1:5001/api/get_fitness_goals",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -193,7 +193,7 @@ export default function Fitness() {
   const fetchRecoveryInfo = async () => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/get_recovery_recommendations",
+        "http://127.0.0.1:5001/api/get_recovery_recommendations",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -213,7 +213,7 @@ export default function Fitness() {
   const completeWorkout = async (workoutData) => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/complete_workout",
+        "http://127.0.0.1:5001/api/complete_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -241,7 +241,7 @@ export default function Fitness() {
   const addFitnessGoal = async (goalData) => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/add_fitness_goal",
+        "http://127.0.0.1:5001/api/add_fitness_goal",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

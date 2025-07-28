@@ -1955,4 +1955,4 @@ def like_workout_from_friend_endpoint():
 if __name__ == "__main__":
     init_db()
     init_fitness_tables()
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
