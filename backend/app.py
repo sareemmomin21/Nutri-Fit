@@ -1929,7 +1929,7 @@ def like_workout_from_friend_endpoint():
         # Check if they are friends
         from database import get_user_friends
         friends = get_user_friends(user_id)
-        friend_ids = [f['id'] for f in friends]
+        friend_ids = [f['user_id'] for f in friends]
         
         if friend_id not in friend_ids:
             return jsonify({"error": "Not friends with this user"}), 400
