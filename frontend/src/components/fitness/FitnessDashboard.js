@@ -1,12 +1,138 @@
-import React from "react";
+// Enhanced FitnessDashboard with proper refresh logic
 
-function FitnessDashboard({ data, isLoading }) {
+import React, { useState, useEffect } from "react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  AreaChart,
+  Area,
+} from "recharts";
+
+function FitnessDashboard({ data, isLoading, userId, onRefreshNeeded }) {
+  const [selectedTrendMetric, setSelectedTrendMetric] = useState("calories");
+  const [trendData, setTrendData] = useState([]);
+  const [workoutTypeData, setWorkoutTypeData] = useState([]);
+  const [localData, setLocalData] = useState(data);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Update local data when prop changes
+  useEffect(() => {
+    setLocalData(data);
+  }, [data]);
+
+  // Listen for workout completion events to refresh data
+  useEffect(() => {
+    const handleWorkoutCompleted = async (event) => {
+      console.log("🔄 FitnessDashboard: Workout completed, refreshing data...");
+      setRefreshing(true);
+
+      // Call parent refresh function
+      if (onRefreshNeeded) {
+        await onRefreshNeeded();
+      }
+
+      setRefreshing(false);
+    };
+
+    const handleDashboardRefresh = async (event) => {
+      console.log("🔄 FitnessDashboard: Dashboard refresh requested...");
+      setRefreshing(true);
+
+      if (onRefreshNeeded) {
+        await onRefreshNeeded();
+      }
+
+      setRefreshing(false);
+    };
+
+    // Listen for custom events
+    window.addEventListener("workoutCompleted", handleWorkoutCompleted);
+    window.addEventListener("dashboardRefresh", handleDashboardRefresh);
+    window.addEventListener("fitnessDataUpdate", handleDashboardRefresh);
+
+    return () => {
+      window.removeEventListener("workoutCompleted", handleWorkoutCompleted);
+      window.removeEventListener("dashboardRefresh", handleDashboardRefresh);
+      window.removeEventListener("fitnessDataUpdate", handleDashboardRefresh);
+    };
+  }, [onRefreshNeeded]);
+
+  // Process data for charts
+  useEffect(() => {
+    if (localData?.recent_workouts && localData.recent_workouts.length > 0) {
+      // Create trend data from recent workouts (last 14 days for better visualization)
+      const last14Days = [];
+      const today = new Date();
+
+      for (let i = 13; i >= 0; i--) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const dateStr = date.toISOString().split("T")[0];
+
+        // Find workouts for this date
+        const dayWorkouts = localData.recent_workouts.filter((workout) => {
+          const workoutDate = new Date(workout.date || workout.date_completed);
+          return workoutDate.toISOString().split("T")[0] === dateStr;
+        });
+
+        const totalCalories = dayWorkouts.reduce(
+          (sum, w) => sum + (w.calories_burned || w.calories || 0),
+          0
+        );
+        const totalDuration = dayWorkouts.reduce(
+          (sum, w) => sum + (w.duration || w.duration_minutes || 0),
+          0
+        );
+
+        last14Days.push({
+          date: date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          calories: totalCalories,
+          duration: totalDuration,
+          workouts: dayWorkouts.length,
+          fullDate: dateStr,
+        });
+      }
+
+      setTrendData(last14Days);
+
+      // Process workout type distribution
+      const typeCount = {};
+      localData.recent_workouts.forEach((workout) => {
+        const type = workout.type || workout.workout_type || "Other";
+        typeCount[type] = (typeCount[type] || 0) + 1;
+      });
+
+      const typeData = Object.entries(typeCount).map(([type, count]) => ({
+        name: type.charAt(0).toUpperCase() + type.slice(1),
+        value: count,
+        percentage: Math.round(
+          (count / localData.recent_workouts.length) * 100
+        ),
+      }));
+
+      setWorkoutTypeData(typeData);
+    }
+  }, [localData]);
+
   const cardStyle = {
-    backgroundColor: "#f8fafc",
+    backgroundColor: "white",
     padding: "1.5rem",
     borderRadius: "12px",
     border: "1px solid #e2e8f0",
-    textAlign: "center",
+    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
   };
 
   const statCardStyle = {
@@ -16,364 +142,716 @@ function FitnessDashboard({ data, isLoading }) {
     border: "1px solid #e2e8f0",
     textAlign: "center",
     boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
+    transition: "transform 0.2s, box-shadow 0.2s",
   };
 
-  const progressCardStyle = {
-    backgroundColor: "white",
-    padding: "1.5rem",
-    borderRadius: "12px",
-    border: "1px solid #e2e8f0",
-    boxShadow: "0 2px 4px rgba(0,0,0,0.05)",
-  };
+  const COLORS = [
+    "#4299e1",
+    "#ed8936",
+    "#9f7aea",
+    "#48bb78",
+    "#e53e3e",
+    "#38b2ac",
+  ];
 
-  if (isLoading) {
+  if (isLoading || refreshing) {
     return (
       <div style={{ textAlign: "center", padding: "2rem" }}>
-        <div>Loading dashboard...</div>
+        <div
+          style={{
+            width: "40px",
+            height: "40px",
+            border: "4px solid #e2e8f0",
+            borderTop: "4px solid #48bb78",
+            borderRadius: "50%",
+            animation: "spin 1s linear infinite",
+            margin: "0 auto 1rem auto",
+          }}
+        ></div>
+        <div style={{ color: "#718096" }}>
+          {refreshing ? "Updating dashboard..." : "Loading dashboard..."}
+        </div>
+        <style jsx>{`
+          @keyframes spin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
       </div>
     );
   }
 
-  if (!data) {
+  if (!localData || (!localData.weekly_stats && !localData.recent_workouts)) {
     return (
-      <div style={cardStyle}>
-        <h3>Welcome to Your Fitness Journey!</h3>
-        <p>Complete your first workout to see your progress here.</p>
+      <div style={{ ...cardStyle, textAlign: "center", padding: "3rem" }}>
+        <div
+          style={{ fontSize: "48px", marginBottom: "1rem", color: "#9ca3af" }}
+        >
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+          </svg>
+        </div>
+        <h3 style={{ color: "#4a5568", margin: "0 0 1rem 0" }}>
+          Welcome to Your Fitness Journey!
+        </h3>
+        <p style={{ color: "#718096", margin: "0 0 1.5rem 0" }}>
+          Complete your first workout to see your progress and insights here.
+        </p>
+        <div
+          style={{
+            backgroundColor: "#f0f9ff",
+            border: "1px solid #bae6fd",
+            borderRadius: "8px",
+            padding: "1rem",
+            textAlign: "left",
+          }}
+        >
+          <strong style={{ color: "#0369a1" }}>Get Started:</strong>
+          <ul style={{ color: "#0369a1", margin: "0.5rem 0 0 1rem" }}>
+            <li>Try the Quick Workout tab for instant workout suggestions</li>
+            <li>Check out the Workouts tab for personalized recommendations</li>
+            <li>Set fitness goals to track your progress</li>
+          </ul>
+        </div>
       </div>
     );
   }
 
-  const getStreakColor = (streak) => {
-    if (streak >= 7) return "#48bb78";
-    if (streak >= 3) return "#ed8936";
-    return "#4299e1";
-  };
+  // Use consistent data source for all calculations
+  const weeklyWorkouts = localData.weekly_stats?.workouts || 0;
+  const weeklyDuration = localData.weekly_stats?.total_duration || 0;
+  const weeklyCalories = localData.weekly_stats?.total_calories || 0;
+  const currentStreak = localData.streak?.current_streak || 0;
+  const bestStreak = localData.streak?.longest_streak || 0;
 
-  const getProgressColor = (percentage) => {
-    if (percentage >= 80) return "#48bb78";
-    if (percentage >= 60) return "#38a169";
-    if (percentage >= 40) return "#ed8936";
-    return "#4299e1";
+  // Calculate averages
+  const avgDuration =
+    weeklyWorkouts > 0 ? Math.round(weeklyDuration / weeklyWorkouts) : 0;
+  const dailyAvgDuration = Math.round(weeklyDuration / 7);
+  const dailyAvgCalories = Math.round(weeklyCalories / 7);
+
+  // Use the same data for summary stats at bottom
+  const totalWorkouts = weeklyWorkouts;
+  const totalMinutes = weeklyDuration;
+  const totalCaloriesBurned = weeklyCalories;
+
+  // Get streak color based on value
+  const getStreakColor = (streak) => {
+    if (streak >= 30) return "#059669";
+    if (streak >= 14) return "#10b981";
+    if (streak >= 7) return "#34d399";
+    if (streak >= 3) return "#f59e0b";
+    return "#3b82f6";
   };
 
   return (
     <div>
-      <h2 style={{ marginBottom: "2rem", color: "#2d3748" }}>
-        Fitness Overview
-      </h2>
-
-      {/* Weekly Stats */}
       <div
         style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: "1rem",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
           marginBottom: "2rem",
         }}
       >
-        <div style={statCardStyle}>
-          <div
-            style={{
-              fontSize: "2rem",
-              fontWeight: "bold",
-              color: "#48bb78",
-            }}
-          >
-            {data.weekly_stats?.workouts || 0}
-          </div>
-          <div style={{ color: "#718096", fontSize: "14px" }}>
-            Workouts This Week
-          </div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div
-            style={{
-              fontSize: "2rem",
-              fontWeight: "bold",
-              color: "#4299e1",
-            }}
-          >
-            {Math.round(data.weekly_stats?.total_duration || 0)}
-          </div>
-          <div style={{ color: "#718096", fontSize: "14px" }}>
-            Minutes This Week
-          </div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div
-            style={{
-              fontSize: "2rem",
-              fontWeight: "bold",
-              color: "#ed8936",
-            }}
-          >
-            {Math.round(data.weekly_stats?.total_calories || 0)}
-          </div>
-          <div style={{ color: "#718096", fontSize: "14px" }}>
-            Calories Burned
-          </div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div
-            style={{
-              fontSize: "2rem",
-              fontWeight: "bold",
-              color: "#9f7aea",
-            }}
-          >
-            {Math.round(data.weekly_stats?.avg_duration) || 0}
-          </div>
-          <div style={{ color: "#718096", fontSize: "14px" }}>
-            Avg Duration (min)
+        <h2
+          style={{
+            margin: "0",
+            color: "#1f2937",
+            fontSize: "24px",
+            fontWeight: "600",
+          }}
+        >
+          Fitness Overview
+        </h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          {refreshing && (
+            <div
+              style={{
+                width: "16px",
+                height: "16px",
+                border: "2px solid #e2e8f0",
+                borderTop: "2px solid #48bb78",
+                borderRadius: "50%",
+                animation: "spin 1s linear infinite",
+              }}
+            />
+          )}
+          <div style={{ fontSize: "14px", color: "#6b7280" }}>
+            {currentStreak > 0
+              ? `${currentStreak} day streak`
+              : "Start your fitness journey today!"}
           </div>
         </div>
       </div>
 
-      {/* Streak and Goals Progress */}
+      {/* Main Metrics Row */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
           gap: "1.5rem",
           marginBottom: "2rem",
         }}
       >
-        {/* Workout Streak */}
-        <div style={progressCardStyle}>
-          <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
-            Current Streak
-          </h3>
-          <div style={{ textAlign: "center", marginBottom: "1rem" }}>
-            <div
+        {/* This Week's Workouts */}
+        <div
+          style={{
+            ...statCardStyle,
+            background: "linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)",
+            color: "white",
+            border: "none",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "2.5rem",
+              fontWeight: "700",
+              marginBottom: "0.5rem",
+            }}
+          >
+            {weeklyWorkouts}
+          </div>
+          <div
+            style={{ fontSize: "14px", opacity: 0.9, marginBottom: "0.5rem" }}
+          >
+            Workouts This Week
+          </div>
+          <div style={{ fontSize: "12px", opacity: 0.8 }}>
+            Target: 3-5 per week
+          </div>
+        </div>
+
+        {/* Weekly Duration */}
+        <div style={statCardStyle}>
+          <div
+            style={{
+              fontSize: "2.5rem",
+              fontWeight: "700",
+              color: "#059669",
+              marginBottom: "0.5rem",
+            }}
+          >
+            {weeklyDuration}
+          </div>
+          <div
+            style={{
+              color: "#6b7280",
+              fontSize: "14px",
+              marginBottom: "0.5rem",
+            }}
+          >
+            Minutes This Week
+          </div>
+          <div style={{ fontSize: "12px", color: "#6b7280" }}>
+            {dailyAvgDuration} min daily average
+          </div>
+        </div>
+
+        {/* Weekly Calories */}
+        <div style={statCardStyle}>
+          <div
+            style={{
+              fontSize: "2.5rem",
+              fontWeight: "700",
+              color: "#dc2626",
+              marginBottom: "0.5rem",
+            }}
+          >
+            {weeklyCalories}
+          </div>
+          <div
+            style={{
+              color: "#6b7280",
+              fontSize: "14px",
+              marginBottom: "0.5rem",
+            }}
+          >
+            Calories Burned This Week
+          </div>
+          <div style={{ fontSize: "12px", color: "#6b7280" }}>
+            {dailyAvgCalories} cal daily average
+          </div>
+        </div>
+
+        {/* Current Streak */}
+        <div style={statCardStyle}>
+          <div
+            style={{
+              fontSize: "2.5rem",
+              fontWeight: "700",
+              color: getStreakColor(currentStreak),
+              marginBottom: "0.5rem",
+            }}
+          >
+            {currentStreak}
+          </div>
+          <div
+            style={{
+              color: "#6b7280",
+              fontSize: "14px",
+              marginBottom: "0.5rem",
+            }}
+          >
+            Day Streak
+          </div>
+          <div style={{ fontSize: "12px", color: "#6b7280" }}>
+            Best: {bestStreak} days
+          </div>
+        </div>
+      </div>
+
+      {/* Charts Section */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "2fr 1fr",
+          gap: "1.5rem",
+          marginBottom: "2rem",
+        }}
+      >
+        {/* Workout Trends Chart */}
+        <div style={cardStyle}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "1.5rem",
+            }}
+          >
+            <h3
               style={{
-                fontSize: "3rem",
-                fontWeight: "bold",
-                color: getStreakColor(data.streak?.current_streak || 0),
+                margin: "0",
+                color: "#1f2937",
+                fontSize: "18px",
+                fontWeight: "600",
               }}
             >
-              {data.streak?.current_streak || 0}
+              14-Day Workout Trends
+            </h3>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                onClick={() => setSelectedTrendMetric("calories")}
+                style={{
+                  padding: "8px 12px",
+                  backgroundColor:
+                    selectedTrendMetric === "calories" ? "#dc2626" : "#f3f4f6",
+                  color:
+                    selectedTrendMetric === "calories" ? "white" : "#6b7280",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  transition: "all 0.2s",
+                }}
+              >
+                Calories
+              </button>
+              <button
+                onClick={() => setSelectedTrendMetric("duration")}
+                style={{
+                  padding: "8px 12px",
+                  backgroundColor:
+                    selectedTrendMetric === "duration" ? "#059669" : "#f3f4f6",
+                  color:
+                    selectedTrendMetric === "duration" ? "white" : "#6b7280",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  transition: "all 0.2s",
+                }}
+              >
+                Duration
+              </button>
+              <button
+                onClick={() => setSelectedTrendMetric("workouts")}
+                style={{
+                  padding: "8px 12px",
+                  backgroundColor:
+                    selectedTrendMetric === "workouts" ? "#3b82f6" : "#f3f4f6",
+                  color:
+                    selectedTrendMetric === "workouts" ? "white" : "#6b7280",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  fontWeight: "600",
+                  transition: "all 0.2s",
+                }}
+              >
+                Workouts
+              </button>
             </div>
-            <div style={{ color: "#718096" }}>consecutive days</div>
           </div>
-          {data.streak?.longest_streak && (
-            <div style={{ fontSize: "14px", color: "#4a5568" }}>
-              Personal best: {data.streak.longest_streak} days
+
+          {trendData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart
+                data={trendData}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                  }}
+                  formatter={(value, name) => {
+                    if (selectedTrendMetric === "calories")
+                      return [value, "Calories"];
+                    if (selectedTrendMetric === "duration")
+                      return [value, "Minutes"];
+                    return [value, "Workouts"];
+                  }}
+                  labelFormatter={(label) => `Date: ${label}`}
+                />
+                <Area
+                  type="monotone"
+                  dataKey={selectedTrendMetric}
+                  stroke={
+                    selectedTrendMetric === "calories"
+                      ? "#dc2626"
+                      : selectedTrendMetric === "duration"
+                      ? "#059669"
+                      : "#3b82f6"
+                  }
+                  fill={
+                    selectedTrendMetric === "calories"
+                      ? "#fecaca"
+                      : selectedTrendMetric === "duration"
+                      ? "#a7f3d0"
+                      : "#bfdbfe"
+                  }
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div
+              style={{
+                height: "280px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#6b7280",
+                fontSize: "14px",
+              }}
+            >
+              Complete more workouts to see your trends
             </div>
           )}
         </div>
 
-        {/* Weekly Goal Progress */}
-        {data.weekly_goal && (
-          <div style={progressCardStyle}>
-            <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
-              Weekly Goal Progress
-            </h3>
-            <div style={{ marginBottom: "1rem" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "0.5rem",
-                }}
-              >
-                <span style={{ fontSize: "14px", color: "#4a5568" }}>
-                  {data.weekly_goal.current} / {data.weekly_goal.target}{" "}
-                  workouts
-                </span>
-                <span style={{ fontSize: "14px", color: "#4a5568" }}>
-                  {Math.round(data.weekly_goal.percentage)}%
-                </span>
+        {/* Workout Type Distribution */}
+        <div style={cardStyle}>
+          <h3
+            style={{
+              margin: "0 0 1.5rem 0",
+              color: "#1f2937",
+              fontSize: "18px",
+              fontWeight: "600",
+            }}
+          >
+            Workout Types
+          </h3>
+          {workoutTypeData.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={200}>
+                <PieChart>
+                  <Pie
+                    data={workoutTypeData}
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    innerRadius={40}
+                    fill="#8884d8"
+                    dataKey="value"
+                    label={false}
+                  >
+                    {workoutTypeData.map((entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value, name) => [value, "workouts"]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ marginTop: "1rem" }}>
+                {workoutTypeData.map((type, index) => (
+                  <div
+                    key={type.name}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "0.5rem",
+                      fontSize: "14px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: "12px",
+                          height: "12px",
+                          backgroundColor: COLORS[index % COLORS.length],
+                          borderRadius: "2px",
+                        }}
+                      />
+                      <span style={{ color: "#374151" }}>{type.name}</span>
+                    </div>
+                    <span style={{ color: "#6b7280", fontWeight: "500" }}>
+                      {type.value} ({type.percentage}%)
+                    </span>
+                  </div>
+                ))}
               </div>
-              <div
-                style={{
-                  width: "100%",
-                  height: "20px",
-                  backgroundColor: "#e2e8f0",
-                  borderRadius: "10px",
-                  overflow: "hidden",
-                }}
-              >
-                <div
-                  style={{
-                    width: `${Math.min(data.weekly_goal.percentage, 100)}%`,
-                    height: "100%",
-                    backgroundColor: getProgressColor(
-                      data.weekly_goal.percentage
-                    ),
-                    transition: "width 0.3s ease",
-                  }}
-                />
-              </div>
+            </>
+          ) : (
+            <div
+              style={{
+                height: "200px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#6b7280",
+                fontSize: "14px",
+              }}
+            >
+              No workout data available
             </div>
-            {data.weekly_goal.percentage >= 100 && (
-              <div
-                style={{
-                  color: "#48bb78",
-                  fontSize: "14px",
-                  fontWeight: "bold",
-                }}
-              >
-                🎉 Goal achieved this week!
-              </div>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Recent Activity */}
-      {data.recent_workouts && data.recent_workouts.length > 0 && (
-        <div style={progressCardStyle}>
-          <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
+      {localData.recent_workouts && localData.recent_workouts.length > 0 && (
+        <div style={cardStyle}>
+          <h3
+            style={{
+              margin: "0 0 1.5rem 0",
+              color: "#1f2937",
+              fontSize: "18px",
+              fontWeight: "600",
+            }}
+          >
             Recent Activity
           </h3>
           <div style={{ display: "grid", gap: "0.75rem" }}>
-            {data.recent_workouts.slice(0, 5).map((workout, index) => (
+            {localData.recent_workouts.slice(0, 5).map((workout, index) => (
               <div
                 key={index}
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "0.75rem",
-                  backgroundColor: "#f8fafc",
+                  padding: "1rem",
+                  backgroundColor: index === 0 ? "#f0f9ff" : "#f9fafb",
                   borderRadius: "8px",
-                  border: "1px solid #e2e8f0",
+                  border:
+                    index === 0 ? "1px solid #3b82f6" : "1px solid #e5e7eb",
+                  transition: "all 0.2s",
                 }}
               >
-                <div>
+                <div
+                  style={{ display: "flex", alignItems: "center", gap: "1rem" }}
+                >
                   <div
                     style={{
-                      fontWeight: "bold",
-                      color: "#2d3748",
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "8px",
+                      backgroundColor: index === 0 ? "#3b82f6" : "#6b7280",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white",
                       fontSize: "14px",
+                      fontWeight: "600",
                     }}
                   >
-                    {workout.name}
+                    {workout.type ? workout.type.charAt(0).toUpperCase() : "W"}
                   </div>
-                  <div style={{ fontSize: "12px", color: "#718096" }}>
-                    {new Date(workout.date).toLocaleDateString()} •{" "}
-                    {workout.type}
+                  <div>
+                    <div
+                      style={{
+                        fontWeight: "600",
+                        color: "#1f2937",
+                        fontSize: "14px",
+                      }}
+                    >
+                      {workout.name || workout.workout_name}
+                      {index === 0 && (
+                        <span
+                          style={{
+                            color: "#3b82f6",
+                            marginLeft: "0.5rem",
+                            fontSize: "12px",
+                          }}
+                        >
+                          • Latest
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                      {new Date(
+                        workout.date || workout.date_completed
+                      ).toLocaleDateString()}{" "}
+                      • {workout.type || workout.workout_type || "Workout"}
+                    </div>
                   </div>
                 </div>
                 <div style={{ textAlign: "right" }}>
                   <div
                     style={{
-                      fontSize: "14px",
-                      fontWeight: "bold",
-                      color: "#4299e1",
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: "#059669",
                     }}
                   >
-                    {workout.duration} min
+                    {workout.duration || workout.duration_minutes} min
                   </div>
-                  <div style={{ fontSize: "12px", color: "#ed8936" }}>
-                    {workout.calories} cal
+                  <div style={{ fontSize: "12px", color: "#dc2626" }}>
+                    {workout.calories_burned || workout.calories} cal
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          {localData.recent_workouts.length > 5 && (
+            <div style={{ textAlign: "center", marginTop: "1rem" }}>
+              <button
+                style={{
+                  padding: "8px 16px",
+                  backgroundColor: "#f3f4f6",
+                  color: "#3b82f6",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                }}
+              >
+                View All in History Tab
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Fitness Stats Summary */}
-      {data.all_time_stats && (
+      {/* Summary Stats - Weekly Data */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "1rem",
+          marginTop: "2rem",
+        }}
+      >
         <div
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
-            gap: "1rem",
-            marginTop: "2rem",
-          }}
-        >
-          <div style={statCardStyle}>
-            <div
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-                color: "#48bb78",
-              }}
-            >
-              {data.all_time_stats.total_workouts || 0}
-            </div>
-            <div style={{ color: "#718096", fontSize: "12px" }}>
-              Total Workouts
-            </div>
-          </div>
-
-          <div style={statCardStyle}>
-            <div
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-                color: "#4299e1",
-              }}
-            >
-              {Math.round(data.all_time_stats.total_duration || 0)}
-            </div>
-            <div style={{ color: "#718096", fontSize: "12px" }}>
-              Total Minutes
-            </div>
-          </div>
-
-          <div style={statCardStyle}>
-            <div
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-                color: "#ed8936",
-              }}
-            >
-              {Math.round(data.all_time_stats.total_calories || 0)}
-            </div>
-            <div style={{ color: "#718096", fontSize: "12px" }}>
-              Total Calories
-            </div>
-          </div>
-
-          <div style={statCardStyle}>
-            <div
-              style={{
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-                color: "#9f7aea",
-              }}
-            >
-              {data.all_time_stats.favorite_type || "N/A"}
-            </div>
-            <div style={{ color: "#718096", fontSize: "12px" }}>
-              Favorite Type
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Motivational Message */}
-      {data.motivation_message && (
-        <div
-          style={{
-            backgroundColor: "#e6fffa",
-            border: "1px solid #81e6d9",
-            borderRadius: "8px",
-            padding: "1rem",
-            marginTop: "2rem",
-            textAlign: "center",
+            ...cardStyle,
+            backgroundColor: "#fef3c7",
+            borderColor: "#f59e0b",
           }}
         >
           <div
-            style={{
-              fontSize: "16px",
-              fontWeight: "bold",
-              color: "#234e52",
-              marginBottom: "0.5rem",
-            }}
+            style={{ fontSize: "1.8rem", fontWeight: "700", color: "#d97706" }}
           >
-            💪 {data.motivation_message}
+            {totalWorkouts}
+          </div>
+          <div
+            style={{ color: "#92400e", fontSize: "14px", fontWeight: "500" }}
+          >
+            Workouts This Week
           </div>
         </div>
-      )}
+
+        <div
+          style={{
+            ...cardStyle,
+            backgroundColor: "#d1fae5",
+            borderColor: "#10b981",
+          }}
+        >
+          <div
+            style={{ fontSize: "1.8rem", fontWeight: "700", color: "#047857" }}
+          >
+            {totalMinutes}
+          </div>
+          <div
+            style={{ color: "#065f46", fontSize: "14px", fontWeight: "500" }}
+          >
+            Minutes This Week
+          </div>
+        </div>
+
+        <div
+          style={{
+            ...cardStyle,
+            backgroundColor: "#fecaca",
+            borderColor: "#ef4444",
+          }}
+        >
+          <div
+            style={{ fontSize: "1.8rem", fontWeight: "700", color: "#dc2626" }}
+          >
+            {totalCaloriesBurned}
+          </div>
+          <div
+            style={{ color: "#991b1b", fontSize: "14px", fontWeight: "500" }}
+          >
+            Calories This Week
+          </div>
+        </div>
+
+        <div
+          style={{
+            ...cardStyle,
+            backgroundColor: "#e0e7ff",
+            borderColor: "#6366f1",
+          }}
+        >
+          <div
+            style={{ fontSize: "1.8rem", fontWeight: "700", color: "#4f46e5" }}
+          >
+            {totalWorkouts > 0 ? Math.round(totalMinutes / totalWorkouts) : 0}
+          </div>
+          <div
+            style={{ color: "#3730a3", fontSize: "14px", fontWeight: "500" }}
+          >
+            Avg Duration This Week
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

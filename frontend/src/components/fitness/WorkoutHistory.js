@@ -8,11 +8,10 @@ function AddMissingWorkoutModal({
   onWorkoutAdded,
   customWorkouts = [],
 }) {
-  const [modalTab, setModalTab] = useState("select"); // "select" or "create"
+  const [modalTab, setModalTab] = useState("select");
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Create workout form state
   const [newWorkout, setNewWorkout] = useState({
     name: "",
     type: "strength",
@@ -69,15 +68,7 @@ function AddMissingWorkoutModal({
 
     setIsSubmitting(true);
     try {
-      // Ensure date is properly formatted as local date string (YYYY-MM-DD)
-      const localDateString = selectedDate.includes("T")
-        ? selectedDate.split("T")[0]
-        : selectedDate;
-
-      console.log("Submitting existing workout with date:", localDateString);
-      console.log("Original selectedDate was:", selectedDate);
-
-      // Submit the selected workout for the specific date
+      // FIXED: Use the selectedDate as-is since it's already in YYYY-MM-DD format
       const workoutData = {
         name: selectedWorkout.name,
         type: selectedWorkout.workout_data.type || "strength",
@@ -85,11 +76,12 @@ function AddMissingWorkoutModal({
         intensity: selectedWorkout.workout_data.intensity || "moderate",
         calories_burned: selectedWorkout.workout_data.calories_burned,
         exercises: selectedWorkout.workout_data.exercises || [],
-        date_completed: localDateString, // Use local date string
+        date_completed: selectedDate, // Use selectedDate directly - it's already YYYY-MM-DD
         notes: `Logged retrospectively from custom workout: ${selectedWorkout.name}`,
       };
 
-      console.log("Workout data being sent:", workoutData);
+      console.log("✅ Submitting workout for date:", selectedDate);
+      console.log("Workout data:", workoutData);
 
       const response = await fetch(
         "http://127.0.0.1:5000/api/complete_workout",
@@ -105,16 +97,16 @@ function AddMissingWorkoutModal({
 
       if (response.ok) {
         const result = await response.json();
-        console.log("Backend response:", result);
+        console.log("✅ Workout added successfully:", result);
         onWorkoutAdded();
         onClose();
       } else {
         const errorData = await response.json();
-        console.error("Backend error:", errorData);
+        console.error("❌ Backend error:", errorData);
         alert("Failed to add workout. Please try again.");
       }
     } catch (error) {
-      console.error("Error adding existing workout:", error);
+      console.error("❌ Error adding existing workout:", error);
       alert("Error adding workout. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -133,11 +125,6 @@ function AddMissingWorkoutModal({
 
     setIsSubmitting(true);
     try {
-      // Ensure date is properly formatted as local date string (YYYY-MM-DD)
-      const localDateString = selectedDate.includes("T")
-        ? selectedDate.split("T")[0]
-        : selectedDate;
-
       // First, create the custom workout
       const createResponse = await fetch(
         "http://127.0.0.1:5000/api/create_custom_workout",
@@ -168,9 +155,11 @@ function AddMissingWorkoutModal({
         intensity: newWorkout.intensity,
         calories_burned: parseInt(newWorkout.calories_burned),
         exercises: newWorkout.exercises,
-        date_completed: localDateString, // Use local date string
+        date_completed: selectedDate, // FIXED: Use selectedDate directly
         notes: newWorkout.notes || "Logged retrospectively",
       };
+
+      console.log("✅ Creating and logging workout for date:", selectedDate);
 
       const completeResponse = await fetch(
         "http://127.0.0.1:5000/api/complete_workout",
@@ -220,8 +209,8 @@ function AddMissingWorkoutModal({
         <h2 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
           Add Workout for{" "}
           {(() => {
-            // Parse the selectedDate and format it properly
-            if (selectedDate) {
+            // FIXED: Better date formatting that handles YYYY-MM-DD correctly
+            try {
               const [year, month, day] = selectedDate.split("-");
               const date = new Date(
                 parseInt(year),
@@ -229,12 +218,14 @@ function AddMissingWorkoutModal({
                 parseInt(day)
               );
               return date.toLocaleDateString("en-US", {
-                month: "numeric",
+                weekday: "long",
+                month: "long",
                 day: "numeric",
                 year: "numeric",
               });
+            } catch (e) {
+              return selectedDate;
             }
-            return "Selected Date";
           })()}
         </h2>
 
@@ -700,7 +691,7 @@ function WorkoutHistory({ userId }) {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(null);
   const [showAddWorkoutModal, setShowAddWorkoutModal] = useState(false);
-  const [viewMode, setViewMode] = useState("calendar"); // "calendar" or "list"
+  const [viewMode, setViewMode] = useState("calendar");
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
@@ -720,18 +711,43 @@ function WorkoutHistory({ userId }) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             user_id: userId,
-            days_back: 90, // Get last 3 months
+            days_back: 90,
           }),
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        // Convert date strings to Date objects
-        const processedData = data.map((workout) => ({
-          ...workout,
-          date: new Date(workout.date_completed || workout.date),
-        }));
+        // FIXED: Better date processing to handle current day workouts
+        const processedData = data.map((workout) => {
+          let workoutDate;
+
+          // Handle different date formats from backend
+          if (workout.date_completed) {
+            if (typeof workout.date_completed === "string") {
+              // If it's a string in YYYY-MM-DD format
+              const [year, month, day] = workout.date_completed.split("-");
+              workoutDate = new Date(
+                parseInt(year),
+                parseInt(month) - 1,
+                parseInt(day)
+              );
+            } else {
+              workoutDate = new Date(workout.date_completed);
+            }
+          } else if (workout.date) {
+            workoutDate = new Date(workout.date);
+          } else {
+            workoutDate = new Date(); // Default to today
+          }
+
+          return {
+            ...workout,
+            date: workoutDate,
+          };
+        });
+
+        console.log("✅ Processed workout history:", processedData);
         setWorkoutHistory(processedData);
       }
     } catch (error) {
@@ -762,45 +778,41 @@ function WorkoutHistory({ userId }) {
   };
 
   const handleAddWorkout = (date) => {
-    // Ensure we're working with a clean date string (YYYY-MM-DD format)
+    // FIXED: Proper date handling to avoid timezone issues
     let cleanDate;
+
     if (date instanceof Date) {
-      // If it's a Date object, convert to local date string WITHOUT timezone issues
+      // Create date in local timezone to avoid UTC conversion issues
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, "0");
       const day = String(date.getDate()).padStart(2, "0");
       cleanDate = `${year}-${month}-${day}`;
     } else if (typeof date === "string") {
-      // If it's already a string, clean it up
-      cleanDate = date.includes("T") ? date.split("T")[0] : date;
+      // If it's already a string, ensure it's in YYYY-MM-DD format
+      if (date.includes("T")) {
+        cleanDate = date.split("T")[0];
+      } else {
+        cleanDate = date;
+      }
     } else {
-      console.error("Invalid date format:", date);
+      console.error("❌ Invalid date format:", date);
       return;
     }
 
-    console.log("RAW Date clicked:", date);
-    console.log("Date details:", {
-      year: date.getFullYear(),
-      month: date.getMonth() + 1,
-      day: date.getDate(),
-      dayOfWeek: date.getDay(),
-    });
-    console.log("Formatted clean date:", cleanDate);
+    console.log("✅ Date clicked:", date);
+    console.log("✅ Formatted clean date:", cleanDate);
+
+    // Verify the date is correct by parsing it back
+    const [year, month, day] = cleanDate.split("-");
+    const verifyDate = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day)
+    );
+    console.log("✅ Verification - parsed date:", verifyDate);
     console.log(
-      "Modal will show date as:",
-      (() => {
-        const [year, month, day] = cleanDate.split("-");
-        const testDate = new Date(
-          parseInt(year),
-          parseInt(month) - 1,
-          parseInt(day)
-        );
-        return testDate.toLocaleDateString("en-US", {
-          month: "numeric",
-          day: "numeric",
-          year: "numeric",
-        });
-      })()
+      "✅ Verification - formatted:",
+      verifyDate.toLocaleDateString()
     );
 
     setSelectedDate(cleanDate);
@@ -808,11 +820,16 @@ function WorkoutHistory({ userId }) {
   };
 
   const handleWorkoutAdded = async () => {
-    fetchWorkoutHistory(); // Refresh the history
+    // FIXED: Force refresh both workout history and custom workouts
+    console.log("🔄 Refreshing workout data after adding workout...");
+
+    await fetchWorkoutHistory();
+    await fetchCustomWorkouts();
+
     setShowAddWorkoutModal(false);
     setSelectedDate(null);
 
-    // Dispatch multiple custom events to notify all components
+    // Dispatch events to notify other components
     window.dispatchEvent(
       new CustomEvent("workoutCompleted", {
         detail: {
@@ -823,14 +840,12 @@ function WorkoutHistory({ userId }) {
       })
     );
 
-    // Also dispatch a specific event for dashboard refresh
     window.dispatchEvent(
       new CustomEvent("dashboardRefresh", {
         detail: { source: "workoutHistory" },
       })
     );
 
-    // Force a complete fitness data refresh with slight delay for backend processing
     setTimeout(() => {
       window.dispatchEvent(
         new CustomEvent("fitnessDataUpdate", {
@@ -840,10 +855,9 @@ function WorkoutHistory({ userId }) {
           },
         })
       );
-    }, 500); // 500ms delay to ensure backend has processed the workout
+    }, 500);
   };
 
-  // Group workouts by date
   const getWorkoutsForDate = (date) => {
     const dateStr = date.toDateString();
     return workoutHistory.filter(
@@ -851,7 +865,6 @@ function WorkoutHistory({ userId }) {
     );
   };
 
-  // Generate calendar days
   const generateCalendarDays = () => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
@@ -864,8 +877,7 @@ function WorkoutHistory({ userId }) {
     const currentDate = new Date(startDate);
 
     for (let i = 0; i < 42; i++) {
-      // 6 weeks
-      // Create a new date object for each day to avoid reference issues
+      // FIXED: Create proper date objects to avoid reference issues
       const dayDate = new Date(
         currentDate.getFullYear(),
         currentDate.getMonth(),
@@ -881,7 +893,8 @@ function WorkoutHistory({ userId }) {
   const calendarDays = generateCalendarDays();
   const today = new Date();
   const isToday = (date) => date.toDateString() === today.toDateString();
-  const isPastDate = (date) => date < today;
+  // FIXED: Allow adding workouts for today as well
+  const isPastOrTodayDate = (date) => date <= today;
   const isCurrentMonth = (date) => date.getMonth() === currentMonth.getMonth();
 
   const containerStyle = {
@@ -962,11 +975,11 @@ function WorkoutHistory({ userId }) {
             }}
           >
             <button
-              onClick={() =>
-                setCurrentMonth(
-                  new Date(currentMonth.setMonth(currentMonth.getMonth() - 1))
-                )
-              }
+              onClick={() => {
+                const newMonth = new Date(currentMonth);
+                newMonth.setMonth(newMonth.getMonth() - 1);
+                setCurrentMonth(newMonth);
+              }}
               style={{
                 padding: "8px 12px",
                 backgroundColor: "#f7fafc",
@@ -984,11 +997,11 @@ function WorkoutHistory({ userId }) {
               })}
             </h2>
             <button
-              onClick={() =>
-                setCurrentMonth(
-                  new Date(currentMonth.setMonth(currentMonth.getMonth() + 1))
-                )
-              }
+              onClick={() => {
+                const newMonth = new Date(currentMonth);
+                newMonth.setMonth(newMonth.getMonth() + 1);
+                setCurrentMonth(newMonth);
+              }}
               style={{
                 padding: "8px 12px",
                 backgroundColor: "#f7fafc",
@@ -1030,7 +1043,8 @@ function WorkoutHistory({ userId }) {
             {calendarDays.map((date, index) => {
               const workouts = getWorkoutsForDate(date);
               const hasWorkouts = workouts.length > 0;
-              const canAddWorkout = isPastDate(date) && !isToday(date);
+              // FIXED: Allow adding workouts for today and past days
+              const canAddWorkout = isPastOrTodayDate(date);
 
               return (
                 <div
@@ -1070,7 +1084,10 @@ function WorkoutHistory({ userId }) {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          console.log("Button clicked for date:", date);
+                          console.log(
+                            "✅ Calendar button clicked for date:",
+                            date
+                          );
                           handleAddWorkout(date);
                         }}
                         style={{
@@ -1140,6 +1157,7 @@ function WorkoutHistory({ userId }) {
               gap: "2rem",
               fontSize: "14px",
               color: "#718096",
+              flexWrap: "wrap",
             }}
           >
             <div
@@ -1226,7 +1244,6 @@ function WorkoutHistory({ userId }) {
                   return groups;
                 }, {});
 
-                // Convert to array and sort by date (most recent first)
                 return Object.entries(groups)
                   .sort(([a], [b]) => new Date(b) - new Date(a))
                   .map(([date, workouts]) => ({ date, workouts }));
@@ -1429,9 +1446,10 @@ function WorkoutHistory({ userId }) {
                 </label>
                 <input
                   type="date"
-                  max={new Date().toISOString().split("T")[0]} // Can't add future workouts
+                  max={new Date().toISOString().split("T")[0]}
                   onChange={(e) => {
                     if (e.target.value) {
+                      console.log("✅ Date input changed to:", e.target.value);
                       handleAddWorkout(e.target.value);
                     }
                   }}
@@ -1589,9 +1607,10 @@ function WorkoutHistory({ userId }) {
                 const sortedTypes = Object.entries(types).sort(
                   ([, a], [, b]) => b - a
                 );
-                return sortedTypes[0]?.[0] || "No data";
-              })()}{" "}
-              workouts
+                return `${sortedTypes[0]?.[0] || "No data"} workouts (${
+                  sortedTypes[0]?.[1] || 0
+                } times)`;
+              })()}
             </div>
           </div>
         </div>
