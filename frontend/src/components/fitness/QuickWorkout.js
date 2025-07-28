@@ -613,7 +613,7 @@ function QuickWorkout({ userId }) {
       );
 
       const response = await fetch(
-        "http://127.0.0.1:5001/api/get_quick_workout_suggestions",
+        "http://127.0.0.1:5000/api/get_quick_workout_suggestions",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -699,7 +699,7 @@ function QuickWorkout({ userId }) {
       );
 
       const response = await fetch(
-        "http://127.0.0.1:5001/api/quick_workout_feedback",
+        "http://127.0.0.1:5000/api/quick_workout_feedback",
         {
           method: "POST",
           headers: {
@@ -791,7 +791,7 @@ function QuickWorkout({ userId }) {
       console.log("💪 Completing workout:", workoutData.name);
 
       const response = await fetch(
-        "http://127.0.0.1:5001/api/complete_workout",
+        "http://127.0.0.1:5000/api/complete_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

@@ -29,7 +29,7 @@ function CustomWorkoutsSection({
     try {
       setIsLoading(true);
       const response = await fetch(
-        "http://127.0.0.1:5001/api/get_user_custom_workouts",
+        "http://127.0.0.1:5000/api/get_user_custom_workouts",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

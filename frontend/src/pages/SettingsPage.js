@@ -29,7 +29,7 @@ export default function SettingsPage() {
 
       // Fetch profile
       const profileResponse = await fetch(
-        "http://127.0.0.1:5001/api/get_profile",
+        "http://127.0.0.1:5000/api/get_profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -44,7 +44,7 @@ export default function SettingsPage() {
 
       // Fetch food preferences
       const prefsResponse = await fetch(
-        "http://127.0.0.1:5001/api/get_food_preferences",
+        "http://127.0.0.1:5000/api/get_food_preferences",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -58,7 +58,7 @@ export default function SettingsPage() {
       }
       // Fetch workout preferences
       const workoutPrefsResponse = await fetch(
-        "http://127.0.0.1:5001/api/get_workout_preferences",
+        "http://127.0.0.1:5000/api/get_workout_preferences",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -73,7 +73,7 @@ export default function SettingsPage() {
 
       // Fetch custom workouts
       const customWorkoutsResponse = await fetch(
-        "http://127.0.0.1:5001/api/get_user_custom_workouts",
+        "http://127.0.0.1:5000/api/get_user_custom_workouts",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -96,7 +96,7 @@ export default function SettingsPage() {
   const handleProfileUpdate = async (updatedData) => {
     try {
       setIsSaving(true);
-      const response = await fetch("http://127.0.0.1:5001/api/update_profile", {
+      const response = await fetch("http://127.0.0.1:5000/api/update_profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, ...updatedData }),
@@ -127,7 +127,7 @@ export default function SettingsPage() {
       console.log("Completing workout from settings:", workoutData.name);
 
       const response = await fetch(
-        "http://127.0.0.1:5001/api/complete_workout",
+        "http://127.0.0.1:5000/api/complete_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -168,7 +168,7 @@ export default function SettingsPage() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5001/api/delete_custom_workout",
+        "http://127.0.0.1:5000/api/delete_custom_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1365,7 +1365,7 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5001/api/remove_workout_preference",
+        "http://127.0.0.1:5000/api/remove_workout_preference",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

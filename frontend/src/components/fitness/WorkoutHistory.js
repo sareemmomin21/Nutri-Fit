@@ -92,7 +92,7 @@ function AddMissingWorkoutModal({
       console.log("Workout data being sent:", workoutData);
 
       const response = await fetch(
-        "http://127.0.0.1:5001/api/complete_workout",
+        "http://127.0.0.1:5000/api/complete_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -140,7 +140,7 @@ function AddMissingWorkoutModal({
 
       // First, create the custom workout
       const createResponse = await fetch(
-        "http://127.0.0.1:5001/api/create_custom_workout",
+        "http://127.0.0.1:5000/api/create_custom_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -173,7 +173,7 @@ function AddMissingWorkoutModal({
       };
 
       const completeResponse = await fetch(
-        "http://127.0.0.1:5001/api/complete_workout",
+        "http://127.0.0.1:5000/api/complete_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -714,7 +714,7 @@ function WorkoutHistory({ userId }) {
     try {
       setIsLoading(true);
       const response = await fetch(
-        "http://127.0.0.1:5001/api/get_workout_history",
+        "http://127.0.0.1:5000/api/get_workout_history",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -744,7 +744,7 @@ function WorkoutHistory({ userId }) {
   const fetchCustomWorkouts = async () => {
     try {
       const response = await fetch(
-        "http://127.0.0.1:5001/api/get_user_custom_workouts",
+        "http://127.0.0.1:5000/api/get_user_custom_workouts",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
