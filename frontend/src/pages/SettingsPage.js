@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaThumbsUp, FaThumbsDown, FaRegLightbulb } from "react-icons/fa";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -9,6 +10,13 @@ export default function SettingsPage() {
     overall_preferences: {},
     meal_preferences: {},
   });
+  const [workoutPreferences, setWorkoutPreferences] = useState({
+    liked_workouts: [],
+    disliked_workouts: [],
+  });
+  const [customWorkouts, setCustomWorkouts] = useState([]);
+  const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -30,6 +38,7 @@ export default function SettingsPage() {
       // Fetch profile
       const profileResponse = await fetch(
         `${process.env.REACT_APP_API_URL}/api/get_profile`,
+        "http://127.0.0.1:5001/api/get_profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -44,7 +53,7 @@ export default function SettingsPage() {
 
       // Fetch food preferences
       const prefsResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/get_food_preferences`,
+        "http://127.0.0.1:5000/api/get_food_preferences",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -55,6 +64,36 @@ export default function SettingsPage() {
       if (prefsResponse.ok) {
         const prefsData = await prefsResponse.json();
         setFoodPreferences(prefsData);
+      }
+
+      // Fetch workout preferences
+      const workoutPrefsResponse = await fetch(
+        "http://127.0.0.1:5001/api/get_workout_preferences",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (workoutPrefsResponse.ok) {
+        const workoutPrefsData = await workoutPrefsResponse.json();
+        setWorkoutPreferences(workoutPrefsData);
+      }
+
+      // Fetch custom workouts
+      const customWorkoutsResponse = await fetch(
+        "http://127.0.0.1:5001/api/get_user_custom_workouts",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        }
+      );
+
+      if (customWorkoutsResponse.ok) {
+        const customWorkoutsData = await customWorkoutsResponse.json();
+        setCustomWorkouts(customWorkoutsData);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);
@@ -67,7 +106,7 @@ export default function SettingsPage() {
   const handleProfileUpdate = async (updatedData) => {
     try {
       setIsSaving(true);
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/update_profile`, {
+      const response = await fetch("http://127.0.0.1:5000/api/update_profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, ...updatedData }),
@@ -91,6 +130,88 @@ export default function SettingsPage() {
     }
   };
 
+  const handleCompleteWorkout = async (workoutData) => {
+    try {
+      console.log("Completing workout from settings:", workoutData.name);
+
+      const response = await fetch(
+        "http://127.0.0.1:5001/api/complete_workout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            workout_data: workoutData,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        setShowWorkoutModal(false);
+        setSelectedWorkout(null);
+        setMessage({
+          type: "success",
+          text: `Workout "${workoutData.name}" completed successfully!`,
+        });
+        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+        return true;
+      } else {
+        console.error("Failed to complete workout:", response.status);
+        return false;
+      }
+    } catch (error) {
+      console.error("Error completing workout:", error);
+      return false;
+    }
+  };
+
+  const handleDeleteCustomWorkout = async (workoutId, workoutName) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to delete "${workoutName}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5001/api/delete_custom_workout",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: userId,
+            workout_id: workoutId,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        // Remove from local state
+        setCustomWorkouts((prev) => prev.filter((w) => w.id !== workoutId));
+        setMessage({
+          type: "success",
+          text: `Custom workout "${workoutName}" deleted successfully!`,
+        });
+        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
+      } else {
+        const errorData = await response.json();
+        setMessage({
+          type: "error",
+          text: errorData.error || "Failed to delete custom workout",
+        });
+      }
+    } catch (error) {
+      console.error("Error deleting custom workout:", error);
+      setMessage({ type: "error", text: "Failed to delete custom workout" });
+    }
+  };
+
+  const handleStartWorkout = (workout) => {
+    setSelectedWorkout(workout);
+    setShowWorkoutModal(true);
+  };
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("nutrifit_user_id");
@@ -225,6 +346,18 @@ export default function SettingsPage() {
           >
             Food Preferences
           </button>
+          <button
+            onClick={() => setActiveTab("workouts")}
+            style={tabStyle(activeTab === "workouts")}
+          >
+            Workout Preferences
+          </button>
+          <button
+            onClick={() => setActiveTab("custom")}
+            style={tabStyle(activeTab === "custom")}
+          >
+            Custom Workouts
+          </button>
         </div>
       </div>
 
@@ -259,7 +392,35 @@ export default function SettingsPage() {
             onRefresh={fetchUserData}
           />
         )}
+
+        {activeTab === "workouts" && (
+          <WorkoutPreferencesTab
+            preferences={workoutPreferences}
+            onRefresh={fetchUserData}
+          />
+        )}
+
+        {activeTab === "custom" && (
+          <CustomWorkoutsTab
+            customWorkouts={customWorkouts}
+            onStartWorkout={handleStartWorkout}
+            onDeleteWorkout={handleDeleteCustomWorkout}
+            onRefresh={fetchUserData}
+          />
+        )}
       </div>
+
+      {/* Workout Modal */}
+      {showWorkoutModal && selectedWorkout && (
+        <CustomWorkoutModal
+          workout={selectedWorkout}
+          onClose={() => {
+            setShowWorkoutModal(false);
+            setSelectedWorkout(null);
+          }}
+          onComplete={handleCompleteWorkout}
+        />
+      )}
     </div>
   );
 }
@@ -1233,5 +1394,4 @@ function FoodPreferencesTab({ preferences, onRefresh }) {
       </div>
     </div>
   );
-}  
-
+}
