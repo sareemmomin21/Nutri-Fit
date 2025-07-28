@@ -10,8 +10,8 @@ export default function GamePage() {
   const userId = localStorage.getItem("nutrifit_user_id");
   const [activeTab, setActiveTab] = useState("overview");
 
-  if (!userId) {
-    navigate("/auth");
+    if (!userId) {
+      navigate("/auth");
     return null;
   }
 

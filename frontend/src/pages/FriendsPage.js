@@ -218,6 +218,7 @@ export default function FriendsPage({ userId }) {
   const [activityFeed, setActivityFeed] = useState([]);
   const [badges, setBadges] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [remindersYouSet, setRemindersYouSet] = useState([]);
   const [leaderboard, setLeaderboard] = useState([]);
   const [reminderMessage, setReminderMessage] = useState("");
   const [reminderDate, setReminderDate] = useState("");
@@ -243,14 +244,6 @@ export default function FriendsPage({ userId }) {
     })
       .then(res => res.ok ? res.json() : [])
       .then(setBadges);
-    // Reminders
-    fetch("/api/get_friend_reminders", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId }),
-    })
-      .then(res => res.ok ? res.json() : [])
-      .then(setReminders);
     // Leaderboard (streak by default)
     fetch("/api/get_friends_leaderboard", {
       method: "POST",
@@ -259,6 +252,46 @@ export default function FriendsPage({ userId }) {
     })
       .then(res => res.ok ? res.json() : [])
       .then(setLeaderboard);
+  }, [userId]);
+
+  // Auto-refresh reminders every 5 seconds
+  useEffect(() => {
+    if (!userId) return;
+    
+    const fetchReminders = async () => {
+      try {
+        // Fetch reminders FOR the user (reminders sent TO you by friends)
+        const remindersRes = await fetch("/api/get_friend_reminders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: userId }),
+        });
+        if (remindersRes.ok) {
+          setReminders(await remindersRes.json());
+        }
+        
+        // Fetch reminders SET BY the user (reminders you sent to friends)
+        const remindersYouSetRes = await fetch("/api/get_friend_reminders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ friend_id: userId }),
+        });
+        if (remindersYouSetRes.ok) {
+          setRemindersYouSet(await remindersYouSetRes.json());
+        }
+      } catch (err) {
+        console.error("Error fetching reminders:", err);
+      }
+    };
+
+    // Initial fetch
+    fetchReminders();
+    
+    // Set up interval for auto-refresh every 5 seconds
+    const interval = setInterval(fetchReminders, 5000);
+    
+    // Cleanup interval on unmount or userId change
+    return () => clearInterval(interval);
   }, [userId]);
 
   // Fetch Friends List
@@ -410,42 +443,270 @@ export default function FriendsPage({ userId }) {
     })
       .then(res => res.ok ? res.json() : [])
       .then(setReminders);
+    // Refresh reminders you set for others
+    fetch("/api/get_friend_reminders", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ friend_id: userId }), // This will fetch reminders where you are the sender
+    })
+      .then(res => res.ok ? res.json() : [])
+      .then(setRemindersYouSet);
+  };
+
+  // Delete reminder you set for a friend
+  const handleDeleteReminder = async (reminderId) => {
+    if (window.confirm("Are you sure you want to delete this reminder?")) {
+      await fetch("/api/delete_reminder", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, reminder_id: reminderId }),
+      });
+      // Refresh reminders you set
+      fetch("/api/get_friend_reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ friend_id: userId }),
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setRemindersYouSet);
+    }
+  };
+
+  // Delete reminder received from a friend
+  const handleDeleteReminderReceived = async (reminderId) => {
+    if (window.confirm("Are you sure you want to delete this reminder?")) {
+      await fetch("/api/delete_reminder_received", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, reminder_id: reminderId }),
+      });
+      // Refresh reminders received
+      fetch("/api/get_friend_reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId }),
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setReminders);
+    }
   };
 
   useEffect(() => {
-    if (userId) fetchFriends();
+    if (userId) {
+      fetchFriends();
+      fetch("/api/get_friend_reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId }),
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setReminders);
+      fetch("/api/get_friends_leaderboard", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId }),
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setLeaderboard);
+      // Fetch reminders you set for others
+      fetch("/api/get_friend_reminders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ friend_id: userId }), // This will fetch reminders where you are the sender
+      })
+        .then(res => res.ok ? res.json() : [])
+        .then(setRemindersYouSet);
+    }
   }, [userId, fetchFriends]);
 
   return (
     <div>
-      {/* Reminders Section */}
+      {/* Set Reminder Form */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>⏰ Friend Reminders</div>
+        <div style={sectionHeaderStyle}>📤 Set Reminder for Friend</div>
+        <div style={{ 
+          background: "#f7fafc", 
+          borderRadius: "8px", 
+          padding: "12px", 
+          marginBottom: "16px",
+          border: "1px solid #e2e8f0"
+        }}>
+          <div style={{ fontSize: "14px", color: "#4a5568", marginBottom: "8px" }}>
+            💡 <strong>How it works:</strong> Set a reminder for a friend and they'll see it in their "Reminders You Received" section.
+          </div>
+        </div>
         <form
           onSubmit={e => { e.preventDefault(); handleSetReminder(); }}
           style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", background: "#f8fafc", borderRadius: 8, padding: 12 }}
         >
           <select value={reminderFriendId || ""} onChange={e => setReminderFriendId(e.target.value)} style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 140 }}>
-            <option value="">Friend…</option>
+            <option value="">Choose friend…</option>
             {friends.map(f => (
               <option key={f.id} value={f.id}>{f.name || f.username}</option>
             ))}
           </select>
           <input type="datetime-local" value={reminderDate} onChange={e => setReminderDate(e.target.value)} style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 180 }} />
           <input type="text" value={reminderMessage} onChange={e => setReminderMessage(e.target.value)} placeholder="Message (optional)" style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 180 }} />
-          <button type="submit" disabled={reminderLoading || !reminderFriendId || !reminderDate} style={{ padding: "10px 20px", background: "#48bb78", color: "white", border: "none", borderRadius: 8, fontWeight: "bold", fontSize: 15, cursor: reminderLoading ? "not-allowed" : "pointer" }}>Set</button>
+          <button type="submit" disabled={reminderLoading || !reminderFriendId || !reminderDate} style={{ padding: "10px 20px", background: "#48bb78", color: "white", border: "none", borderRadius: 8, fontWeight: "bold", fontSize: 15, cursor: reminderLoading ? "not-allowed" : "pointer" }}>Set Reminder</button>
         </form>
-        {reminders.length === 0 ? (
-          <div style={subtleText}>(No reminders set)</div>
+      </div>
+
+      {/* Reminders You Sent Section */}
+      <div style={cardStyle}>
+        <div style={sectionHeaderStyle}>📤 Reminders You Sent to Friends</div>
+        <div style={{ 
+          background: "#f0fff4", 
+          borderRadius: "8px", 
+          padding: "12px", 
+          marginBottom: "16px",
+          border: "1px solid #9ae6b4"
+        }}>
+          <div style={{ fontSize: "14px", color: "#22543d", fontWeight: "600" }}>
+            📊 Summary: {remindersYouSet.length} reminder{remindersYouSet.length !== 1 ? 's' : ''} sent
+          </div>
+        </div>
+        {remindersYouSet.length === 0 ? (
+          <div style={{ 
+            color: "#a0aec0",
+            fontSize: "15px",
+            fontWeight: "500",
+            textAlign: "center", 
+            padding: "40px 20px",
+            background: "#f8fafc",
+            borderRadius: "12px",
+            border: "2px dashed #e2e8f0"
+          }}>
+            <div style={{ fontSize: "48px", marginBottom: "16px", fontStyle: "normal" }}>📤</div>
+            You haven't set any reminders for friends yet
+            <div style={{ fontSize: "13px", marginTop: "8px", opacity: 0.7, fontStyle: "normal" }}>
+              Use the form above to set reminders for your friends!
+            </div>
+          </div>
         ) : (
-          <div style={{ maxHeight: 180, overflowY: "auto" }}>
-            <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-              {reminders.map(r => (
-                <li key={r.id} style={{ marginBottom: 10, background: "#f8fafc", borderRadius: 8, padding: 12, fontSize: 15, boxShadow: "0 1px 4px rgba(0,0,0,0.03)" }}>
-                  <b>{r.first_name || r.username}</b>: {r.message || <span style={{ color: "#a0aec0" }}>(No message)</span>} <span style={{ color: "#718096", fontSize: 13 }}>({new Date(r.remind_at).toLocaleString()})</span>
-                </li>
-              ))}
-            </ul>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {remindersYouSet.map(r => (
+              <div key={r.id || r.remind_at + r.message} style={{ 
+                background: "#f0fff4", 
+                borderRadius: "12px", 
+                padding: "16px", 
+                fontSize: "15px", 
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                border: "1px solid #9ae6b4",
+                display: "flex", 
+                justifyContent: "space-between", 
+                alignItems: "center" 
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: "600", color: "#22543d", marginBottom: "4px" }}>
+                    To: {r.first_name || r.username || "Your friend"}
+                  </div>
+                  <div style={{ color: "#38a169", fontSize: "14px", marginBottom: "4px" }}>
+                    {r.message || <span style={{ color: "#a0aec0" }}>(No message)</span>}
+                  </div>
+                  <div style={{ color: "#718096", fontSize: "12px", fontWeight: "500" }}>
+                    {new Date(r.remind_at).toLocaleString()}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteReminder(r.id)}
+                  style={{
+                    padding: "6px 12px",
+                    background: "#e53e3e",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseEnter={e => e.target.style.background = "#c53030"}
+                  onMouseLeave={e => e.target.style.background = "#e53e3e"}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Reminders You Received Section */}
+      <div style={cardStyle}>
+        <div style={sectionHeaderStyle}>⏰ Reminders You Received from Friends</div>
+        <div style={{ 
+          background: "#fef5e7", 
+          borderRadius: "8px", 
+          padding: "12px", 
+          marginBottom: "16px",
+          border: "1px solid #f6ad55"
+        }}>
+          <div style={{ fontSize: "14px", color: "#c05621", fontWeight: "600" }}>
+            📊 Summary: {reminders.length} reminder{reminders.length !== 1 ? 's' : ''} received
+          </div>
+        </div>
+        {reminders.length === 0 ? (
+          <div style={{ 
+            color: "#a0aec0",
+            fontSize: "15px",
+            fontWeight: "500",
+            textAlign: "center", 
+            padding: "40px 20px",
+            background: "#f8fafc",
+            borderRadius: "12px",
+            border: "2px dashed #e2e8f0"
+          }}>
+            <div style={{ fontSize: "48px", marginBottom: "16px", fontStyle: "normal" }}>⏰</div>
+            No reminders set for you
+            <div style={{ fontSize: "13px", marginTop: "8px", opacity: 0.7, fontStyle: "normal" }}>
+              When friends set reminders for you, they'll appear here!
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {reminders.map(r => (
+              <div key={r.id || r.remind_at + r.message} style={{ 
+                background: "#fef5e7", 
+                borderRadius: "12px", 
+                padding: "16px", 
+                fontSize: "15px", 
+                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                border: "1px solid #f6ad55",
+                display: "flex", 
+                justifyContent: "space-between", 
+                alignItems: "center" 
+              }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: "600", color: "#c05621", marginBottom: "4px" }}>
+                    From: {r.first_name || r.username || "A friend"}
+                  </div>
+                  <div style={{ color: "#dd6b20", fontSize: "14px", marginBottom: "4px" }}>
+                    {r.message || <span style={{ color: "#a0aec0" }}>(No message)</span>}
+                  </div>
+                  <div style={{ color: "#718096", fontSize: "12px", fontWeight: "500" }}>
+                    {new Date(r.remind_at).toLocaleString()}
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleDeleteReminderReceived(r.id)}
+                  style={{
+                    padding: "6px 12px",
+                    background: "#e53e3e",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    fontWeight: "bold",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseEnter={e => e.target.style.background = "#c53030"}
+                  onMouseLeave={e => e.target.style.background = "#e53e3e"}
+                >
+                  Delete
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

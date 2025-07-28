@@ -21,10 +21,13 @@ from database import (
     search_users, get_user_friends, add_friend, remove_friend,
     fetch_weekly_challenges,
     # friend challenge functions
-    create_friend_challenge, get_friend_challenges, respond_to_friend_challenge,
+    create_friend_challenge, get_friend_challenges_with_progress, respond_to_friend_challenge,
     update_friend_challenge_progress, get_friend_preferences,
     get_friends_leaderboard,
-    create_challenge, update_challenge_progress
+    create_challenge, update_challenge_progress, delete_challenge, delete_friend_challenge,
+    get_friend_activities, get_friend_badges, get_friend_reminders, get_messages, send_message, set_friend_reminder,
+    get_reminders_you_set, delete_reminder, delete_reminder_received,
+    get_user_streak, get_user_badges, get_user_stats
 )
 
 from fitness_utils import (
@@ -1225,11 +1228,15 @@ def create_friend_challenge_endpoint():
     title = (data.get("title") or "").strip()
     description = (data.get("description") or "").strip()
     max_progress = data.get("max_progress", 100)
+    deadline = data.get("deadline")
     
     if not creator_id or not target_friend_id or not title:
         return jsonify({"error": "user_id, friend_id, and title required"}), 400
     
-    ok, msg = create_friend_challenge(creator_id, target_friend_id, title, description, max_progress)
+    if not deadline:
+        return jsonify({"error": "deadline required"}), 400
+    
+    ok, msg = create_friend_challenge(creator_id, target_friend_id, title, description, max_progress, deadline)
     return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
 
 
@@ -1241,7 +1248,7 @@ def get_friend_challenges_endpoint():
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
     
-    challenges = get_friend_challenges(user_id)
+    challenges = get_friend_challenges_with_progress(user_id)
     return jsonify(challenges), 200
 
 
@@ -1272,6 +1279,30 @@ def update_challenge_progress_endpoint():
     ok, msg = update_challenge_progress(user_id, challenge_id, int(progress))
     return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
 
+@app.route("/api/delete_challenge", methods=["POST"])
+def delete_challenge_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    challenge_id = data.get("challenge_id")
+    
+    if not user_id or not challenge_id:
+        return jsonify({"error": "user_id and challenge_id required"}), 400
+    
+    success = delete_challenge(user_id, challenge_id)
+    return jsonify({"success": success, "message": "Challenge deleted" if success else "Challenge not found"}), (200 if success else 404)
+
+@app.route("/api/delete_friend_challenge", methods=["POST"])
+def delete_friend_challenge_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    challenge_id = data.get("challenge_id")
+    
+    if not user_id or not challenge_id:
+        return jsonify({"error": "user_id and challenge_id required"}), 400
+    
+    success = delete_friend_challenge(user_id, challenge_id)
+    return jsonify({"success": success, "message": "Challenge deleted" if success else "Challenge not found"}), (200 if success else 404)
+
 
 @app.route("/api/get_friend_preferences", methods=["POST"])
 def get_friend_preferences_endpoint():
@@ -1295,20 +1326,45 @@ def get_friend_preferences_endpoint():
 
 @app.route("/api/get_streak", methods=["POST"])
 def get_streak():
-    # TODO: replace with real DB lookup if you want
-    return jsonify({"current": 5, "best": 10}), 200
-
+    data = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    
+    try:
+        streak_data = get_user_streak(user_id)
+        return jsonify(streak_data), 200
+    except Exception as e:
+        print(f"Error fetching streak: {e}")
+        return jsonify({"error": "Failed to fetch streak"}), 500
 
 @app.route("/api/get_badges", methods=["POST"])
 def get_badges():
-    data    = request.json or {}
+    data = request.json or {}
     user_id = data.get("user_id")
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
 
-    # TODO: load real badges from DB
-    return jsonify([]), 200
+    try:
+        badges = get_user_badges(user_id)
+        return jsonify(badges), 200
+    except Exception as e:
+        print(f"Error fetching badges: {e}")
+        return jsonify({"error": "Failed to fetch badges"}), 500
 
+@app.route("/api/get_user_stats", methods=["POST"])
+def get_user_stats_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+
+    try:
+        stats = get_user_stats(user_id)
+        return jsonify(stats), 200
+    except Exception as e:
+        print(f"Error fetching user stats: {e}")
+        return jsonify({"error": "Failed to fetch user stats"}), 500
 
 @app.route("/api/get_weekly_challenges", methods=["POST"])
 def get_weekly_challenges_endpoint():
@@ -1425,14 +1481,42 @@ def set_friend_reminder_endpoint():
 def get_friend_reminders_endpoint():
     data = request.json or {}
     user_id = data.get("user_id")
-    if not user_id:
-        return jsonify({"error": "user_id required"}), 400
+    friend_id = data.get("friend_id")
+    if not user_id and not friend_id:
+        return jsonify({"error": "user_id or friend_id required"}), 400
     try:
-        reminders = get_friend_reminders(user_id)
+        if user_id:
+            reminders = get_friend_reminders(user_id)
+        else:
+            reminders = get_reminders_you_set(friend_id)
         return jsonify(reminders)
     except Exception as e:
         print(f"Error fetching friend reminders: {e}")
         return jsonify({"error": "Failed to fetch reminders"}), 500
+
+@app.route("/api/delete_reminder", methods=["POST"])
+def delete_reminder_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    reminder_id = data.get("reminder_id")
+    
+    if not user_id or not reminder_id:
+        return jsonify({"error": "user_id and reminder_id required"}), 400
+    
+    success = delete_reminder(reminder_id, user_id)
+    return jsonify({"success": success, "message": "Reminder deleted" if success else "Reminder not found"}), (200 if success else 404)
+
+@app.route("/api/delete_reminder_received", methods=["POST"])
+def delete_reminder_received_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    reminder_id = data.get("reminder_id")
+    
+    if not user_id or not reminder_id:
+        return jsonify({"error": "user_id and reminder_id required"}), 400
+    
+    success = delete_reminder_received(reminder_id, user_id)
+    return jsonify({"success": success, "message": "Reminder deleted" if success else "Reminder not found"}), (200 if success else 404)
 
 @app.route("/api/get_friends_leaderboard", methods=["POST"])
 def get_friends_leaderboard_endpoint():
@@ -1453,4 +1537,4 @@ def get_friends_leaderboard_endpoint():
 if __name__ == "__main__":
     init_db()
     init_fitness_tables()
-    app.run(debug=True, port=5000)
+    app.run(debug=True)

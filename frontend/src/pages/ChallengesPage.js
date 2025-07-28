@@ -2,31 +2,72 @@ import React, { useState, useEffect } from "react";
 
 const cardStyle = {
   border: "1px solid #e2e8f0",
-  borderRadius: "16px",
-  padding: "2rem",
+  borderRadius: "20px",
+  padding: "2.5rem",
   backgroundColor: "#fff",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+  boxShadow: "0 4px 20px rgba(0,0,0,0.06)",
   marginBottom: "2rem",
+  transition: "all 0.3s ease",
 };
 const sectionHeaderStyle = {
-  fontSize: 20,
-  color: "#2d3748",
-  marginBottom: 16,
-  fontWeight: 700,
+  fontSize: "22px",
+  color: "#1a202c",
+  marginBottom: "24px",
+  fontWeight: 800,
   display: "flex",
   alignItems: "center",
-  gap: 8,
+  gap: "12px",
+  letterSpacing: "-0.025em",
 };
 const subtleText = {
-  color: "#718096",
+  color: "#a0aec0",
   fontStyle: "italic",
+  fontSize: "15px",
+  fontWeight: 500,
+};
+const inputStyle = {
+  padding: "12px 16px",
+  borderRadius: "12px",
+  border: "2px solid #e2e8f0",
+  fontSize: "15px",
+  transition: "all 0.2s ease",
+  backgroundColor: "#fafbfc",
+};
+const buttonStyle = {
+  padding: "12px 24px",
+  borderRadius: "12px",
+  border: "none",
+  fontSize: "15px",
+  fontWeight: 600,
+  cursor: "pointer",
+  transition: "all 0.2s ease",
+  letterSpacing: "0.025em",
 };
 
 function ProgressBar({ value, max }) {
   const percent = Math.min(100, Math.round((value / max) * 100));
   return (
-    <div style={{ background: "#e2e8f0", borderRadius: 8, height: 12, width: "100%", margin: "8px 0", overflow: "hidden" }}>
-      <div style={{ width: `${percent}%`, background: percent === 100 ? "#48bb78" : percent > 80 ? "#f6ad55" : "#3182ce", height: "100%", borderRadius: 8, transition: "width 0.5s cubic-bezier(.4,2,.6,1)", boxShadow: percent === 100 ? "0 0 8px #48bb78" : undefined }} />
+    <div style={{ 
+      background: "#f1f5f9", 
+      borderRadius: "12px", 
+      height: "16px", 
+      width: "100%", 
+      margin: "12px 0", 
+      overflow: "hidden",
+      boxShadow: "inset 0 2px 4px rgba(0,0,0,0.06)"
+    }}>
+      <div style={{ 
+        width: `${percent}%`, 
+        background: percent === 100 ? "linear-gradient(90deg, #10b981, #059669)" : 
+                   percent > 80 ? "linear-gradient(90deg, #f59e0b, #d97706)" : 
+                   "linear-gradient(90deg, #3b82f6, #2563eb)", 
+        height: "100%", 
+        borderRadius: "12px", 
+        transition: "width 0.6s cubic-bezier(0.4, 0, 0.2, 1)", 
+        boxShadow: percent === 100 ? "0 0 12px rgba(16, 185, 129, 0.4)" : 
+                   percent > 80 ? "0 0 8px rgba(245, 158, 11, 0.3)" : 
+                   "0 0 6px rgba(59, 130, 246, 0.3)"
+      }} />
     </div>
   );
 }
@@ -169,86 +210,174 @@ export default function ChallengesPage({ userId }) {
     fetchAll();
   };
 
+  const handleDeleteChallenge = async (challengeId) => {
+    if (window.confirm("Are you sure you want to delete this challenge?")) {
+      await fetch("/api/delete_challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, challenge_id: challengeId }),
+      });
+      fetchAll();
+    }
+  };
+
+  const handleDeleteFriendChallenge = async (challengeId) => {
+    if (window.confirm("Are you sure you want to delete this challenge?")) {
+      await fetch("/api/delete_friend_challenge", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, challenge_id: challengeId }),
+      });
+      fetchAll();
+    }
+  };
+
   return (
     <div>
       {/* Create Challenge Form */}
       <div style={cardStyle}>
         <div style={sectionHeaderStyle}>🎯 Create a Challenge</div>
-        <form onSubmit={handleCreate} style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center" }}>
-          <input
-            type="text"
-            value={form.title}
-            onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-            placeholder="Title"
-            required
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 180, flex: 1 }}
-          />
-          <input
-            type="text"
-            value={form.description}
-            onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
-            placeholder="Description"
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 180, flex: 2 }}
-          />
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 180 }}>
-            <label style={{ fontWeight: 500, color: "#2d3748", marginBottom: 2 }}>How long do you have?</label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {durationOptions.map(opt => (
-                <button
-                  key={opt.label}
-                  type="button"
-                  onClick={() => setDuration(opt.days === null ? "custom" : opt.days)}
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: 6,
-                    border: duration === opt.days || (duration === "custom" && opt.days === null) ? "2px solid #48bb78" : "1px solid #e2e8f0",
-                    background: duration === opt.days || (duration === "custom" && opt.days === null) ? "#f0fff4" : "#f8fafc",
-                    color: "#2d3748",
-                    fontWeight: 500,
-                    cursor: "pointer",
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-            {duration === "custom" && (
+        <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+          {/* First Row - Title and Description */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "40px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label style={{ fontSize: "14px", color: "#4a5568", fontWeight: "600" }}>Challenge Title</label>
               <input
-                type="datetime-local"
-                value={customDate}
-                onChange={e => setCustomDate(e.target.value)}
-                style={{ marginTop: 6, padding: 8, borderRadius: 6, border: "1px solid #e2e8f0" }}
+                type="text"
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="e.g., Run 5 miles"
                 required
+                style={{ ...inputStyle, width: "100%" }}
               />
-            )}
-            {form.deadline && (
-              <div style={{ color: "#718096", fontSize: 13, marginTop: 2 }}>
-                Deadline: {new Date(form.deadline).toLocaleString()}
-              </div>
-            )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label style={{ fontSize: "14px", color: "#4a5568", fontWeight: "600" }}>Description</label>
+              <input
+                type="text"
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+                placeholder="e.g., Complete 5 mile runs this week"
+                style={{ ...inputStyle, width: "100%" }}
+              />
+            </div>
           </div>
-          <input
-            type="number"
-            min={1}
-            value={form.max_progress}
-            onChange={e => setForm(f => ({ ...f, max_progress: e.target.value }))}
-            required
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", width: 100 }}
-            placeholder="Goal"
-          />
-          <select
-            value={form.friend_id}
-            onChange={e => setForm(f => ({ ...f, friend_id: e.target.value }))}
-            style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 140 }}
-          >
-            <option value="">Personal Challenge</option>
-            {friends.map(f => (
-              <option key={f.id} value={f.id}>{f.name || f.username}</option>
-            ))}
-          </select>
-          <button type="submit" disabled={creating} style={{ padding: "10px 20px", background: "#48bb78", color: "white", border: "none", borderRadius: 8, fontWeight: "bold", fontSize: 15, cursor: creating ? "not-allowed" : "pointer" }}>Create</button>
+
+          {/* Second Row - Duration, Goal Items, and Challenge Type */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "40px" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label style={{ fontSize: "14px", color: "#4a5568", fontWeight: "600" }}>Duration</label>
+              <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                {durationOptions.map(opt => (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => setDuration(opt.days === null ? "custom" : opt.days)}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      border: duration === opt.days || (duration === "custom" && opt.days === null) ? "2px solid #10b981" : "1px solid #e2e8f0",
+                      background: duration === opt.days || (duration === "custom" && opt.days === null) ? "#ecfdf5" : "#f8fafc",
+                      color: duration === opt.days || (duration === "custom" && opt.days === null) ? "#065f46" : "#4a5568",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      transition: "all 0.2s ease",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              {duration === "custom" && (
+                <input
+                  type="datetime-local"
+                  value={customDate}
+                  onChange={e => setCustomDate(e.target.value)}
+                  style={{ ...inputStyle, marginTop: "8px" }}
+                  required
+                />
+              )}
+              {form.deadline && (
+                <div style={{ color: "#10b981", fontSize: "13px", marginTop: "6px", fontWeight: "500" }}>
+                  📅 Deadline: {new Date(form.deadline).toLocaleString()}
+                </div>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label style={{ fontSize: "14px", color: "#4a5568", fontWeight: "600" }}>Goal Items</label>
+              <input
+                type="number"
+                min={1}
+                value={form.max_progress}
+                onChange={e => setForm(f => ({ ...f, max_progress: e.target.value }))}
+                required
+                style={{ ...inputStyle, width: "100%" }}
+                placeholder="e.g., 10"
+              />
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              <label style={{ fontSize: "14px", color: "#4a5568", fontWeight: "600" }}>Challenge Type</label>
+              <select
+                value={form.friend_id}
+                onChange={e => setForm(f => ({ ...f, friend_id: e.target.value }))}
+                style={{ ...inputStyle, width: "100%" }}
+              >
+                <option value="">Personal Challenge</option>
+                {friends.map(f => (
+                  <option key={f.id} value={f.id}>{f.name || f.username}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Third Row - Submit Button */}
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "24px" }}>
+            <button 
+              type="submit" 
+              disabled={creating} 
+              style={{ 
+                ...buttonStyle,
+                background: creating ? "#9ca3af" : "linear-gradient(135deg, #10b981, #059669)",
+                color: "white",
+                minWidth: "160px",
+                boxShadow: creating ? "none" : "0 4px 12px rgba(16, 185, 129, 0.3)",
+                transform: creating ? "none" : "translateY(0)",
+              }}
+              onMouseEnter={e => {
+                if (!creating) {
+                  e.target.style.transform = "translateY(-2px)";
+                  e.target.style.boxShadow = "0 6px 16px rgba(16, 185, 129, 0.4)";
+                }
+              }}
+              onMouseLeave={e => {
+                if (!creating) {
+                  e.target.style.transform = "translateY(0)";
+                  e.target.style.boxShadow = "0 4px 12px rgba(16, 185, 129, 0.3)";
+                }
+              }}
+            >
+              {creating ? "Creating..." : "Create Challenge"}
+            </button>
+          </div>
         </form>
-        {successMsg && <div style={{ color: "#48bb78", marginTop: 12, fontWeight: 600 }}>{successMsg}</div>}
+        {successMsg && (
+          <div style={{ 
+            color: "#10b981", 
+            marginTop: "16px", 
+            fontWeight: "600", 
+            fontSize: "15px",
+            padding: "12px 16px",
+            backgroundColor: "#ecfdf5",
+            borderRadius: "12px",
+            border: "1px solid #a7f3d0",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px"
+          }}>
+            ✅ {successMsg}
+          </div>
+        )}
       </div>
       {/* Personal Challenges */}
       <div style={cardStyle}>
@@ -258,50 +387,133 @@ export default function ChallengesPage({ userId }) {
         ) : challenges.length === 0 ? (
           <div style={subtleText}>(No challenges yet)</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "32px", padding: "8px" }}>
             {challenges.map(c => {
               const now = new Date();
               const deadline = c.deadline ? new Date(c.deadline) : null;
               const expired = deadline && deadline < now;
-              const daysLeft = deadline ? Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)) : null;
+              const daysLeft = deadline ? Math.floor((deadline - now) / (1000 * 60 * 60 * 24)) : null;
               return (
-                <div key={c.id} style={{ background: expired ? "#fff5f5" : "#f8fafc", border: expired ? "1px solid #feb2b2" : "1px solid #e2e8f0", borderRadius: 12, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.03)", transition: "box-shadow 0.3s" }}>
-                  <div style={{ fontWeight: "bold", fontSize: 17, marginBottom: 4 }}>{c.title}</div>
-                  <div style={{ color: "#718096", fontSize: 14, marginBottom: 8 }}>{c.description}</div>
+                <div key={c.id} style={{ 
+                  background: expired ? "#fef2f2" : "#ffffff", 
+                  border: expired ? "2px solid #fecaca" : "2px solid #e2e8f0", 
+                  borderRadius: "16px", 
+                  padding: "24px", 
+                  boxShadow: expired ? "0 4px 12px rgba(239, 68, 68, 0.1)" : "0 4px 20px rgba(0,0,0,0.08)", 
+                  transition: "all 0.3s ease",
+                  position: "relative",
+                  overflow: "hidden"
+                }}>
+                  {c.completed && (
+                    <div style={{
+                      position: "absolute",
+                      top: "12px",
+                      right: "12px",
+                      background: "linear-gradient(135deg, #10b981, #059669)",
+                      color: "white",
+                      padding: "4px 12px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)"
+                    }}>
+                      COMPLETED
+                    </div>
+                  )}
+                  <div style={{ fontWeight: "800", fontSize: "18px", marginBottom: "8px", color: "#1a202c" }}>{c.title}</div>
+                  <div style={{ color: "#64748b", fontSize: "15px", marginBottom: "16px", lineHeight: "1.5" }}>{c.description}</div>
                   <ProgressBar value={c.progress} max={c.max_progress} />
-                  <div style={{ fontSize: 14, color: expired ? "#e53e3e" : "#2d3748", marginBottom: 8 }}>
-                    {expired ? "Expired" : daysLeft !== null ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "No deadline"}
+                  <div style={{ 
+                    fontSize: "14px", 
+                    color: expired ? "#ef4444" : daysLeft !== null ? "#10b981" : "#64748b", 
+                    marginBottom: "12px",
+                    fontWeight: "600",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}>
+                    {expired ? "⏰ Expired" : daysLeft !== null ? `⏰ ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "📅 No deadline"}
                   </div>
-                  <div style={{ fontSize: 14, color: "#2d3748", marginBottom: 8 }}>
+                  <div style={{ fontSize: "15px", color: "#374151", marginBottom: "12px", fontWeight: "600" }}>
                     Progress: {c.progress} / {c.max_progress}
                   </div>
-                  <input
-                    type="number"
-                    min={0}
-                    max={c.max_progress}
-                    value={editProgress[c.id] !== undefined ? editProgress[c.id] : c.progress}
-                    onChange={e => {
-                      setEditProgress(prev => ({ ...prev, [c.id]: e.target.value }));
-                    }}
-                    onBlur={e => {
-                      const val = parseInt(editProgress[c.id], 10);
-                      if (!isNaN(val) && val !== c.progress) {
-                        handleUpdateProgress(c.id, val);
-                      }
-                      setEditProgress(prev => {
-                        const copy = { ...prev };
-                        delete copy[c.id];
-                        return copy;
-                      });
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') {
-                        e.target.blur();
-                      }
-                    }}
-                    style={{ padding: 8, borderRadius: 6, border: "1px solid #e2e8f0", width: 80, marginRight: 8 }}
-                  />
-                  <span style={{ color: c.completed ? "#48bb78" : "#718096", fontWeight: "bold" }}>{c.completed ? "Completed!" : "In Progress"}</span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+                    <label style={{ fontSize: "14px", color: "#4a5568", fontWeight: "600" }}>Update Progress:</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={c.max_progress}
+                      value={editProgress[c.id] !== undefined ? editProgress[c.id] : c.progress}
+                      onChange={e => {
+                        setEditProgress(prev => ({ ...prev, [c.id]: e.target.value }));
+                      }}
+                      onBlur={e => {
+                        const val = parseInt(editProgress[c.id], 10);
+                        if (!isNaN(val) && val !== c.progress) {
+                          handleUpdateProgress(c.id, val);
+                        }
+                        setEditProgress(prev => {
+                          const copy = { ...prev };
+                          delete copy[c.id];
+                          return copy;
+                        });
+                      }}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.target.blur();
+                        }
+                      }}
+                      style={{ 
+                        padding: "10px 12px", 
+                        borderRadius: "10px", 
+                        border: "2px solid #e2e8f0", 
+                        width: "80px", 
+                        marginRight: "8px",
+                        fontSize: "14px",
+                        backgroundColor: "#fafbfc",
+                        transition: "all 0.2s ease"
+                      }}
+                      placeholder={`0-${c.max_progress}`}
+                    />
+                    <span style={{ fontSize: "13px", color: "#64748b", fontWeight: "500" }}>of {c.max_progress} completed</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
+                    <span style={{ 
+                      color: c.completed ? "#10b981" : "#64748b", 
+                      fontWeight: "700",
+                      fontSize: "14px",
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      backgroundColor: c.completed ? "#ecfdf5" : "#f1f5f9"
+                    }}>
+                      {c.completed ? "✅ Completed!" : "🔄 In Progress"}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteChallenge(c.id)}
+                      style={{
+                        padding: "6px 12px",
+                        background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                        transition: "all 0.2s ease",
+                        boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)"
+                      }}
+                      onMouseEnter={e => {
+                        e.target.style.transform = "translateY(-1px)";
+                        e.target.style.boxShadow = "0 4px 8px rgba(239, 68, 68, 0.3)";
+                      }}
+                      onMouseLeave={e => {
+                        e.target.style.transform = "translateY(0)";
+                        e.target.style.boxShadow = "0 2px 4px rgba(239, 68, 68, 0.2)";
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               );
             })}
@@ -315,12 +527,12 @@ export default function ChallengesPage({ userId }) {
         {friendChallenges.received.length === 0 ? (
           <div style={subtleText}>(No friend challenges received)</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20, marginBottom: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "32px", marginBottom: "32px", padding: "8px" }}>
             {friendChallenges.received.map(c => {
               const now = new Date();
               const deadline = c.deadline ? new Date(c.deadline) : null;
               const expired = deadline && deadline < now;
-              const daysLeft = deadline ? Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)) : null;
+              const daysLeft = deadline ? Math.floor((deadline - now) / (1000 * 60 * 60 * 24)) : null;
               return (
                 <div key={c.id} style={{ background: expired ? "#fff5f5" : "#f8fafc", border: expired ? "1px solid #feb2b2" : "1px solid #e2e8f0", borderRadius: 12, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.03)", transition: "box-shadow 0.3s" }}>
                   <div style={{ fontWeight: "bold", fontSize: 17, marginBottom: 4 }}>{c.title}</div>
@@ -342,7 +554,8 @@ export default function ChallengesPage({ userId }) {
                     </div>
                   )}
                   {c.status === "accepted" && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                      <label style={{ fontSize: 14, color: "#4a5568", fontWeight: "500" }}>Update Progress:</label>
                       <input
                         type="number"
                         min={0}
@@ -368,7 +581,9 @@ export default function ChallengesPage({ userId }) {
                           }
                         }}
                         style={{ padding: 8, borderRadius: 6, border: "1px solid #e2e8f0", width: 80 }}
+                        placeholder={`0-${c.max_progress}`}
                       />
+                      <span style={{ fontSize: 12, color: "#718096" }}>of {c.max_progress} completed</span>
                       <span style={{ color: c.progress >= c.max_progress ? "#48bb78" : "#718096", fontWeight: "bold" }}>{c.progress >= c.max_progress ? "Completed!" : "In Progress"}</span>
                     </div>
                   )}
@@ -384,25 +599,78 @@ export default function ChallengesPage({ userId }) {
         {friendChallenges.sent.length === 0 ? (
           <div style={subtleText}>(No friend challenges sent)</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: "32px", padding: "8px" }}>
             {friendChallenges.sent.map(c => {
               const now = new Date();
               const deadline = c.deadline ? new Date(c.deadline) : null;
               const expired = deadline && deadline < now;
-              const daysLeft = deadline ? Math.ceil((deadline - now) / (1000 * 60 * 60 * 24)) : null;
+              const daysLeft = deadline ? Math.floor((deadline - now) / (1000 * 60 * 60 * 24)) : null;
               return (
-                <div key={c.id} style={{ background: expired ? "#fff5f5" : "#f8fafc", border: expired ? "1px solid #feb2b2" : "1px solid #e2e8f0", borderRadius: 12, padding: 20, boxShadow: "0 1px 4px rgba(0,0,0,0.03)", transition: "box-shadow 0.3s" }}>
-                  <div style={{ fontWeight: "bold", fontSize: 17, marginBottom: 4 }}>{c.title}</div>
-                  <div style={{ color: "#718096", fontSize: 14, marginBottom: 8 }}>{c.description}</div>
-                  <div style={{ color: "#718096", fontSize: 13, marginBottom: 8 }}>to <b>{c.target_name}</b></div>
+                <div key={c.id} style={{ 
+                  background: expired ? "#fef2f2" : "#ffffff", 
+                  border: expired ? "2px solid #fecaca" : "2px solid #e2e8f0", 
+                  borderRadius: "16px", 
+                  padding: "24px", 
+                  boxShadow: expired ? "0 4px 12px rgba(239, 68, 68, 0.1)" : "0 4px 20px rgba(0,0,0,0.08)", 
+                  transition: "all 0.3s ease",
+                  position: "relative",
+                  overflow: "hidden"
+                }}>
+                  <div style={{ fontWeight: "800", fontSize: "18px", marginBottom: "8px", color: "#1a202c" }}>{c.title}</div>
+                  <div style={{ color: "#64748b", fontSize: "15px", marginBottom: "12px", lineHeight: "1.5" }}>{c.description}</div>
+                  <div style={{ color: "#64748b", fontSize: "14px", marginBottom: "16px", fontWeight: "600" }}>to <b>{c.target_name}</b></div>
                   <ProgressBar value={c.progress} max={c.max_progress} />
-                  <div style={{ fontSize: 14, color: expired ? "#e53e3e" : "#2d3748", marginBottom: 8 }}>
-                    {expired ? "Expired" : daysLeft !== null ? `${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "No deadline"}
+                  <div style={{ 
+                    fontSize: "14px", 
+                    color: expired ? "#ef4444" : daysLeft !== null ? "#10b981" : "#64748b", 
+                    marginBottom: "12px",
+                    fontWeight: "600",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px"
+                  }}>
+                    {expired ? "⏰ Expired" : daysLeft !== null ? `⏰ ${daysLeft} day${daysLeft === 1 ? "" : "s"} left` : "📅 No deadline"}
                   </div>
-                  <div style={{ fontSize: 14, color: "#2d3748", marginBottom: 8 }}>
+                  <div style={{ fontSize: "15px", color: "#374151", marginBottom: "12px", fontWeight: "600" }}>
                     Progress: {c.progress} / {c.max_progress}
                   </div>
-                  <span style={{ color: c.status === "completed" ? "#48bb78" : "#718096", fontWeight: "bold" }}>Status: {c.status}</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px" }}>
+                    <span style={{ 
+                      color: c.status === "completed" ? "#10b981" : "#64748b", 
+                      fontWeight: "700",
+                      fontSize: "14px",
+                      padding: "6px 12px",
+                      borderRadius: "8px",
+                      backgroundColor: c.status === "completed" ? "#ecfdf5" : "#f1f5f9"
+                    }}>
+                      Status: {c.status}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteFriendChallenge(c.id)}
+                      style={{
+                        padding: "6px 12px",
+                        background: "linear-gradient(135deg, #ef4444, #dc2626)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        fontSize: "12px",
+                        cursor: "pointer",
+                        fontWeight: "600",
+                        transition: "all 0.2s ease",
+                        boxShadow: "0 2px 4px rgba(239, 68, 68, 0.2)"
+                      }}
+                      onMouseEnter={e => {
+                        e.target.style.transform = "translateY(-1px)";
+                        e.target.style.boxShadow = "0 4px 8px rgba(239, 68, 68, 0.3)";
+                      }}
+                      onMouseLeave={e => {
+                        e.target.style.transform = "translateY(0)";
+                        e.target.style.boxShadow = "0 2px 4px rgba(239, 68, 68, 0.2)";
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               );
             })}

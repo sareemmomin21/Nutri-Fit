@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { FaThumbsUp, FaThumbsDown, FaRegLightbulb } from "react-icons/fa";
 
 export default function SettingsPage() {
   const navigate = useNavigate();
@@ -9,6 +10,13 @@ export default function SettingsPage() {
     overall_preferences: {},
     meal_preferences: {},
   });
+  const [workoutPreferences, setWorkoutPreferences] = useState({
+    liked_workouts: [],
+    disliked_workouts: [],
+  });
+  const [customWorkouts, setCustomWorkouts] = useState([]);
+  const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -29,7 +37,7 @@ export default function SettingsPage() {
 
       // Fetch profile
       const profileResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_profile",
+        "http://127.0.0.1:5001/api/get_profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -44,7 +52,7 @@ export default function SettingsPage() {
 
       // Fetch food preferences
       const prefsResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_food_preferences",
+        "http://127.0.0.1:5001/api/get_food_preferences",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -56,9 +64,10 @@ export default function SettingsPage() {
         const prefsData = await prefsResponse.json();
         setFoodPreferences(prefsData);
       }
+
       // Fetch workout preferences
       const workoutPrefsResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_workout_preferences",
+        "http://127.0.0.1:5001/api/get_workout_preferences",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -73,7 +82,7 @@ export default function SettingsPage() {
 
       // Fetch custom workouts
       const customWorkoutsResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_user_custom_workouts",
+        "http://127.0.0.1:5001/api/get_user_custom_workouts",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -96,7 +105,7 @@ export default function SettingsPage() {
   const handleProfileUpdate = async (updatedData) => {
     try {
       setIsSaving(true);
-      const response = await fetch("http://127.0.0.1:5000/api/update_profile", {
+      const response = await fetch("http://127.0.0.1:5001/api/update_profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, ...updatedData }),
@@ -125,7 +134,7 @@ export default function SettingsPage() {
       console.log("Completing workout from settings:", workoutData.name);
 
       const response = await fetch(
-        "http://127.0.0.1:5000/api/complete_workout",
+        "http://127.0.0.1:5001/api/complete_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -166,7 +175,7 @@ export default function SettingsPage() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/delete_custom_workout",
+        "http://127.0.0.1:5001/api/delete_custom_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -196,6 +205,11 @@ export default function SettingsPage() {
       console.error("Error deleting custom workout:", error);
       setMessage({ type: "error", text: "Failed to delete custom workout" });
     }
+  };
+
+  const handleStartWorkout = (workout) => {
+    setSelectedWorkout(workout);
+    setShowWorkoutModal(true);
   };
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
@@ -331,6 +345,18 @@ export default function SettingsPage() {
           >
             Food Preferences
           </button>
+          <button
+            onClick={() => setActiveTab("workouts")}
+            style={tabStyle(activeTab === "workouts")}
+          >
+            Workout Preferences
+          </button>
+          <button
+            onClick={() => setActiveTab("custom")}
+            style={tabStyle(activeTab === "custom")}
+          >
+            Custom Workouts
+          </button>
         </div>
       </div>
 
@@ -365,7 +391,35 @@ export default function SettingsPage() {
             onRefresh={fetchUserData}
           />
         )}
+
+        {activeTab === "workouts" && (
+          <WorkoutPreferencesTab
+            preferences={workoutPreferences}
+            onRefresh={fetchUserData}
+          />
+        )}
+
+        {activeTab === "custom" && (
+          <CustomWorkoutsTab
+            customWorkouts={customWorkouts}
+            onStartWorkout={handleStartWorkout}
+            onDeleteWorkout={handleDeleteCustomWorkout}
+            onRefresh={fetchUserData}
+          />
+        )}
       </div>
+
+      {/* Workout Modal */}
+      {showWorkoutModal && selectedWorkout && (
+        <CustomWorkoutModal
+          workout={selectedWorkout}
+          onClose={() => {
+            setShowWorkoutModal(false);
+            setSelectedWorkout(null);
+          }}
+          onComplete={handleCompleteWorkout}
+        />
+      )}
     </div>
   );
 }
@@ -1359,7 +1413,7 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/remove_workout_preference",
+        "http://127.0.0.1:5001/api/remove_workout_preference",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2680,101 +2734,4 @@ function CustomWorkoutModal({ workout, onClose, onComplete }) {
 //                   padding: "8px",
 //                   border: "1px solid #e2e8f0",
 //                   borderRadius: "6px",
-//                   backgroundColor: "#f7fafc",
-//                 }}
-//               />
-//             </div>
-//           </div>
 
-//           <div style={{ marginBottom: "1rem" }}>
-//             <label
-//               style={{
-//                 display: "block",
-//                 marginBottom: "0.5rem",
-//                 fontWeight: "bold",
-//               }}
-//             >
-//               Workout Notes (optional)
-//             </label>
-//             <textarea
-//               value={workoutNotes}
-//               onChange={(e) => setWorkoutNotes(e.target.value)}
-//               placeholder="How did the workout feel? Any modifications made?"
-//               style={{
-//                 width: "100%",
-//                 height: "80px",
-//                 padding: "8px",
-//                 border: "1px solid #e2e8f0",
-//                 borderRadius: "6px",
-//                 resize: "vertical",
-//               }}
-//             />
-//           </div>
-//         </div>
-
-//         {/* Action Buttons */}
-//         <div
-//           style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}
-//         >
-//           <button
-//             onClick={onClose}
-//             disabled={isCompleting}
-//             style={{
-//               padding: "12px 24px",
-//               backgroundColor: "#e2e8f0",
-//               color: "#4a5568",
-//               border: "none",
-//               borderRadius: "8px",
-//               cursor: isCompleting ? "not-allowed" : "pointer",
-//               fontSize: "16px",
-//               fontWeight: "bold",
-//             }}
-//           >
-//             Cancel
-//           </button>
-//           <button
-//             onClick={handleComplete}
-//             disabled={isCompleting}
-//             style={{
-//               padding: "12px 24px",
-//               backgroundColor: isCompleting ? "#a0aec0" : "#48bb78",
-//               color: "white",
-//               border: "none",
-//               borderRadius: "8px",
-//               cursor: isCompleting ? "not-allowed" : "pointer",
-//               fontSize: "16px",
-//               fontWeight: "bold",
-//             }}
-//           >
-//             {isCompleting ? "Completing..." : "Complete Workout"}
-//           </button>
-//         </div>
-
-//         {/* Workout Tips */}
-//         <div
-//           style={{
-//             marginTop: "1.5rem",
-//             padding: "1rem",
-//             backgroundColor: "#edf2f7",
-//             borderRadius: "8px",
-//             fontSize: "14px",
-//             color: "#4a5568",
-//           }}
-//         >
-//           <strong>💡 Custom Workout Tips:</strong>
-//           <ul style={{ margin: "0.5rem 0 0 1rem", paddingLeft: "1rem" }}>
-//             <li>
-//               Follow the planned sets and reps, but adjust weight as needed
-//             </li>
-//             <li>Take adequate rest between sets as specified</li>
-//             <li>Focus on proper form over heavy weights</li>
-//             <li>
-//               Modify exercises if needed to match your current fitness level
-//             </li>
-//             <li>Stay hydrated and listen to your body</li>
-//           </ul>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
