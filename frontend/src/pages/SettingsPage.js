@@ -120,8 +120,6 @@ export default function SettingsPage() {
     }
   };
 
-<<<<<<< Updated upstream
-=======
   const handleCompleteWorkout = async (workoutData) => {
     try {
       console.log("Completing workout from settings:", workoutData.name);
@@ -199,8 +197,6 @@ export default function SettingsPage() {
       setMessage({ type: "error", text: "Failed to delete custom workout" });
     }
   };
-
->>>>>>> Stashed changes
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("nutrifit_user_id");
@@ -1342,8 +1338,6 @@ function FoodPreferencesTab({ preferences, onRefresh }) {
     </div>
   );
 }
-<<<<<<< Updated upstream
-=======
 
 // Enhanced Workout Preferences Tab Component with ability to remove preferences
 function WorkoutPreferencesTab({ preferences, onRefresh }) {
@@ -2784,4 +2778,3 @@ function CustomWorkoutModal({ workout, onClose, onComplete }) {
 //     </div>
 //   );
 // }
->>>>>>> Stashed changes
