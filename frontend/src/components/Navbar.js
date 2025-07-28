@@ -57,7 +57,7 @@ export default function Navbar() {
                 Vitals
               </Link>
               <Link to="/game" style={navLinkStyle}>
-                Game
+                Social
               </Link>
             </>
           )}
