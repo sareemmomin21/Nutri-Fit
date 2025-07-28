@@ -1453,4 +1453,4 @@ def get_friends_leaderboard_endpoint():
 if __name__ == "__main__":
     init_db()
     init_fitness_tables()
-    app.run(debug=True, port=5001)
+    app.run(debug=True, port=5000)
