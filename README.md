@@ -12,6 +12,10 @@
 * **Smart Feedback**: Log completed workouts and meals; system adjusts your weekly plan dynamically.
 * **Visual Dashboards**: Track body-fat %, consistency streaks, calorie consumption, and workout stats over time.
 * **Firebase Authentication**: Secure user sign-up, login, and session management.
+* **Interactive Exercise Guides**: View animated demos with step-by-step or video modes.
+* **Quick-Fit Workouts**: Build short routines based on time, day, and session frequency.
+* **Gamified Friends & Streaks**: Add friends, earn badges, and share fitness challenges.
+* **Dark Mode & Accessibility**: Toggle light/dark themes, high contrast, and font scaling.
 
 ---
 
