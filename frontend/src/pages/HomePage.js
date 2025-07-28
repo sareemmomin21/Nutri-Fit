@@ -54,7 +54,7 @@ export default function HomePage() {
 
       // Single optimized API call to get all dashboard data
       const response = await fetch(
-        "http://127.0.0.1:5000/api/get_dashboard_data",
+        "http://127.0.0.1:5001/api/get_dashboard_data",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
