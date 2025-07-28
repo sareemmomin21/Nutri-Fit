@@ -676,9 +676,9 @@ function GoalsTab({ profile, onUpdate, isSaving }) {
   useEffect(() => {
     if (profile) {
       setFormData({
-        fitness_goals: profile.fitness_goals || [],
-        dietary_restrictions: profile.dietary_restrictions || [],
-        training_styles: profile.training_styles || [],
+        fitness_goals: Array.isArray(profile.fitness_goals) ? profile.fitness_goals : [],
+        dietary_restrictions: Array.isArray(profile.dietary_restrictions) ? profile.dietary_restrictions : [],
+        training_styles: Array.isArray(profile.training_styles) ? profile.training_styles : [],
         primary_focus: profile.primary_focus || "",
         workout_frequency: profile.workout_frequency || "",
         workout_duration: profile.workout_duration || "",
@@ -694,8 +694,8 @@ function GoalsTab({ profile, onUpdate, isSaving }) {
     setFormData((prev) => ({
       ...prev,
       [field]: checked
-        ? [...prev[field], value]
-        : prev[field].filter((item) => item !== value),
+        ? [...(Array.isArray(prev[field]) ? prev[field] : []), value]
+        : (Array.isArray(prev[field]) ? prev[field] : []).filter((item) => item !== value),
     }));
   };
 
