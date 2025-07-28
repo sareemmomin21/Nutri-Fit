@@ -2187,10 +2187,23 @@ def get_friend_preferences(user_id, friend_id):
                 "workout_duration": result[7]
             }
         
+        # Get workout likes/dislikes
+        c.execute("""
+            SELECT workout_name, preference
+            FROM workout_preferences WHERE user_id = ?
+            ORDER BY created_at DESC
+        """, (friend_id,))
+        
+        workout_likes_dislikes = {'liked': [], 'disliked': []}
+        for workout_name, preference in c.fetchall():
+            if preference in workout_likes_dislikes:
+                workout_likes_dislikes[preference].append(workout_name)
+        
         return {
             "food_preferences": food_preferences,
             "meal_preferences": meal_preferences,
-            "workout_preferences": workout_prefs
+            "workout_preferences": workout_prefs,
+            "workout_likes_dislikes": workout_likes_dislikes
         }, "Success"
 
 def create_challenge(user_id, title, description, deadline, max_progress):

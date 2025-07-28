@@ -787,6 +787,7 @@ export default function FriendsPage({ userId }) {
           setSelectedFriend(null);
           setFriendPreferences(null);
         }}
+        userId={userId}
       />
       <ChatModal
         open={chatOpen}

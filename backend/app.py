@@ -1914,6 +1914,43 @@ def get_friends_leaderboard_endpoint():
         print(f"Error fetching leaderboard: {e}")
         return jsonify({"error": "Failed to fetch leaderboard"}), 500
 
+@app.route("/api/like_workout_from_friend", methods=["POST"])
+def like_workout_from_friend_endpoint():
+    """Like a workout that a friend has liked"""
+    data = request.json or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+    workout_name = data.get("workout_name")
+    
+    if not all([user_id, friend_id, workout_name]):
+        return jsonify({"error": "user_id, friend_id, and workout_name required"}), 400
+    
+    try:
+        # Check if they are friends
+        from database import get_user_friends
+        friends = get_user_friends(user_id)
+        friend_ids = [f['id'] for f in friends]
+        
+        if friend_id not in friend_ids:
+            return jsonify({"error": "Not friends with this user"}), 400
+        
+        # Check if the friend actually likes this workout
+        from database import get_user_workout_preferences
+        friend_preferences = get_user_workout_preferences(friend_id)
+        
+        if workout_name not in friend_preferences.get('liked', []):
+            return jsonify({"error": "Friend doesn't like this workout"}), 400
+        
+        # Add the workout to user's liked workouts
+        from database import save_workout_preference
+        save_workout_preference(user_id, workout_name, 'liked')
+        
+        return jsonify({"success": True, "message": f"Added '{workout_name}' to your liked workouts"}), 200
+        
+    except Exception as e:
+        print(f"Error liking workout from friend: {e}")
+        return jsonify({"error": "Failed to like workout"}), 500
+
 
 if __name__ == "__main__":
     init_db()
