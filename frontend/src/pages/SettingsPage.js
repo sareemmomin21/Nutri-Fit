@@ -11,15 +11,15 @@ export default function SettingsPage() {
     meal_preferences: {},
   });
   const [workoutPreferences, setWorkoutPreferences] = useState({
-    liked: [],
-    disliked: [],
+    liked_workouts: [],
+    disliked_workouts: [],
   });
   const [customWorkouts, setCustomWorkouts] = useState([]);
+  const [showWorkoutModal, setShowWorkoutModal] = useState(false);
+  const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
-  const [selectedWorkout, setSelectedWorkout] = useState(null);
-  const [showWorkoutModal, setShowWorkoutModal] = useState(false);
 
   const userId = localStorage.getItem("nutrifit_user_id");
 
@@ -37,7 +37,7 @@ export default function SettingsPage() {
 
       // Fetch profile
       const profileResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_profile",
+        "http://127.0.0.1:5001/api/get_profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -52,7 +52,7 @@ export default function SettingsPage() {
 
       // Fetch food preferences
       const prefsResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_food_preferences",
+        "http://127.0.0.1:5001/api/get_food_preferences",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -67,7 +67,7 @@ export default function SettingsPage() {
 
       // Fetch workout preferences
       const workoutPrefsResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_workout_preferences",
+        "http://127.0.0.1:5001/api/get_workout_preferences",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -82,7 +82,7 @@ export default function SettingsPage() {
 
       // Fetch custom workouts
       const customWorkoutsResponse = await fetch(
-        "http://127.0.0.1:5000/api/get_user_custom_workouts",
+        "http://127.0.0.1:5001/api/get_user_custom_workouts",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -105,7 +105,7 @@ export default function SettingsPage() {
   const handleProfileUpdate = async (updatedData) => {
     try {
       setIsSaving(true);
-      const response = await fetch("http://127.0.0.1:5000/api/update_profile", {
+      const response = await fetch("http://127.0.0.1:5001/api/update_profile", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId, ...updatedData }),
@@ -115,7 +115,6 @@ export default function SettingsPage() {
       if (data.success) {
         setProfile((prev) => ({ ...prev, ...updatedData }));
         setMessage({ type: "success", text: "Profile updated successfully!" });
-        setTimeout(() => setMessage({ type: "", text: "" }), 3000);
       } else {
         setMessage({
           type: "error",
@@ -135,7 +134,7 @@ export default function SettingsPage() {
       console.log("Completing workout from settings:", workoutData.name);
 
       const response = await fetch(
-        "http://127.0.0.1:5000/api/complete_workout",
+        "http://127.0.0.1:5001/api/complete_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -176,7 +175,7 @@ export default function SettingsPage() {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/delete_custom_workout",
+        "http://127.0.0.1:5001/api/delete_custom_workout",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -208,6 +207,10 @@ export default function SettingsPage() {
     }
   };
 
+  const handleStartWorkout = (workout) => {
+    setSelectedWorkout(workout);
+    setShowWorkoutModal(true);
+  };
   const handleLogout = () => {
     if (window.confirm("Are you sure you want to log out?")) {
       localStorage.removeItem("nutrifit_user_id");
@@ -323,13 +326,7 @@ export default function SettingsPage() {
           borderBottom: "none",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            borderBottom: "1px solid #e2e8f0",
-            flexWrap: "wrap",
-          }}
-        >
+        <div style={{ display: "flex", borderBottom: "1px solid #e2e8f0" }}>
           <button
             onClick={() => setActiveTab("profile")}
             style={tabStyle(activeTab === "profile")}
@@ -405,17 +402,14 @@ export default function SettingsPage() {
         {activeTab === "custom" && (
           <CustomWorkoutsTab
             customWorkouts={customWorkouts}
-            onStartWorkout={(workout) => {
-              setSelectedWorkout(workout);
-              setShowWorkoutModal(true);
-            }}
+            onStartWorkout={handleStartWorkout}
             onDeleteWorkout={handleDeleteCustomWorkout}
             onRefresh={fetchUserData}
           />
         )}
       </div>
 
-      {/* Custom Workout Modal */}
+      {/* Workout Modal */}
       {showWorkoutModal && selectedWorkout && (
         <CustomWorkoutModal
           workout={selectedWorkout}
@@ -692,8 +686,6 @@ function GoalsTab({ profile, onUpdate, isSaving }) {
         meal_prep_time: profile.meal_prep_time || "",
         cooking_skill: profile.cooking_skill || "",
         budget_preference: profile.budget_preference || "",
-        has_gym_membership: profile.has_gym_membership || false,
-        home_equipment: profile.home_equipment || [],
       });
     }
   }, [profile]);
@@ -727,47 +719,6 @@ function GoalsTab({ profile, onUpdate, isSaving }) {
     borderRadius: "8px",
     border: "1px solid #e2e8f0",
   };
-
-  // Enhanced dietary restrictions with better descriptions and warnings
-  const dietaryRestrictions = [
-    {
-      id: "halal",
-      name: "Halal",
-      description: "No pork, alcohol, or non-halal meat products",
-      warning:
-        "Will filter out pork, alcohol, and non-halal items from suggestions",
-    },
-    {
-      id: "vegetarian",
-      name: "Vegetarian",
-      description: "No meat, poultry, or fish",
-      warning: "Will exclude all meat, poultry, and seafood from suggestions",
-    },
-    {
-      id: "vegan",
-      name: "Vegan",
-      description: "No animal products including dairy, eggs, and honey",
-      warning: "Will exclude all animal products from suggestions",
-    },
-    {
-      id: "gluten_free",
-      name: "Gluten-Free",
-      description: "No wheat, barley, rye, or gluten-containing products",
-      warning: "Will filter out gluten-containing foods",
-    },
-    {
-      id: "dairy_free",
-      name: "Dairy-Free",
-      description: "No milk, cheese, butter, or dairy products",
-      warning: "Will exclude all dairy products from suggestions",
-    },
-    {
-      id: "nut_free",
-      name: "Nut-Free",
-      description: "No tree nuts or peanuts",
-      warning: "Will filter out all nuts and nut-containing products",
-    },
-  ];
 
   return (
     <form onSubmit={handleSubmit}>
@@ -821,9 +772,6 @@ function GoalsTab({ profile, onUpdate, isSaving }) {
                 alignItems: "center",
                 cursor: "pointer",
                 padding: "8px",
-                backgroundColor: "white",
-                borderRadius: "6px",
-                border: "1px solid #e2e8f0",
               }}
             >
               <input
@@ -838,248 +786,6 @@ function GoalsTab({ profile, onUpdate, isSaving }) {
             </label>
           ))}
         </div>
-      </div>
-
-      {/* Enhanced Dietary Restrictions Section */}
-      <div style={sectionStyle}>
-        <h4 style={{ marginBottom: "1rem", color: "#2d3748" }}>
-          Dietary Restrictions & Preferences
-        </h4>
-        <p
-          style={{
-            margin: "0 0 1.5rem 0",
-            color: "#4a5568",
-            fontSize: "14px",
-            backgroundColor: "#e6fffa",
-            padding: "12px",
-            borderRadius: "6px",
-            border: "1px solid #38b2ac",
-          }}
-        >
-          <strong>🔍 Smart Food Filtering:</strong> Select your dietary
-          restrictions to automatically filter food suggestions and get warnings
-          when searching for items that may not fit your preferences.
-        </p>
-
-        <div style={{ display: "grid", gap: "1rem" }}>
-          {dietaryRestrictions.map((restriction) => (
-            <div
-              key={restriction.id}
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                padding: "1rem",
-                backgroundColor: formData.dietary_restrictions?.includes(
-                  restriction.id
-                )
-                  ? "#f0fff4"
-                  : "white",
-                border: formData.dietary_restrictions?.includes(restriction.id)
-                  ? "2px solid #48bb78"
-                  : "1px solid #e2e8f0",
-                borderRadius: "8px",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-              onClick={() => {
-                const isChecked = formData.dietary_restrictions?.includes(
-                  restriction.id
-                );
-                handleArrayChange(
-                  "dietary_restrictions",
-                  restriction.id,
-                  !isChecked
-                );
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={formData.dietary_restrictions?.includes(
-                  restriction.id
-                )}
-                onChange={(e) =>
-                  handleArrayChange(
-                    "dietary_restrictions",
-                    restriction.id,
-                    e.target.checked
-                  )
-                }
-                style={{
-                  width: "18px",
-                  height: "18px",
-                  marginRight: "12px",
-                  cursor: "pointer",
-                }}
-              />
-              <div style={{ flex: 1 }}>
-                <div
-                  style={{
-                    fontWeight: "bold",
-                    color: "#2d3748",
-                    marginBottom: "4px",
-                  }}
-                >
-                  {restriction.name}
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "#718096",
-                    marginBottom: "4px",
-                  }}
-                >
-                  {restriction.description}
-                </div>
-                {formData.dietary_restrictions?.includes(restriction.id) && (
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      color: "#22543d",
-                      backgroundColor: "#c6f6d5",
-                      padding: "4px 8px",
-                      borderRadius: "4px",
-                      fontStyle: "italic",
-                    }}
-                  >
-                    ✓ {restriction.warning}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Active restrictions summary */}
-        {formData.dietary_restrictions?.length > 0 && (
-          <div
-            style={{
-              backgroundColor: "#e6fffa",
-              border: "1px solid #38b2ac",
-              borderRadius: "8px",
-              padding: "1rem",
-              marginTop: "1rem",
-            }}
-          >
-            <div
-              style={{
-                fontWeight: "bold",
-                color: "#234e52",
-                marginBottom: "0.5rem",
-              }}
-            >
-              Active Dietary Restrictions:
-            </div>
-            <div style={{ color: "#285e61", fontSize: "14px" }}>
-              {formData.dietary_restrictions
-                .map((id) => dietaryRestrictions.find((r) => r.id === id)?.name)
-                .join(", ")}
-            </div>
-            <div
-              style={{
-                fontSize: "12px",
-                color: "#234e52",
-                marginTop: "8px",
-                fontStyle: "italic",
-              }}
-            >
-              These restrictions will automatically filter your food suggestions
-              and show warnings when you search for incompatible items.
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Gym Membership & Equipment */}
-      <div style={sectionStyle}>
-        <h4 style={{ marginBottom: "1rem", color: "#2d3748" }}>
-          Gym & Equipment
-        </h4>
-
-        <div style={{ marginBottom: "1rem" }}>
-          <label
-            style={{
-              display: "flex",
-              alignItems: "center",
-              cursor: "pointer",
-              padding: "8px",
-              backgroundColor: "white",
-              borderRadius: "6px",
-              border: "1px solid #e2e8f0",
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={formData.has_gym_membership}
-              onChange={(e) =>
-                setFormData((prev) => ({
-                  ...prev,
-                  has_gym_membership: e.target.checked,
-                }))
-              }
-              style={{ marginRight: "8px" }}
-            />
-            <span style={{ fontWeight: "bold" }}>I have a gym membership</span>
-          </label>
-        </div>
-
-        {!formData.has_gym_membership && (
-          <div>
-            <h5 style={{ marginBottom: "0.5rem", color: "#2d3748" }}>
-              Home Equipment (select all that apply)
-            </h5>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: "0.5rem",
-              }}
-            >
-              {[
-                "dumbbells",
-                "resistance_bands",
-                "kettlebell",
-                "yoga_mat",
-                "pull_up_bar",
-                "exercise_bike",
-                "treadmill",
-                "jump_rope",
-                "stability_ball",
-                "foam_roller",
-                "bench",
-                "barbell",
-              ].map((equipment) => (
-                <label
-                  key={equipment}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    cursor: "pointer",
-                    padding: "8px",
-                    backgroundColor: "white",
-                    borderRadius: "4px",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.home_equipment?.includes(equipment)}
-                    onChange={(e) =>
-                      handleArrayChange(
-                        "home_equipment",
-                        equipment,
-                        e.target.checked
-                      )
-                    }
-                    style={{ marginRight: "8px" }}
-                  />
-                  {equipment
-                    .replace("_", " ")
-                    .replace(/\b\w/g, (l) => l.toUpperCase())}
-                </label>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Fitness Experience & Schedule */}
@@ -1204,9 +910,6 @@ function GoalsTab({ profile, onUpdate, isSaving }) {
                 alignItems: "center",
                 cursor: "pointer",
                 padding: "8px",
-                backgroundColor: "white",
-                borderRadius: "4px",
-                border: "1px solid #e2e8f0",
               }}
             >
               <input
@@ -1218,6 +921,57 @@ function GoalsTab({ profile, onUpdate, isSaving }) {
                 style={{ marginRight: "8px" }}
               />
               {style.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      {/* Dietary Restrictions */}
+      <div style={sectionStyle}>
+        <h4 style={{ marginBottom: "1rem", color: "#2d3748" }}>
+          Dietary Restrictions
+        </h4>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: "0.5rem",
+          }}
+        >
+          {[
+            "vegetarian",
+            "vegan",
+            "gluten_free",
+            "dairy_free",
+            "keto",
+            "paleo",
+            "halal",
+            "kosher",
+          ].map((restriction) => (
+            <label
+              key={restriction}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                cursor: "pointer",
+                padding: "8px",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={formData.dietary_restrictions?.includes(restriction)}
+                onChange={(e) =>
+                  handleArrayChange(
+                    "dietary_restrictions",
+                    restriction,
+                    e.target.checked
+                  )
+                }
+                style={{ marginRight: "8px" }}
+              />
+              {restriction
+                .replace("_", " ")
+                .replace(/\b\w/g, (l) => l.toUpperCase())}
             </label>
           ))}
         </div>
@@ -1627,9 +1381,12 @@ function FoodPreferencesTab({ preferences, onRefresh }) {
         }}
       >
         <p style={{ margin: "0", fontSize: "14px", color: "#4a5568" }}>
-          <strong>How it works:</strong> Your food preferences are automatically
-          learned as you use the app. Like or dislike foods in the nutrition
-          section to build your personalized recommendations!
+          <strong>
+            {" "}
+            Your food preferences are automatically learned as you use the app.
+            Like or dislike foods in the nutrition section to build your
+            personalized recommendations!{" "}
+          </strong>
         </p>
       </div>
     </div>
@@ -1656,7 +1413,7 @@ function WorkoutPreferencesTab({ preferences, onRefresh }) {
 
     try {
       const response = await fetch(
-        "http://127.0.0.1:5000/api/remove_workout_preference",
+        "http://127.0.0.1:5001/api/remove_workout_preference",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -2977,101 +2734,4 @@ function CustomWorkoutModal({ workout, onClose, onComplete }) {
 //                   padding: "8px",
 //                   border: "1px solid #e2e8f0",
 //                   borderRadius: "6px",
-//                   backgroundColor: "#f7fafc",
-//                 }}
-//               />
-//             </div>
-//           </div>
 
-//           <div style={{ marginBottom: "1rem" }}>
-//             <label
-//               style={{
-//                 display: "block",
-//                 marginBottom: "0.5rem",
-//                 fontWeight: "bold",
-//               }}
-//             >
-//               Workout Notes (optional)
-//             </label>
-//             <textarea
-//               value={workoutNotes}
-//               onChange={(e) => setWorkoutNotes(e.target.value)}
-//               placeholder="How did the workout feel? Any modifications made?"
-//               style={{
-//                 width: "100%",
-//                 height: "80px",
-//                 padding: "8px",
-//                 border: "1px solid #e2e8f0",
-//                 borderRadius: "6px",
-//                 resize: "vertical",
-//               }}
-//             />
-//           </div>
-//         </div>
-
-//         {/* Action Buttons */}
-//         <div
-//           style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}
-//         >
-//           <button
-//             onClick={onClose}
-//             disabled={isCompleting}
-//             style={{
-//               padding: "12px 24px",
-//               backgroundColor: "#e2e8f0",
-//               color: "#4a5568",
-//               border: "none",
-//               borderRadius: "8px",
-//               cursor: isCompleting ? "not-allowed" : "pointer",
-//               fontSize: "16px",
-//               fontWeight: "bold",
-//             }}
-//           >
-//             Cancel
-//           </button>
-//           <button
-//             onClick={handleComplete}
-//             disabled={isCompleting}
-//             style={{
-//               padding: "12px 24px",
-//               backgroundColor: isCompleting ? "#a0aec0" : "#48bb78",
-//               color: "white",
-//               border: "none",
-//               borderRadius: "8px",
-//               cursor: isCompleting ? "not-allowed" : "pointer",
-//               fontSize: "16px",
-//               fontWeight: "bold",
-//             }}
-//           >
-//             {isCompleting ? "Completing..." : "Complete Workout"}
-//           </button>
-//         </div>
-
-//         {/* Workout Tips */}
-//         <div
-//           style={{
-//             marginTop: "1.5rem",
-//             padding: "1rem",
-//             backgroundColor: "#edf2f7",
-//             borderRadius: "8px",
-//             fontSize: "14px",
-//             color: "#4a5568",
-//           }}
-//         >
-//           <strong>💡 Custom Workout Tips:</strong>
-//           <ul style={{ margin: "0.5rem 0 0 1rem", paddingLeft: "1rem" }}>
-//             <li>
-//               Follow the planned sets and reps, but adjust weight as needed
-//             </li>
-//             <li>Take adequate rest between sets as specified</li>
-//             <li>Focus on proper form over heavy weights</li>
-//             <li>
-//               Modify exercises if needed to match your current fitness level
-//             </li>
-//             <li>Stay hydrated and listen to your body</li>
-//           </ul>
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }

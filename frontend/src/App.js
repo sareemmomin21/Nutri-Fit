@@ -14,6 +14,7 @@ import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import QuestionsPage from "./pages/QuestionsPage";
 import VitalsPage from "./pages/VitalsPage";
+import GamePage from "./pages/GamePage";
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -106,6 +107,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <VitalsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/game"
+            element={
+              <ProtectedRoute>
+                <GamePage />
               </ProtectedRoute>
             }
           />

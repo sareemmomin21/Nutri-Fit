@@ -56,6 +56,9 @@ export default function Navbar() {
               <Link to="/vitals" style={navLinkStyle}>
                 Vitals
               </Link>
+              <Link to="/game" style={navLinkStyle}>
+                Game
+              </Link>
             </>
           )}
         </div>

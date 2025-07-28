@@ -156,6 +156,7 @@ def init_db():
         )
         """)
 
+        # Add dietary restrictions columns
         c.execute("PRAGMA table_info(users)")
         columns = [column[1] for column in c.fetchall()]
         
@@ -171,6 +172,104 @@ def init_db():
             c.execute("ALTER TABLE user_preferences ADD COLUMN dietary_restrictions TEXT DEFAULT '[]'")
             print("Added dietary_restrictions column to user_preferences table")
 
+        # Friends and social features tables
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS friends (
+        user_id   TEXT,
+        friend_id TEXT,
+        PRIMARY KEY(user_id, friend_id),
+        FOREIGN KEY(user_id)   REFERENCES users(id),
+        FOREIGN KEY(friend_id) REFERENCES users(id)
+        )
+        """)
+
+        # Challenges table (add deadline and max_progress)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS challenges (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id      TEXT    NOT NULL,
+            title        TEXT    NOT NULL,
+            description  TEXT    DEFAULT '',
+            completed    BOOLEAN DEFAULT FALSE,
+            created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            deadline     TIMESTAMP,
+            max_progress INTEGER DEFAULT 100,
+            progress     INTEGER DEFAULT 0,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """)
+
+        # Friend challenges table (add deadline and progress)
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS friend_challenges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            creator_id TEXT NOT NULL,
+            target_friend_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            status TEXT CHECK(status IN ('pending', 'accepted', 'declined', 'completed')) DEFAULT 'pending',
+            progress INTEGER DEFAULT 0,
+            max_progress INTEGER DEFAULT 100,
+            deadline TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            accepted_at TIMESTAMP,
+            completed_at TIMESTAMP,
+            FOREIGN KEY(creator_id) REFERENCES users(id),
+            FOREIGN KEY(target_friend_id) REFERENCES users(id)
+        )
+        """)
+
+        # Messages table for direct messaging
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sender_id TEXT NOT NULL,
+            receiver_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(sender_id) REFERENCES users(id),
+            FOREIGN KEY(receiver_id) REFERENCES users(id)
+        )
+        """)
+
+        # Friend activities table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS friend_activities (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            type TEXT NOT NULL,
+            description TEXT,
+            timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """)
+
+        # Friend badges/achievements table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS friend_badges (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            badge TEXT NOT NULL,
+            description TEXT,
+            earned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id)
+        )
+        """)
+
+        # Friend reminders table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS friend_reminders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            friend_id TEXT NOT NULL,
+            message TEXT,
+            remind_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY(user_id) REFERENCES users(id),
+            FOREIGN KEY(friend_id) REFERENCES users(id)
+        )
+        """)
+       
         conn.commit()
         print("Database initialized successfully")
 
@@ -697,6 +796,10 @@ def create_user(username, password, email=None):
             """, (user_id,))
            
             conn.commit()
+            
+            # Populate sample data for new user
+            populate_sample_data_for_user(user_id)
+            
             return user_id, None
         except Exception as e:
             return None, str(e)
@@ -1282,6 +1385,77 @@ def add_workout_session(user_id, workout_data):
                     exercise.get('notes', '')
                 ))
        
+        # Add activity for workout completion directly to avoid database locking
+        workout_name = workout_data.get('name', 'workout')
+        duration = workout_data.get('duration', 0)
+        c.execute("""
+            INSERT INTO friend_activities (user_id, type, description)
+            VALUES (?, ?, ?)
+        """, (user_id, "workout", f"completed a {duration}-minute {workout_name} session"))
+        
+        # Check for calorie-based badges
+        c.execute("""
+            SELECT COALESCE(SUM(calories_burned), 0) FROM workout_sessions 
+            WHERE user_id = ?
+        """, (user_id,))
+        total_calories = c.fetchone()[0] or 0
+        
+        # Get existing badges to avoid duplicates
+        c.execute("""
+            SELECT badge FROM friend_badges WHERE user_id = ?
+        """, (user_id,))
+        existing_badges = [row[0] for row in c.fetchall()]
+        
+        # Calorie milestone badges
+        calorie_badges = [
+            (1000, "Calorie Burner", "Burned 1,000+ calories! You're on fire!"),
+            (5000, "Calorie Crusher", "Burned 5,000+ calories! Incredible dedication!"),
+            (10000, "Calorie Champion", "Burned 10,000+ calories! You're unstoppable!"),
+            (25000, "Calorie Legend", "Burned 25,000+ calories! You're a fitness legend!"),
+            (50000, "Calorie Master", "Burned 50,000+ calories! You're absolutely incredible!"),
+            (100000, "Calorie God", "Burned 100,000+ calories! You're a fitness deity!")
+        ]
+        
+        for required_calories, badge_name, description in calorie_badges:
+            if total_calories >= required_calories and badge_name not in existing_badges:
+                c.execute("""
+                    INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, badge_name, description, datetime.now().isoformat()))
+                
+                c.execute("""
+                    INSERT INTO friend_activities (user_id, type, description)
+                    VALUES (?, ?, ?)
+                """, (user_id, "badge", f"earned the '{badge_name}' badge"))
+        
+        # Progressive workout badges
+        c.execute("""
+            SELECT COUNT(*) FROM workout_sessions 
+            WHERE user_id = ?
+        """, (user_id,))
+        total_workouts = c.fetchone()[0]
+        
+        workout_badges = [
+            (5, "Workout Beginner", "Completed 5+ workouts! You're building great habits!"),
+            (10, "Workout Warrior", "Completed 10+ workouts! You're getting stronger!"),
+            (25, "Workout Regular", "Completed 25+ workouts! Consistency is your superpower!"),
+            (50, "Workout Master", "Completed 50+ workouts! You're absolutely dedicated!"),
+            (100, "Workout Legend", "Completed 100+ workouts! You're a fitness legend!"),
+            (250, "Workout Champion", "Completed 250+ workouts! You're unstoppable!")
+        ]
+        
+        for required_workouts, badge_name, description in workout_badges:
+            if total_workouts >= required_workouts and badge_name not in existing_badges:
+                c.execute("""
+                    INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, badge_name, description, datetime.now().isoformat()))
+                
+                c.execute("""
+                    INSERT INTO friend_activities (user_id, type, description)
+                    VALUES (?, ?, ?)
+                """, (user_id, "badge", f"earned the '{badge_name}' badge"))
+       
         conn.commit()
         return workout_session_id
 
@@ -1742,10 +1916,1006 @@ def save_custom_workout(user_id, workout_data):
         (user_id, plan_name, plan_data)
         VALUES (?, ?, ?)
         """, (user_id, f"Custom: {workout_data.get('name', 'Custom Workout')}", workout_json))
+
+def search_users(exclude_user_id, query):
+    like = f"%{query}%"
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+        SELECT id, username, first_name, last_name
+        FROM users
+        WHERE id != ?
+          AND (username LIKE ? COLLATE NOCASE
+               OR first_name LIKE ? COLLATE NOCASE
+               OR last_name LIKE ? COLLATE NOCASE)
+        ORDER BY username
+        LIMIT 20
+        """, (exclude_user_id, like, like, like))
+
+        return [
+            {
+              "user_id":    row[0],
+              "username":   row[1],
+              "first_name": row[2],
+              "last_name":  row[3],
+              "name":       f"{row[2]} {row[3]}".strip()
+            }
+            for row in c.fetchall()
+        ]
+
+def get_user_friends(user_id):
+    """List your current friends."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+          SELECT u.id, u.username, u.first_name, u.last_name
+            FROM users u
+            JOIN friends f
+              ON f.friend_id = u.id
+           WHERE f.user_id = ?
+        """, (user_id,))
+        return [
+          {"user_id": row[0], "username": row[1], "first_name": row[2], "last_name": row[3]}
+          for row in c.fetchall()
+        ]
+
+def add_friend(user_id, friend_id):
+    """Create a mutual friendship link."""
+    if user_id == friend_id:
+        return False, "Cannot friend yourself"
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Check existing
+        c.execute("SELECT 1 FROM friends WHERE user_id=? AND friend_id=?", (user_id, friend_id))
+        if c.fetchone():
+            return False, "Already friends"
+        # Insert both directions
+        c.execute("INSERT INTO friends (user_id, friend_id) VALUES (?, ?)", (user_id, friend_id))
+        c.execute("INSERT INTO friends (user_id, friend_id) VALUES (?, ?)", (friend_id, user_id))
+        conn.commit()
+        return True, "Friend added"
+
+def remove_friend(user_id, friend_id):
+    """Tear down a friendship link."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Check existing
+        c.execute("SELECT 1 FROM friends WHERE user_id=? AND friend_id=?", (user_id, friend_id))
+        if not c.fetchone():
+            return False, "Not friends"
+        # Delete both directions
+        c.execute("DELETE FROM friends WHERE user_id=? AND friend_id=?", (user_id, friend_id))
+        c.execute("DELETE FROM friends WHERE user_id=? AND friend_id=?", (friend_id, user_id))
+        conn.commit()
+        return True, "Friend removed"
+
+def create_friend_challenge(creator_id, target_friend_id, title, description="", max_progress=100):
+    """Create a new friend challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Check if they are friends
+        c.execute("SELECT 1 FROM friends WHERE user_id=? AND friend_id=?", (creator_id, target_friend_id))
+        if not c.fetchone():
+            return False, "Not friends with this user"
         
+        c.execute("""
+            INSERT INTO friend_challenges (creator_id, target_friend_id, title, description, max_progress)
+            VALUES (?, ?, ?, ?, ?)
+        """, (creator_id, target_friend_id, title, description, max_progress))
+        conn.commit()
+        return True, "Challenge created successfully"
+
+def get_friend_challenges(user_id):
+    """Get all friend challenges for a user (both sent and received)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get challenges sent to this user
+        c.execute("""
+            SELECT fc.id, fc.creator_id, fc.target_friend_id, fc.title, fc.description,
+                   fc.status, fc.progress, fc.max_progress, fc.created_at,
+                   u.username as creator_username, u.first_name as creator_first_name
+            FROM friend_challenges fc
+            JOIN users u ON fc.creator_id = u.id
+            WHERE fc.target_friend_id = ?
+            ORDER BY fc.created_at DESC
+        """, (user_id,))
+        
+        received_challenges = []
+        for row in c.fetchall():
+            received_challenges.append({
+                "id": row[0],
+                "creator_id": row[1],
+                "target_friend_id": row[2],
+                "title": row[3],
+                "description": row[4],
+                "status": row[5],
+                "progress": row[6],
+                "max_progress": row[7],
+                "created_at": row[8],
+                "creator_name": row[10] if row[10] else row[9],
+                "type": "received"
+            })
+        
+        # Get challenges sent by this user
+        c.execute("""
+            SELECT fc.id, fc.creator_id, fc.target_friend_id, fc.title, fc.description,
+                   fc.status, fc.progress, fc.max_progress, fc.created_at,
+                   u.username as target_username, u.first_name as target_first_name
+            FROM friend_challenges fc
+            JOIN users u ON fc.target_friend_id = u.id
+            WHERE fc.creator_id = ?
+            ORDER BY fc.created_at DESC
+        """, (user_id,))
+        
+        sent_challenges = []
+        for row in c.fetchall():
+            sent_challenges.append({
+                "id": row[0],
+                "creator_id": row[1],
+                "target_friend_id": row[2],
+                "title": row[3],
+                "description": row[4],
+                "status": row[5],
+                "progress": row[6],
+                "max_progress": row[7],
+                "created_at": row[8],
+                "target_name": row[10] if row[10] else row[9],
+                "type": "sent"
+            })
+        
+        return {"received": received_challenges, "sent": sent_challenges}
+
+def respond_to_friend_challenge(user_id, challenge_id, response):
+    """Accept or decline a friend challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Verify this challenge belongs to the user
+        c.execute("SELECT target_friend_id, status FROM friend_challenges WHERE id = ?", (challenge_id,))
+        result = c.fetchone()
+        if not result:
+            return False, "Challenge not found"
+        
+        if result[0] != user_id:
+            return False, "Not authorized to respond to this challenge"
+        
+        if result[1] != 'pending':
+            return False, "Challenge has already been responded to"
+        
+        if response not in ['accepted', 'declined']:
+            return False, "Invalid response"
+        
+        c.execute("""
+            UPDATE friend_challenges 
+            SET status = ?, accepted_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, (response, challenge_id))
+        conn.commit()
+        return True, f"Challenge {response}"
+
+def update_friend_challenge_progress(user_id, challenge_id, progress):
+    """Update progress on a friend challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Verify this challenge belongs to the user (they can update if they're the target)
+        c.execute("SELECT target_friend_id, max_progress, status FROM friend_challenges WHERE id = ?", (challenge_id,))
+        result = c.fetchone()
+        if not result:
+            return False, "Challenge not found"
+        
+        if result[0] != user_id:
+            return False, "Not authorized to update this challenge"
+        
+        if result[2] != 'accepted':
+            return False, "Challenge must be accepted before updating progress"
+        
+        # Ensure progress is within bounds
+        progress = max(0, min(progress, result[1]))
+        
+        # Check if completing the challenge
+        status = 'completed' if progress >= result[1] else 'accepted'
+        completed_at = 'CURRENT_TIMESTAMP' if status == 'completed' else None
+        
+        if completed_at:
+            c.execute("""
+                UPDATE friend_challenges 
+                SET progress = ?, status = ?, completed_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """, (progress, status, challenge_id))
+        else:
+            c.execute("""
+                UPDATE friend_challenges 
+                SET progress = ? 
+                WHERE id = ?
+            """, (progress, challenge_id))
+        
+        conn.commit()
+        return True, "Progress updated"
+
+def get_friend_preferences(user_id, friend_id):
+    """Get a friend's food and workout preferences."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Check if they are friends
+        c.execute("SELECT 1 FROM friends WHERE user_id=? AND friend_id=?", (user_id, friend_id))
+        if not c.fetchone():
+            return None, "Not friends with this user"
+        
+        # Get food preferences
+        c.execute("""
+            SELECT meal_type, food_name, preference
+            FROM food_preferences WHERE user_id = ?
+            ORDER BY meal_type, food_name
+        """, (friend_id,))
+        
+        food_preferences = {'liked': [], 'disliked': []}
+        meal_preferences = {}
+        
+        for meal_type, food_name, preference in c.fetchall():
+            if meal_type not in meal_preferences:
+                meal_preferences[meal_type] = {'liked': [], 'disliked': []}
+            
+            meal_preferences[meal_type][preference].append(food_name)
+            
+            if meal_type != 'global':
+                food_preferences[preference].append(f"{food_name} ({meal_type})")
+            else:
+                if preference == 'disliked':
+                    food_preferences[preference].append(food_name)
+        
+        # Get workout preferences
+        c.execute("""
+            SELECT primary_focus, fitness_goals, training_styles, fitness_experience,
+                   has_gym_membership, available_equipment, workout_frequency, workout_duration
+            FROM user_preferences WHERE user_id = ?
+        """, (friend_id,))
+        
+        workout_prefs = {}
+        result = c.fetchone()
+        if result:
+            workout_prefs = {
+                "primary_focus": result[0],
+                "fitness_goals": json.loads(result[1]) if result[1] else [],
+                "training_styles": json.loads(result[2]) if result[2] else [],
+                "fitness_experience": result[3],
+                "has_gym_membership": bool(result[4]),
+                "available_equipment": result[5],
+                "workout_frequency": result[6],
+                "workout_duration": result[7]
+            }
+        
+        return {
+            "food_preferences": food_preferences,
+            "meal_preferences": meal_preferences,
+            "workout_preferences": workout_prefs
+        }, "Success"
+
+def create_challenge(user_id, title, description, deadline, max_progress):
+    """Create a new personal challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            INSERT INTO challenges (user_id, title, description, deadline, max_progress, progress)
+            VALUES (?, ?, ?, ?, ?, 0)
+        """, (user_id, title, description, deadline, max_progress))
         conn.commit()
         return c.lastrowid
 
+def update_challenge_progress(user_id, challenge_id, progress):
+    """Update progress for a personal challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get current challenge info
+        c.execute("SELECT max_progress, completed, title FROM challenges WHERE id = ? AND user_id = ?", (challenge_id, user_id))
+        result = c.fetchone()
+        if not result:
+            return False, "Challenge not found"
+        
+        max_progress, was_completed, title = result
+        new_completed = progress >= max_progress
+        
+        # Check if this will be their first completed challenge (before updating)
+        if new_completed and not was_completed:
+            c.execute("""
+                SELECT COUNT(*) FROM challenges 
+                WHERE user_id = ? AND completed = 1
+            """, (user_id,))
+            completed_count_before = c.fetchone()[0]
+            will_be_first = completed_count_before == 0
+            new_total_completed = completed_count_before + 1
+        
+        c.execute("""
+            UPDATE challenges SET progress = ?, completed = ?
+            WHERE id = ? AND user_id = ?
+        """, (progress, new_completed, challenge_id, user_id))
+        
+        # Add activity if challenge was just completed
+        if new_completed and not was_completed:
+            # Add activity directly to avoid database locking
+            c.execute("""
+                INSERT INTO friend_activities (user_id, type, description)
+                VALUES (?, ?, ?)
+            """, (user_id, "challenge", f"completed the '{title}' challenge"))
+            
+            # Award progressive challenge badges
+            if will_be_first:
+                # First Challenge badge
+                c.execute("""
+                    SELECT 1 FROM friend_badges 
+                    WHERE user_id = ? AND badge = 'First Challenge'
+                """, (user_id,))
+                has_badge = c.fetchone()
+                
+                if not has_badge:
+                    c.execute("""
+                        INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                        VALUES (?, ?, ?, ?)
+                    """, (user_id, "First Challenge", "Completed your first challenge! Great start!", datetime.now().isoformat()))
+                    
+                    c.execute("""
+                        INSERT INTO friend_activities (user_id, type, description)
+                        VALUES (?, ?, ?)
+                    """, (user_id, "badge", "earned the 'First Challenge' badge"))
+            
+            # Progressive challenge badges
+            challenge_badges = [
+                (2, "Challenge Enthusiast", "Completed 2 challenges! You're getting the hang of this!"),
+                (3, "Challenge Regular", "Completed 3 challenges! Consistency is key!"),
+                (5, "Challenge Master", "Completed 5+ challenges! You're unstoppable!"),
+                (10, "Challenge Legend", "Completed 10+ challenges! You're a fitness legend!"),
+                (25, "Challenge Champion", "Completed 25+ challenges! You're absolutely incredible!")
+            ]
+            
+            for required_count, badge_name, description in challenge_badges:
+                if new_total_completed >= required_count:
+                    c.execute("""
+                        SELECT 1 FROM friend_badges 
+                        WHERE user_id = ? AND badge = ?
+                    """, (user_id, badge_name))
+                    has_badge = c.fetchone()
+                    
+                    if not has_badge:
+                        c.execute("""
+                            INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                            VALUES (?, ?, ?, ?)
+                        """, (user_id, badge_name, description, datetime.now().isoformat()))
+                        
+                        c.execute("""
+                            INSERT INTO friend_activities (user_id, type, description)
+                            VALUES (?, ?, ?)
+                        """, (user_id, "badge", f"earned the '{badge_name}' badge"))
+        
+        conn.commit()
+        return True, "Progress updated successfully"
+
+def delete_challenge(user_id, challenge_id):
+    """Delete a personal challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM challenges WHERE id = ? AND user_id = ?", (challenge_id, user_id))
+        conn.commit()
+        return c.rowcount > 0
+
+def delete_friend_challenge(user_id, challenge_id):
+    """Delete a friend challenge (only creator can delete)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM friend_challenges WHERE id = ? AND creator_id = ?", (challenge_id, user_id))
+        conn.commit()
+        return c.rowcount > 0
+
+def fetch_weekly_challenges(user_id: str) -> list:
+    """Return all challenges (including custom) for this user."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT id, title, description, completed, deadline, max_progress, progress
+            FROM challenges
+            WHERE user_id = ?
+            ORDER BY created_at
+        """, (user_id,))
+        rows = c.fetchall()
+        return [
+            {
+                "id":          row[0],
+                "title":       row[1],
+                "description": row[2],
+                "completed":   bool(row[3]),
+                "deadline":    row[4],
+                "max_progress": row[5],
+                "progress":    row[6],
+            }
+            for row in rows
+        ]
+
+def create_friend_challenge(creator_id, target_friend_id, title, description, max_progress, deadline):
+    """Create a new friend challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Check if they are friends
+        c.execute("SELECT 1 FROM friends WHERE user_id=? AND friend_id=?", (creator_id, target_friend_id))
+        if not c.fetchone():
+            return False, "Not friends with this user"
+        c.execute("""
+            INSERT INTO friend_challenges (creator_id, target_friend_id, title, description, max_progress, deadline)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (creator_id, target_friend_id, title, description, max_progress, deadline))
+        conn.commit()
+        return True, "Challenge created successfully"
+
+def update_friend_challenge_progress(user_id, challenge_id, progress):
+    """Update progress on a friend challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Verify this challenge belongs to the user (they can update if they're the target)
+        c.execute("SELECT target_friend_id, max_progress, status FROM friend_challenges WHERE id = ?", (challenge_id,))
+        result = c.fetchone()
+        if not result:
+            return False, "Challenge not found"
+        if result[0] != user_id:
+            return False, "Not authorized to update this challenge"
+        if result[2] != 'accepted':
+            return False, "Challenge must be accepted before updating progress"
+        # Ensure progress is within bounds
+        progress = max(0, min(progress, result[1]))
+        # Check if completing the challenge
+        status = 'completed' if progress >= result[1] else 'accepted'
+        completed_at = 'CURRENT_TIMESTAMP' if status == 'completed' else None
+        if completed_at:
+            c.execute("""
+                UPDATE friend_challenges 
+                SET progress = ?, status = ?, completed_at = CURRENT_TIMESTAMP 
+                WHERE id = ?
+            """, (progress, status, challenge_id))
+        else:
+            c.execute("""
+                UPDATE friend_challenges 
+                SET progress = ? 
+                WHERE id = ?
+            """, (progress, challenge_id))
+        conn.commit()
+        return True, "Progress updated"
+
+def get_friend_challenges_with_progress(user_id):
+    """Get all friend challenges for a user, including their progress."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get challenges sent to this user
+        c.execute("""
+            SELECT fc.id, fc.creator_id, fc.target_friend_id, fc.title, fc.description,
+                   fc.status, fc.progress, fc.max_progress, fc.created_at, fc.deadline,
+                   u.username as creator_username, u.first_name as creator_first_name
+            FROM friend_challenges fc
+            JOIN users u ON fc.creator_id = u.id
+            WHERE fc.target_friend_id = ?
+            ORDER BY fc.created_at DESC
+        """, (user_id,))
+        
+        received_challenges = []
+        for row in c.fetchall():
+            received_challenges.append({
+                "id": row[0],
+                "creator_id": row[1],
+                "target_friend_id": row[2],
+                "title": row[3],
+                "description": row[4],
+                "status": row[5],
+                "progress": row[6],
+                "max_progress": row[7],
+                "created_at": row[8],
+                "deadline": row[9],
+                "creator_name": row[10] if row[10] else row[11],
+                "type": "received"
+            })
+        
+        # Get challenges sent by this user
+        c.execute("""
+            SELECT fc.id, fc.creator_id, fc.target_friend_id, fc.title, fc.description,
+                   fc.status, fc.progress, fc.max_progress, fc.created_at, fc.deadline,
+                   u.username as target_username, u.first_name as target_first_name
+            FROM friend_challenges fc
+            JOIN users u ON fc.target_friend_id = u.id
+            WHERE fc.creator_id = ?
+            ORDER BY fc.created_at DESC
+        """, (user_id,))
+        
+        sent_challenges = []
+        for row in c.fetchall():
+            sent_challenges.append({
+                "id": row[0],
+                "creator_id": row[1],
+                "target_friend_id": row[2],
+                "title": row[3],
+                "description": row[4],
+                "status": row[5],
+                "progress": row[6],
+                "max_progress": row[7],
+                "created_at": row[8],
+                "deadline": row[9],
+                "target_name": row[10] if row[10] else row[11],
+                "type": "sent"
+            })
+        
+        return {"received": received_challenges, "sent": sent_challenges}
+
+def get_challenge_progress(user_id, challenge_id):
+    """Get the progress and deadline of a specific challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT progress, deadline
+            FROM challenges
+            WHERE id = ? AND user_id = ?
+        """, (challenge_id, user_id))
+        result = c.fetchone()
+        if result:
+            return {
+                "progress": result[0],
+                "deadline": result[1]
+            }
+        return None
+
+def get_challenge_deadline(user_id, challenge_id):
+    """Get the deadline of a specific challenge."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("""
+            SELECT deadline
+            FROM challenges
+            WHERE id = ? AND user_id = ?
+        """, (challenge_id, user_id))
+        result = c.fetchone()
+        if result:
+            return result[0]
+        return None
+
+def get_friends_leaderboard(user_id, metric='streak', limit=10):
+    """Get leaderboard of friends by metric (streak, challenges, workouts)."""
+    import sqlite3
+    DB_PATH = __import__("os").path.join(__import__("os").path.dirname(__file__), "nutrifit.db")
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        # Get friend ids
+        c.execute("SELECT friend_id FROM friends WHERE user_id = ?", (user_id,))
+        friend_ids = [row[0] for row in c.fetchall()]
+        if not friend_ids:
+            return []
+        q_marks = ",".join(["?"] * len(friend_ids))
+        if metric == 'streak':
+            c.execute(f"""
+                SELECT u.id, u.username, u.first_name, u.last_name, u.current_day as streak
+                FROM users u
+                WHERE u.id IN ({q_marks})
+                ORDER BY u.current_day DESC
+                LIMIT ?
+            """, (*friend_ids, limit))
+        elif metric == 'challenges':
+            c.execute(f"""
+                SELECT u.id, u.username, u.first_name, u.last_name, COUNT(c.id) as challenges
+                FROM users u
+                LEFT JOIN challenges c ON c.user_id = u.id AND c.completed = 1
+                WHERE u.id IN ({q_marks})
+                GROUP BY u.id
+                ORDER BY challenges DESC
+                LIMIT ?
+            """, (*friend_ids, limit))
+        elif metric == 'workouts':
+            c.execute(f"""
+                SELECT u.id, u.username, u.first_name, u.last_name, COUNT(w.id) as workouts
+                FROM users u
+                LEFT JOIN workout_sessions w ON w.user_id = u.id
+                WHERE u.id IN ({q_marks})
+                GROUP BY u.id
+                ORDER BY workouts DESC
+                LIMIT ?
+            """, (*friend_ids, limit))
+        else:
+            return []
+        return [
+            {
+                "id": row[0],
+                "username": row[1],
+                "first_name": row[2],
+                "last_name": row[3],
+                "value": row[4],
+            }
+            for row in c.fetchall()
+        ]
+
+def get_friend_activities(user_id, limit=20):
+    """Get activities from friends for the activity feed."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get activities from friends
+        c.execute("""
+            SELECT fa.id, fa.user_id, fa.type, fa.description, fa.timestamp,
+                   u.username, u.first_name, u.last_name
+            FROM friend_activities fa
+            JOIN users u ON fa.user_id = u.id
+            JOIN friends f ON f.friend_id = fa.user_id
+            WHERE f.user_id = ?
+            ORDER BY fa.timestamp DESC
+            LIMIT ?
+        """, (user_id, limit))
+        
+        activities = []
+        for row in c.fetchall():
+            activities.append({
+                "id": row[0],
+                "user_id": row[1],
+                "type": row[2],
+                "description": row[3],
+                "timestamp": row[4],
+                "username": row[5],
+                "first_name": row[6],
+                "last_name": row[7]
+            })
+        
+        return activities
+
+def get_friend_badges(friend_id):
+    return []
+
+def get_friend_reminders(user_id):
+    """Get reminders sent TO the user by their friends."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute(
+            """
+            SELECT fr.id, fr.user_id, u.username, u.first_name, fr.message, fr.remind_at
+            FROM friend_reminders fr
+            JOIN users u ON fr.user_id = u.id
+            WHERE fr.friend_id = ?
+            ORDER BY fr.remind_at DESC
+            """,
+            (user_id,)
+        )
+        return [
+            {
+                "id": row[0],
+                "user_id": row[1],
+                "username": row[2],
+                "first_name": row[3],
+                "message": row[4],
+                "remind_at": row[5]
+            }
+            for row in c.fetchall()
+        ]
+
+def get_messages(user1_id, user2_id, limit=50):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute(
+            """
+            SELECT sender_id, receiver_id, content, timestamp
+            FROM messages
+            WHERE (sender_id = ? AND receiver_id = ?)
+               OR (sender_id = ? AND receiver_id = ?)
+            ORDER BY timestamp DESC
+            LIMIT ?
+            """,
+            (user1_id, user2_id, user2_id, user1_id, limit)
+        )
+        messages = [
+            {
+                "sender_id": row[0],
+                "receiver_id": row[1],
+                "content": row[2],
+                "timestamp": row[3]
+            }
+            for row in c.fetchall()
+        ]
+        return list(reversed(messages))  # Show oldest first
+
+def send_message(sender_id, receiver_id, content):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute(
+            "INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)",
+            (sender_id, receiver_id, content)
+        )
+        conn.commit()
+        return c.lastrowid
+
+def set_friend_reminder(user_id, friend_id, message, remind_at):
+    import sqlite3, os
+    DB_PATH = os.path.join(os.path.dirname(__file__), "nutrifit.db")
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute(
+            "INSERT INTO friend_reminders (user_id, friend_id, message, remind_at) VALUES (?, ?, ?, ?)",
+            (user_id, friend_id, message, remind_at)
+        )
+        conn.commit()
+        return c.lastrowid
+
+def get_reminders_you_set(user_id):
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute(
+            """
+            SELECT fr.id, fr.friend_id, u.username, u.first_name, fr.message, fr.remind_at
+            FROM friend_reminders fr
+            JOIN users u ON fr.friend_id = u.id
+            WHERE fr.user_id = ?
+            ORDER BY fr.remind_at DESC
+            """,
+            (user_id,)
+        )
+        return [
+            {
+                "id": row[0],
+                "friend_id": row[1],
+                "username": row[2],
+                "first_name": row[3],
+                "message": row[4],
+                "remind_at": row[5]
+            }
+            for row in c.fetchall()
+        ]
+
+def delete_reminder(reminder_id, user_id):
+    """Delete a reminder (only the user who set it can delete it)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM friend_reminders WHERE id = ? AND user_id = ?", (reminder_id, user_id))
+        conn.commit()
+        return c.rowcount > 0
+
+def delete_reminder_received(reminder_id, user_id):
+    """Delete a reminder received by the user (only the recipient can delete it)."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        c.execute("DELETE FROM friend_reminders WHERE id = ? AND friend_id = ?", (reminder_id, user_id))
+        conn.commit()
+        return c.rowcount > 0
+
+def get_user_streak(user_id):
+    """Get user's current and best streak from the database."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get current streak (current_day from users table)
+        c.execute("SELECT current_day FROM users WHERE id = ?", (user_id,))
+        result = c.fetchone()
+        current_streak = result[0] if result else 1
+        
+        # Calculate actual consecutive days streak
+        c.execute("""
+            SELECT COUNT(DISTINCT date_completed) as consecutive_days
+            FROM (
+                SELECT date_completed,
+                       ROW_NUMBER() OVER (ORDER BY date_completed DESC) as rn,
+                       DATE(date_completed, '-' || ROW_NUMBER() OVER (ORDER BY date_completed DESC) || ' days') as expected_date
+                FROM workout_sessions 
+                WHERE user_id = ?
+                ORDER BY date_completed DESC
+            ) t
+            WHERE date_completed = expected_date
+        """, (user_id,))
+        
+        actual_streak_result = c.fetchone()
+        actual_streak = actual_streak_result[0] if actual_streak_result else 0
+        
+        # Use the higher of current_day or actual streak
+        current_streak = max(current_streak, actual_streak)
+        
+        # For now, use current_day as best streak too
+        # In a real app, you'd track best streak separately
+        best_streak = current_streak
+        
+        return {
+            "current": current_streak,
+            "best": best_streak
+        }
+
+def get_user_badges(user_id):
+    """Get user's earned badges from the database."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get badges from friend_badges table
+        c.execute("""
+            SELECT id, badge, description, earned_at
+            FROM friend_badges
+            WHERE user_id = ?
+            ORDER BY earned_at DESC
+        """, (user_id,))
+        
+        badges = []
+        for row in c.fetchall():
+            badges.append({
+                "id": row[0],
+                "badge": row[1],
+                "description": row[2],
+                "earned_at": row[3]
+            })
+        
+        # Get existing badge names to avoid duplicates
+        existing_badge_names = [b["badge"] for b in badges]
+        
+        # Check for new badges to award
+        current_day = get_user_current_day(user_id)
+        streak_info = get_user_streak(user_id)
+        current_streak = streak_info["current"]
+        
+        # Streak-based badges
+        streak_badges = [
+            (3, "Streak Starter", "Maintained a 3-day streak! You're building momentum!"),
+            (7, "Week Warrior", "Maintained a 7-day streak! Consistency is key!"),
+            (14, "Fortnight Fighter", "Maintained a 14-day streak! You're unstoppable!"),
+            (30, "Monthly Master", "Maintained a 30-day streak! Incredible dedication!"),
+            (60, "Two-Month Titan", "Maintained a 60-day streak! You're a fitness legend!"),
+            (100, "Century Champion", "Maintained a 100-day streak! You're absolutely incredible!")
+        ]
+        
+        for required_streak, badge_name, description in streak_badges:
+            if current_streak >= required_streak and badge_name not in existing_badge_names:
+                new_badge = {
+                    "id": f"auto_streak_{required_streak}",
+                    "badge": badge_name,
+                    "description": description,
+                    "earned_at": datetime.now().isoformat()
+                }
+                badges.append(new_badge)
+                # Add to database
+                c.execute("""
+                    INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, new_badge["badge"], new_badge["description"], new_badge["earned_at"]))
+                # Add activity directly to avoid database locking
+                c.execute("""
+                    INSERT INTO friend_activities (user_id, type, description)
+                    VALUES (?, ?, ?)
+                """, (user_id, "badge", f"earned the '{new_badge['badge']}' badge"))
+        
+        # Time-based badges
+        time_badges = [
+            (7, "First Week", "Completed your first week of fitness tracking!"),
+            (30, "First Month", "A full month of dedication! Keep it up!"),
+            (90, "Quarter Champion", "Three months of consistent fitness! Amazing!"),
+            (180, "Half-Year Hero", "Six months of dedication! You're incredible!"),
+            (365, "Year Warrior", "A full year of fitness! You're absolutely legendary!")
+        ]
+        
+        for required_days, badge_name, description in time_badges:
+            if current_day >= required_days and badge_name not in existing_badge_names:
+                new_badge = {
+                    "id": f"auto_time_{required_days}",
+                    "badge": badge_name,
+                    "description": description,
+                    "earned_at": datetime.now().isoformat()
+                }
+                badges.append(new_badge)
+                # Add to database
+                c.execute("""
+                    INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, new_badge["badge"], new_badge["description"], new_badge["earned_at"]))
+                # Add activity directly to avoid database locking
+                c.execute("""
+                    INSERT INTO friend_activities (user_id, type, description)
+                    VALUES (?, ?, ?)
+                """, (user_id, "badge", f"earned the '{new_badge['badge']}' badge"))
+        
+        # Challenge-based badges (these are now handled in update_challenge_progress)
+        # But we can add some additional ones here
+        c.execute("""
+            SELECT COUNT(*) FROM challenges 
+            WHERE user_id = ? AND completed = 1
+        """, (user_id,))
+        completed_challenges = c.fetchone()[0]
+        
+        # Workout-based badges (these are now handled in add_workout_session)
+        # But we can add some additional ones here
+        c.execute("""
+            SELECT COUNT(*) FROM workout_sessions 
+            WHERE user_id = ?
+        """, (user_id,))
+        total_workouts = c.fetchone()[0]
+        
+        # Calorie-based badges (these are now handled in add_workout_session)
+        c.execute("""
+            SELECT COALESCE(SUM(calories_burned), 0) FROM workout_sessions 
+            WHERE user_id = ?
+        """, (user_id,))
+        total_calories = c.fetchone()[0] or 0
+        
+        # Special combination badges
+        if (completed_challenges >= 5 and total_workouts >= 10 and 
+            "Fitness Enthusiast" not in existing_badge_names):
+            new_badge = {
+                "id": "auto_combo_1",
+                "badge": "Fitness Enthusiast",
+                "description": "Completed 5+ challenges AND 10+ workouts! You're a true fitness enthusiast!",
+                "earned_at": datetime.now().isoformat()
+            }
+            badges.append(new_badge)
+            c.execute("""
+                INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, new_badge["badge"], new_badge["description"], new_badge["earned_at"]))
+            c.execute("""
+                INSERT INTO friend_activities (user_id, type, description)
+                VALUES (?, ?, ?)
+            """, (user_id, "badge", f"earned the '{new_badge['badge']}' badge"))
+        
+        if (current_streak >= 30 and total_calories >= 10000 and 
+            "Fitness Legend" not in existing_badge_names):
+            new_badge = {
+                "id": "auto_combo_2",
+                "badge": "Fitness Legend",
+                "description": "30+ day streak AND 10,000+ calories burned! You're a fitness legend!",
+                "earned_at": datetime.now().isoformat()
+            }
+            badges.append(new_badge)
+            c.execute("""
+                INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, new_badge["badge"], new_badge["description"], new_badge["earned_at"]))
+            c.execute("""
+                INSERT INTO friend_activities (user_id, type, description)
+                VALUES (?, ?, ?)
+            """, (user_id, "badge", f"earned the '{new_badge['badge']}' badge"))
+        
+        conn.commit()
+        return badges
+
+def get_user_stats(user_id):
+    """Get comprehensive user statistics for the overview page."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get challenges completed
+        c.execute("""
+            SELECT COUNT(*) FROM challenges 
+            WHERE user_id = ? AND completed = 1
+        """, (user_id,))
+        challenges_completed = c.fetchone()[0]
+        
+        # Get total workouts
+        c.execute("""
+            SELECT COUNT(*) FROM workout_sessions 
+            WHERE user_id = ?
+        """, (user_id,))
+        total_workouts = c.fetchone()[0]
+        
+        # Get total calories burned
+        c.execute("""
+            SELECT COALESCE(SUM(calories_burned), 0) FROM workout_sessions 
+            WHERE user_id = ?
+        """, (user_id,))
+        calories_burned = c.fetchone()[0] or 0
+        
+        # Get friends count
+        c.execute("""
+            SELECT COUNT(*) FROM friends 
+            WHERE user_id = ?
+        """, (user_id,))
+        friends_count = c.fetchone()[0]
+        
+        return {
+            "challengesCompleted": challenges_completed,
+            "totalWorkouts": total_workouts,
+            "caloriesBurned": calories_burned,
+            "friendsCount": friends_count
+        }
+
+def add_user_activity(user_id, activity_type, description):
+    """Add a user activity to the friend_activities table."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+            INSERT INTO friend_activities (user_id, type, description)
+            VALUES (?, ?, ?)
+        """, (user_id, activity_type, description))
 
 def get_dashboard_data(user_id):
     """Get comprehensive dashboard data for a user"""
@@ -1817,3 +2987,72 @@ def get_dashboard_data(user_id):
         'recent_workouts': recent_workouts,
         'workout_stats': workout_stats
     }
+
+def populate_sample_data_for_user(user_id):
+    """Add some sample data for new users to make the overview page more interesting."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Add some sample badges
+        sample_badges = [
+            ("Welcome!", "Welcome to NutriFit! Your fitness journey begins here.", datetime.now().isoformat()),
+            ("First Steps", "Completed your first day of tracking. Great start!", (datetime.now() - timedelta(days=1)).isoformat()),
+        ]
+        
+        for badge, description, earned_at in sample_badges:
+            c.execute("""
+                INSERT OR IGNORE INTO friend_badges (user_id, badge, description, earned_at)
+                VALUES (?, ?, ?, ?)
+            """, (user_id, badge, description, earned_at))
+        
+        # Add some sample activities
+        sample_activities = [
+            ("challenge", "started tracking their nutrition journey"),
+            ("workout", "completed their first workout session"),
+            ("badge", "earned the 'Welcome!' badge"),
+        ]
+        
+        for activity_type, description in sample_activities:
+            c.execute("""
+                INSERT OR IGNORE INTO friend_activities (user_id, type, description)
+                VALUES (?, ?, ?)
+            """, (user_id, activity_type, description))
+        
+        conn.commit()
+
+def award_retroactive_badges():
+    """Award badges to users who completed challenges before the badge system was implemented."""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Find users who have completed challenges but no First Challenge badge
+        c.execute("""
+            SELECT DISTINCT c.user_id, COUNT(c.id) as completed_count
+            FROM challenges c
+            WHERE c.completed = 1
+            GROUP BY c.user_id
+            HAVING c.user_id NOT IN (
+                SELECT user_id FROM friend_badges WHERE badge = 'First Challenge'
+            )
+        """)
+        
+        users_to_award = c.fetchall()
+        
+        for user_id, completed_count in users_to_award:
+            if completed_count >= 1:
+                # Award First Challenge badge
+                c.execute("""
+                    INSERT INTO friend_badges (user_id, badge, description, earned_at)
+                    VALUES (?, ?, ?, ?)
+                """, (user_id, "First Challenge", "Completed your first challenge! Great start!", datetime.now().isoformat()))
+                
+                # Add activity for earning the badge
+                c.execute("""
+                    INSERT INTO friend_activities (user_id, type, description)
+                    VALUES (?, ?, ?)
+                """, (user_id, "badge", "earned the 'First Challenge' badge"))
+                
+                print(f"Awarded First Challenge badge to user {user_id}")
+        
+        conn.commit()
+        return len(users_to_award)
