@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { FaBullseye, FaTrophy, FaFire, FaUsers, FaChartBar } from "react-icons/fa";
+import { FaBullseye, FaTrophy, FaFire, FaUsers, FaChartBar, FaSync } from "react-icons/fa";
 
 export default function OverviewPage({ userId }) {
   const [overviewLoading, setOverviewLoading] = useState(false);
@@ -169,7 +169,8 @@ export default function OverviewPage({ userId }) {
               e.target.style.boxShadow = "none";
             }}
           >
-            🔄 Refresh
+            <FaSync style={{ marginRight: "4px" }} />
+            Refresh
           </button>
         </div>
         <div style={{ 
