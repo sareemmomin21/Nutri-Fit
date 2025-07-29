@@ -2,7 +2,14 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import FriendCard from "../components/FriendCard";
 import FriendSearch from "../components/FriendSearch";
 import FriendProfileModal from "../components/FriendProfileModal";
-import { FaUsers, FaTrophy, FaClock, FaChartBar, FaSearch } from "react-icons/fa";
+import {
+  FaUsers,
+  FaTrophy,
+  FaClock,
+  FaChartBar,
+  FaSearch,
+  FaInbox,
+} from "react-icons/fa";
 
 function ChatModal({ open, friend, userId, onClose }) {
   const [messages, setMessages] = useState([]);
@@ -21,7 +28,11 @@ function ChatModal({ open, friend, userId, onClose }) {
       const res = await fetch("/api/get_messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, friend_id: friend.id, limit: 50 }),
+        body: JSON.stringify({
+          user_id: userId,
+          friend_id: friend.id,
+          limit: 50,
+        }),
       });
       if (res.ok) {
         setMessages(await res.json());
@@ -55,7 +66,11 @@ function ChatModal({ open, friend, userId, onClose }) {
       const res = await fetch("/api/send_message", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, friend_id: friend.id, content: input }),
+        body: JSON.stringify({
+          user_id: userId,
+          friend_id: friend.id,
+          content: input,
+        }),
       });
       if (res.ok) {
         setInput("");
@@ -80,55 +95,128 @@ function ChatModal({ open, friend, userId, onClose }) {
 
   if (!open || !friend) return null;
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", background: "rgba(0,0,0,0.5)", display: "flex", justifyContent: "center", alignItems: "center", zIndex: 2000 }}>
-      <div style={{
-        background: "white",
-        borderRadius: 12,
-        padding: 0,
-        width: 400,
-        maxWidth: "95vw",
-        maxHeight: "80vh",
+    <div
+      style={{
+        position: "fixed",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        background: "rgba(0,0,0,0.5)",
         display: "flex",
-        flexDirection: "column",
-        boxShadow: "0 10px 20px rgba(0,0,0,0.2)",
-        overflow: "hidden"
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottom: "1px solid #e2e8f0" }}>
-          <div style={{ fontWeight: "bold", fontSize: 18 }}>{friend.name || friend.username}</div>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 24, cursor: "pointer", color: "#718096" }}>×</button>
+        justifyContent: "center",
+        alignItems: "center",
+        zIndex: 2000,
+      }}
+    >
+      <div
+        style={{
+          background: "white",
+          borderRadius: 12,
+          padding: 0,
+          width: 400,
+          maxWidth: "95vw",
+          maxHeight: "80vh",
+          display: "flex",
+          flexDirection: "column",
+          boxShadow: "0 10px 20px rgba(0,0,0,0.2)",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: 20,
+            borderBottom: "1px solid #e2e8f0",
+          }}
+        >
+          <div style={{ fontWeight: "bold", fontSize: 18 }}>
+            {friend.name || friend.username}
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              fontSize: 24,
+              cursor: "pointer",
+              color: "#718096",
+            }}
+          >
+            ×
+          </button>
         </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: 20, background: "#f8fafc", minHeight: 0 }}>
+        <div
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: 20,
+            background: "#f8fafc",
+            minHeight: 0,
+          }}
+        >
           {loading ? (
-            <div style={{ color: "#718096", textAlign: "center", marginTop: 40 }}>Loading…</div>
+            <div
+              style={{ color: "#718096", textAlign: "center", marginTop: 40 }}
+            >
+              Loading…
+            </div>
           ) : error ? (
-            <div style={{ color: "#e53e3e", textAlign: "center", marginTop: 40 }}>{error}</div>
+            <div
+              style={{ color: "#e53e3e", textAlign: "center", marginTop: 40 }}
+            >
+              {error}
+            </div>
           ) : (
             <div>
-              {messages.length === 0 && <div style={{ color: "#718096", textAlign: "center", margin: 24 }}>(No messages yet)</div>}
+              {messages.length === 0 && (
+                <div
+                  style={{ color: "#718096", textAlign: "center", margin: 24 }}
+                >
+                  (No messages yet)
+                </div>
+              )}
               {messages.map((msg) => (
                 <div
                   key={msg.id}
                   style={{
                     display: "flex",
-                    justifyContent: msg.sender_id === userId ? "flex-end" : "flex-start",
+                    justifyContent:
+                      msg.sender_id === userId ? "flex-end" : "flex-start",
                     marginBottom: 10,
                   }}
                 >
                   <div
                     style={{
-                      background: msg.sender_id === userId ? "#48bb78" : "#e2e8f0",
+                      background:
+                        msg.sender_id === userId ? "#48bb78" : "#e2e8f0",
                       color: msg.sender_id === userId ? "white" : "#2d3748",
                       borderRadius: 16,
                       padding: "8px 14px",
                       maxWidth: "70%",
                       fontSize: 15,
-                      boxShadow: msg.sender_id === userId ? "0 2px 8px rgba(72,187,120,0.08)" : "none",
+                      boxShadow:
+                        msg.sender_id === userId
+                          ? "0 2px 8px rgba(72,187,120,0.08)"
+                          : "none",
                       wordBreak: "break-word",
                     }}
                   >
                     {msg.content}
-                    <div style={{ fontSize: 11, color: msg.sender_id === userId ? "#e6ffe6" : "#718096", marginTop: 4, textAlign: "right" }}>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: msg.sender_id === userId ? "#e6ffe6" : "#718096",
+                        marginTop: 4,
+                        textAlign: "right",
+                      }}
+                    >
+                      {new Date(msg.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
                     </div>
                   </div>
                 </div>
@@ -137,20 +225,48 @@ function ChatModal({ open, friend, userId, onClose }) {
             </div>
           )}
         </div>
-        <div style={{ borderTop: "1px solid #e2e8f0", padding: 16, background: "#fff", position: "relative", flexShrink: 0 }}>
+        <div
+          style={{
+            borderTop: "1px solid #e2e8f0",
+            padding: 16,
+            background: "#fff",
+            position: "relative",
+            flexShrink: 0,
+          }}
+        >
           <textarea
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message…"
             rows={2}
-            style={{ width: "100%", borderRadius: 8, border: "1px solid #e2e8f0", padding: 8, fontSize: 15, resize: "none", marginBottom: 8, boxSizing: "border-box", maxHeight: 80 }}
+            style={{
+              width: "100%",
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              padding: 8,
+              fontSize: 15,
+              resize: "none",
+              marginBottom: 8,
+              boxSizing: "border-box",
+              maxHeight: 80,
+            }}
             disabled={sending}
           />
           <button
             onClick={handleSend}
             disabled={sending || !input.trim()}
-            style={{ float: "right", padding: "6px 18px", background: "#48bb78", color: "white", border: "none", borderRadius: 8, fontWeight: "bold", fontSize: 15, cursor: sending ? "not-allowed" : "pointer" }}
+            style={{
+              float: "right",
+              padding: "6px 18px",
+              background: "#48bb78",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: "bold",
+              fontSize: 15,
+              cursor: sending ? "not-allowed" : "pointer",
+            }}
           >
             Send
           </button>
@@ -198,7 +314,14 @@ const badgeCardStyle = {
 
 const leaderboardRowStyle = (rank) => ({
   borderBottom: "1px solid #e2e8f0",
-  background: rank === 0 ? "#fefcbf" : rank === 1 ? "#e6fffa" : rank === 2 ? "#f0fff4" : "#f8fafc",
+  background:
+    rank === 0
+      ? "#fefcbf"
+      : rank === 1
+      ? "#e6fffa"
+      : rank === 2
+      ? "#f0fff4"
+      : "#f8fafc",
   fontWeight: rank < 3 ? 700 : 400,
 });
 
@@ -235,7 +358,7 @@ export default function FriendsPage({ userId }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, limit: 20 }),
     })
-      .then(res => res.ok ? res.json() : [])
+      .then((res) => (res.ok ? res.json() : []))
       .then(setActivityFeed);
     // Badges (show your own badges)
     fetch("/api/get_friend_badges", {
@@ -243,7 +366,7 @@ export default function FriendsPage({ userId }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ friend_id: userId }),
     })
-      .then(res => res.ok ? res.json() : [])
+      .then((res) => (res.ok ? res.json() : []))
       .then(setBadges);
     // Leaderboard (streak by default)
     fetch("/api/get_friends_leaderboard", {
@@ -251,14 +374,14 @@ export default function FriendsPage({ userId }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, metric: "streak", limit: 10 }),
     })
-      .then(res => res.ok ? res.json() : [])
+      .then((res) => (res.ok ? res.json() : []))
       .then(setLeaderboard);
   }, [userId]);
 
   // Auto-refresh reminders every 5 seconds
   useEffect(() => {
     if (!userId) return;
-    
+
     const fetchReminders = async () => {
       try {
         // Fetch reminders FOR the user (reminders sent TO you by friends)
@@ -270,7 +393,7 @@ export default function FriendsPage({ userId }) {
         if (remindersRes.ok) {
           setReminders(await remindersRes.json());
         }
-        
+
         // Fetch reminders SET BY the user (reminders you sent to friends)
         const remindersYouSetRes = await fetch("/api/get_friend_reminders", {
           method: "POST",
@@ -287,10 +410,10 @@ export default function FriendsPage({ userId }) {
 
     // Initial fetch
     fetchReminders();
-    
+
     // Set up interval for auto-refresh every 5 seconds
     const interval = setInterval(fetchReminders, 5000);
-    
+
     // Cleanup interval on unmount or userId change
     return () => clearInterval(interval);
   }, [userId]);
@@ -385,7 +508,7 @@ export default function FriendsPage({ userId }) {
       if (res.ok) {
         const preferences = await res.json();
         setFriendPreferences(preferences);
-        setSelectedFriend(friends.find(f => f.id === friendId));
+        setSelectedFriend(friends.find((f) => f.id === friendId));
       } else {
         const error = await res.json();
         alert(error.error || "Failed to load friend preferences");
@@ -402,7 +525,9 @@ export default function FriendsPage({ userId }) {
 
   // Edit friend note (placeholder, would need backend support)
   const handleEditNote = (friendId, newNote) => {
-    setFriends(friends => friends.map(f => f.id === friendId ? { ...f, note: newNote } : f));
+    setFriends((friends) =>
+      friends.map((f) => (f.id === friendId ? { ...f, note: newNote } : f))
+    );
     // TODO: send to backend
   };
 
@@ -442,7 +567,7 @@ export default function FriendsPage({ userId }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId }),
     })
-      .then(res => res.ok ? res.json() : [])
+      .then((res) => (res.ok ? res.json() : []))
       .then(setReminders);
     // Refresh reminders you set for others
     fetch("/api/get_friend_reminders", {
@@ -450,7 +575,7 @@ export default function FriendsPage({ userId }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ friend_id: userId }), // This will fetch reminders where you are the sender
     })
-      .then(res => res.ok ? res.json() : [])
+      .then((res) => (res.ok ? res.json() : []))
       .then(setRemindersYouSet);
   };
 
@@ -468,7 +593,7 @@ export default function FriendsPage({ userId }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ friend_id: userId }),
       })
-        .then(res => res.ok ? res.json() : [])
+        .then((res) => (res.ok ? res.json() : []))
         .then(setRemindersYouSet);
     }
   };
@@ -487,7 +612,7 @@ export default function FriendsPage({ userId }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
       })
-        .then(res => res.ok ? res.json() : [])
+        .then((res) => (res.ok ? res.json() : []))
         .then(setReminders);
     }
   };
@@ -500,14 +625,14 @@ export default function FriendsPage({ userId }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
       })
-        .then(res => res.ok ? res.json() : [])
+        .then((res) => (res.ok ? res.json() : []))
         .then(setReminders);
       fetch("/api/get_friends_leaderboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ user_id: userId }),
       })
-        .then(res => res.ok ? res.json() : [])
+        .then((res) => (res.ok ? res.json() : []))
         .then(setLeaderboard);
       // Fetch reminders you set for others
       fetch("/api/get_friend_reminders", {
@@ -515,7 +640,7 @@ export default function FriendsPage({ userId }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ friend_id: userId }), // This will fetch reminders where you are the sender
       })
-        .then(res => res.ok ? res.json() : [])
+        .then((res) => (res.ok ? res.json() : []))
         .then(setRemindersYouSet);
     }
   }, [userId, fetchFriends]);
@@ -524,88 +649,203 @@ export default function FriendsPage({ userId }) {
     <div>
       {/* Set Reminder Form */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>📤 Set Reminder for Friend</div>
-        <div style={{ 
-          background: "#f7fafc", 
-          borderRadius: "8px", 
-          padding: "12px", 
-          marginBottom: "16px",
-          border: "1px solid #e2e8f0"
-        }}>
-          <div style={{ fontSize: "14px", color: "#4a5568", marginBottom: "8px" }}>
-            💡 <strong>How it works:</strong> Set a reminder for a friend and they'll see it in their "Reminders You Received" section.
+        <div style={sectionHeaderStyle}>
+          <FaInbox /> Set Reminder for Friend
+        </div>
+        <div
+          style={{
+            background: "#f7fafc",
+            borderRadius: "8px",
+            padding: "12px",
+            marginBottom: "16px",
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <div
+            style={{ fontSize: "14px", color: "#4a5568", marginBottom: "8px" }}
+          >
+            💡 <strong>How it works:</strong> Set a reminder for a friend and
+            they'll see it in their "Reminders You Received" section.
           </div>
         </div>
         <form
-          onSubmit={e => { e.preventDefault(); handleSetReminder(); }}
-          style={{ marginBottom: 16, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", background: "#f8fafc", borderRadius: 8, padding: 12 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSetReminder();
+          }}
+          style={{
+            marginBottom: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            gap: 8,
+            alignItems: "center",
+            background: "#f8fafc",
+            borderRadius: 8,
+            padding: 12,
+          }}
         >
-          <select value={reminderFriendId || ""} onChange={e => setReminderFriendId(e.target.value)} style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 140 }}>
+          <select
+            value={reminderFriendId || ""}
+            onChange={(e) => setReminderFriendId(e.target.value)}
+            style={{
+              padding: 10,
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              minWidth: 140,
+            }}
+          >
             <option value="">Choose friend…</option>
-            {friends.map(f => (
-              <option key={f.id} value={f.id}>{f.name || f.username}</option>
+            {friends.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.name || f.username}
+              </option>
             ))}
           </select>
-          <input type="datetime-local" value={reminderDate} onChange={e => setReminderDate(e.target.value)} style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 180 }} />
-          <input type="text" value={reminderMessage} onChange={e => setReminderMessage(e.target.value)} placeholder="Message (optional)" style={{ padding: 10, borderRadius: 8, border: "1px solid #e2e8f0", minWidth: 180 }} />
-          <button type="submit" disabled={reminderLoading || !reminderFriendId || !reminderDate} style={{ padding: "10px 20px", background: "#48bb78", color: "white", border: "none", borderRadius: 8, fontWeight: "bold", fontSize: 15, cursor: reminderLoading ? "not-allowed" : "pointer" }}>Set Reminder</button>
+          <input
+            type="datetime-local"
+            value={reminderDate}
+            onChange={(e) => setReminderDate(e.target.value)}
+            style={{
+              padding: 10,
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              minWidth: 180,
+            }}
+          />
+          <input
+            type="text"
+            value={reminderMessage}
+            onChange={(e) => setReminderMessage(e.target.value)}
+            placeholder="Message (optional)"
+            style={{
+              padding: 10,
+              borderRadius: 8,
+              border: "1px solid #e2e8f0",
+              minWidth: 180,
+            }}
+          />
+          <button
+            type="submit"
+            disabled={reminderLoading || !reminderFriendId || !reminderDate}
+            style={{
+              padding: "10px 20px",
+              background: "#48bb78",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              fontWeight: "bold",
+              fontSize: 15,
+              cursor: reminderLoading ? "not-allowed" : "pointer",
+            }}
+          >
+            Set Reminder
+          </button>
         </form>
       </div>
 
       {/* Reminders You Sent Section */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}>📤 Reminders You Sent to Friends</div>
-        <div style={{ 
-          background: "#f0fff4", 
-          borderRadius: "8px", 
-          padding: "12px", 
-          marginBottom: "16px",
-          border: "1px solid #9ae6b4"
-        }}>
-          <div style={{ fontSize: "14px", color: "#22543d", fontWeight: "600" }}>
+        <div style={sectionHeaderStyle}>
+          <FaInbox /> Reminders You Sent to Friends
+        </div>
+        <div
+          style={{
+            background: "#f0fff4",
+            borderRadius: "8px",
+            padding: "12px",
+            marginBottom: "16px",
+            border: "1px solid #9ae6b4",
+          }}
+        >
+          <div
+            style={{ fontSize: "14px", color: "#22543d", fontWeight: "600" }}
+          >
             <FaChartBar style={{ marginRight: "4px" }} />
-        Summary: {remindersYouSet.length} reminder{remindersYouSet.length !== 1 ? 's' : ''} sent
+            Summary: {remindersYouSet.length} reminder
+            {remindersYouSet.length !== 1 ? "s" : ""} sent
           </div>
         </div>
         {remindersYouSet.length === 0 ? (
-          <div style={{ 
-            color: "#a0aec0",
-            fontSize: "15px",
-            fontWeight: "500",
-            textAlign: "center", 
-            padding: "40px 20px",
-            background: "#f8fafc",
-            borderRadius: "12px",
-            border: "2px dashed #e2e8f0"
-          }}>
-            <div style={{ fontSize: "48px", marginBottom: "16px", fontStyle: "normal" }}>📤</div>
+          <div
+            style={{
+              color: "#a0aec0",
+              fontSize: "15px",
+              fontWeight: "500",
+              textAlign: "center",
+              padding: "40px 20px",
+              background: "#f8fafc",
+              borderRadius: "12px",
+              border: "2px dashed #e2e8f0",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "48px",
+                marginBottom: "16px",
+                fontStyle: "normal",
+              }}
+            >
+              <FaInbox />
+            </div>
             You haven't set any reminders for friends yet
-            <div style={{ fontSize: "13px", marginTop: "8px", opacity: 0.7, fontStyle: "normal" }}>
+            <div
+              style={{
+                fontSize: "13px",
+                marginTop: "8px",
+                opacity: 0.7,
+                fontStyle: "normal",
+              }}
+            >
               Use the form above to set reminders for your friends!
             </div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {remindersYouSet.map(r => (
-              <div key={r.id || r.remind_at + r.message} style={{ 
-                background: "#f0fff4", 
-                borderRadius: "12px", 
-                padding: "16px", 
-                fontSize: "15px", 
-                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                border: "1px solid #9ae6b4",
-                display: "flex", 
-                justifyContent: "space-between", 
-                alignItems: "center" 
-              }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            {remindersYouSet.map((r) => (
+              <div
+                key={r.id || r.remind_at + r.message}
+                style={{
+                  background: "#f0fff4",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  fontSize: "15px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  border: "1px solid #9ae6b4",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: "600", color: "#22543d", marginBottom: "4px" }}>
+                  <div
+                    style={{
+                      fontWeight: "600",
+                      color: "#22543d",
+                      marginBottom: "4px",
+                    }}
+                  >
                     To: {r.first_name || r.username || "Your friend"}
                   </div>
-                  <div style={{ color: "#38a169", fontSize: "14px", marginBottom: "4px" }}>
-                    {r.message || <span style={{ color: "#a0aec0" }}>(No message)</span>}
+                  <div
+                    style={{
+                      color: "#38a169",
+                      fontSize: "14px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    {r.message || (
+                      <span style={{ color: "#a0aec0" }}>(No message)</span>
+                    )}
                   </div>
-                  <div style={{ color: "#718096", fontSize: "12px", fontWeight: "500" }}>
+                  <div
+                    style={{
+                      color: "#718096",
+                      fontSize: "12px",
+                      fontWeight: "500",
+                    }}
+                  >
                     {new Date(r.remind_at).toLocaleString()}
                   </div>
                 </div>
@@ -620,10 +860,10 @@ export default function FriendsPage({ userId }) {
                     fontSize: "12px",
                     cursor: "pointer",
                     fontWeight: "bold",
-                    transition: "all 0.2s ease"
+                    transition: "all 0.2s ease",
                   }}
-                  onMouseEnter={e => e.target.style.background = "#c53030"}
-                  onMouseLeave={e => e.target.style.background = "#e53e3e"}
+                  onMouseEnter={(e) => (e.target.style.background = "#c53030")}
+                  onMouseLeave={(e) => (e.target.style.background = "#e53e3e")}
                 >
                   Delete
                 </button>
@@ -635,60 +875,108 @@ export default function FriendsPage({ userId }) {
 
       {/* Reminders You Received Section */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}><FaClock style={{ marginRight: "8px" }} />Reminders You Received from Friends</div>
-        <div style={{ 
-          background: "#fef5e7", 
-          borderRadius: "8px", 
-          padding: "12px", 
-          marginBottom: "16px",
-          border: "1px solid #f6ad55"
-        }}>
-          <div style={{ fontSize: "14px", color: "#c05621", fontWeight: "600" }}>
+        <div style={sectionHeaderStyle}>
+          <FaClock style={{ marginRight: "8px" }} />
+          Reminders You Received from Friends
+        </div>
+        <div
+          style={{
+            background: "#fef5e7",
+            borderRadius: "8px",
+            padding: "12px",
+            marginBottom: "16px",
+            border: "1px solid #f6ad55",
+          }}
+        >
+          <div
+            style={{ fontSize: "14px", color: "#c05621", fontWeight: "600" }}
+          >
             <FaChartBar style={{ marginRight: "4px" }} />
-        Summary: {reminders.length} reminder{reminders.length !== 1 ? 's' : ''} received
+            Summary: {reminders.length} reminder
+            {reminders.length !== 1 ? "s" : ""} received
           </div>
         </div>
         {reminders.length === 0 ? (
-          <div style={{ 
-            color: "#a0aec0",
-            fontSize: "15px",
-            fontWeight: "500",
-            textAlign: "center", 
-            padding: "40px 20px",
-            background: "#f8fafc",
-            borderRadius: "12px",
-            border: "2px dashed #e2e8f0"
-          }}>
-                            <div style={{ fontSize: "48px", marginBottom: "16px", fontStyle: "normal" }}>
-                  <FaClock />
-                </div>
+          <div
+            style={{
+              color: "#a0aec0",
+              fontSize: "15px",
+              fontWeight: "500",
+              textAlign: "center",
+              padding: "40px 20px",
+              background: "#f8fafc",
+              borderRadius: "12px",
+              border: "2px dashed #e2e8f0",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "48px",
+                marginBottom: "16px",
+                fontStyle: "normal",
+              }}
+            >
+              <FaClock />
+            </div>
             No reminders set for you
-            <div style={{ fontSize: "13px", marginTop: "8px", opacity: 0.7, fontStyle: "normal" }}>
+            <div
+              style={{
+                fontSize: "13px",
+                marginTop: "8px",
+                opacity: 0.7,
+                fontStyle: "normal",
+              }}
+            >
               When friends set reminders for you, they'll appear here!
             </div>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            {reminders.map(r => (
-              <div key={r.id || r.remind_at + r.message} style={{ 
-                background: "#fef5e7", 
-                borderRadius: "12px", 
-                padding: "16px", 
-                fontSize: "15px", 
-                boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-                border: "1px solid #f6ad55",
-                display: "flex", 
-                justifyContent: "space-between", 
-                alignItems: "center" 
-              }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            {reminders.map((r) => (
+              <div
+                key={r.id || r.remind_at + r.message}
+                style={{
+                  background: "#fef5e7",
+                  borderRadius: "12px",
+                  padding: "16px",
+                  fontSize: "15px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+                  border: "1px solid #f6ad55",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: "600", color: "#c05621", marginBottom: "4px" }}>
+                  <div
+                    style={{
+                      fontWeight: "600",
+                      color: "#c05621",
+                      marginBottom: "4px",
+                    }}
+                  >
                     From: {r.first_name || r.username || "A friend"}
                   </div>
-                  <div style={{ color: "#dd6b20", fontSize: "14px", marginBottom: "4px" }}>
-                    {r.message || <span style={{ color: "#a0aec0" }}>(No message)</span>}
+                  <div
+                    style={{
+                      color: "#dd6b20",
+                      fontSize: "14px",
+                      marginBottom: "4px",
+                    }}
+                  >
+                    {r.message || (
+                      <span style={{ color: "#a0aec0" }}>(No message)</span>
+                    )}
                   </div>
-                  <div style={{ color: "#718096", fontSize: "12px", fontWeight: "500" }}>
+                  <div
+                    style={{
+                      color: "#718096",
+                      fontSize: "12px",
+                      fontWeight: "500",
+                    }}
+                  >
                     {new Date(r.remind_at).toLocaleString()}
                   </div>
                 </div>
@@ -703,10 +991,10 @@ export default function FriendsPage({ userId }) {
                     fontSize: "12px",
                     cursor: "pointer",
                     fontWeight: "bold",
-                    transition: "all 0.2s ease"
+                    transition: "all 0.2s ease",
                   }}
-                  onMouseEnter={e => e.target.style.background = "#c53030"}
-                  onMouseLeave={e => e.target.style.background = "#e53e3e"}
+                  onMouseEnter={(e) => (e.target.style.background = "#c53030")}
+                  onMouseLeave={(e) => (e.target.style.background = "#e53e3e")}
                 >
                   Delete
                 </button>
@@ -717,24 +1005,64 @@ export default function FriendsPage({ userId }) {
       </div>
       {/* Leaderboard Section */}
       <div style={cardStyle}>
-        <div style={sectionHeaderStyle}><FaTrophy style={{ marginRight: "8px" }} />Friends Leaderboard (Streak)</div>
+        <div style={sectionHeaderStyle}>
+          <FaTrophy style={{ marginRight: "8px" }} />
+          Friends Leaderboard (Streak)
+        </div>
         {leaderboard.length === 0 ? (
           <div style={subtleText}>(No leaderboard data)</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", background: "#f8fafc", borderRadius: 12, minWidth: 320 }}>
+            <table
+              style={{
+                width: "100%",
+                borderCollapse: "collapse",
+                background: "#f8fafc",
+                borderRadius: 12,
+                minWidth: 320,
+              }}
+            >
               <thead>
                 <tr style={{ background: "#f0fff4" }}>
-                  <th style={{ textAlign: "left", padding: 10, fontWeight: 700, fontSize: 15 }}>#</th>
-                  <th style={{ textAlign: "left", padding: 10, fontWeight: 700, fontSize: 15 }}>Friend</th>
-                  <th style={{ textAlign: "left", padding: 10, fontWeight: 700, fontSize: 15 }}>Streak</th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: 10,
+                      fontWeight: 700,
+                      fontSize: 15,
+                    }}
+                  >
+                    #
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: 10,
+                      fontWeight: 700,
+                      fontSize: 15,
+                    }}
+                  >
+                    Friend
+                  </th>
+                  <th
+                    style={{
+                      textAlign: "left",
+                      padding: 10,
+                      fontWeight: 700,
+                      fontSize: 15,
+                    }}
+                  >
+                    Streak
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {leaderboard.map((f, i) => (
                   <tr key={f.id} style={leaderboardRowStyle(i)}>
                     <td style={{ padding: 10 }}>{i + 1}</td>
-                    <td style={{ padding: 10 }}>{f.first_name || f.username}</td>
+                    <td style={{ padding: 10 }}>
+                      {f.first_name || f.username}
+                    </td>
                     <td style={{ padding: 10 }}>{f.value}</td>
                   </tr>
                 ))}
@@ -755,18 +1083,48 @@ export default function FriendsPage({ userId }) {
         onInvite={handleInvite}
       />
       <div style={{ marginBottom: "2rem" }}>
-        <h2 style={{ fontSize: 22, color: "#2d3748", marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-          <FaUsers style={{ marginRight: "8px" }} /> My Friends ({friends.length})
+        <h2
+          style={{
+            fontSize: 22,
+            color: "#2d3748",
+            marginBottom: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <FaUsers style={{ marginRight: "8px" }} /> My Friends (
+          {friends.length})
         </h2>
-        <div style={{ height: 2, background: "#e2e8f0", margin: "12px 0 24px 0", borderRadius: 2 }} />
+        <div
+          style={{
+            height: 2,
+            background: "#e2e8f0",
+            margin: "12px 0 24px 0",
+            borderRadius: 2,
+          }}
+        />
         {friendsLoading ? (
           <div>Loading friends…</div>
         ) : friends.length === 0 ? (
-          <p style={{ color: "#718096", fontStyle: "italic", textAlign: "center", padding: "1rem 0" }}>
+          <p
+            style={{
+              color: "#718096",
+              fontStyle: "italic",
+              textAlign: "center",
+              padding: "1rem 0",
+            }}
+          >
             You haven't added any friends yet.
           </p>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1.5rem" }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+              gap: "1.5rem",
+            }}
+          >
             {friends.map((f) => (
               <FriendCard
                 key={f.id}
@@ -797,4 +1155,4 @@ export default function FriendsPage({ userId }) {
       />
     </div>
   );
-} 
+}
