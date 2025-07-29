@@ -14,13 +14,6 @@ import './styles/Vitals.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-// Target values for each metric
-const TARGET_VALUES = {
-  water: 64, // oz
-  sleep: 8,  // hours
-  steps: 10000, // steps
-};
-
 // Helper function to convert vitals data to chart format
 const processVitalsData = (data, metric, range) => {
   if (!data || Object.keys(data).length === 0) {
@@ -47,13 +40,49 @@ const processVitalsData = (data, metric, range) => {
     
     if (data[dateString]) {
       let value = 0;
-      if (metric === 'water') {
-        value = data[dateString].amount || 0;
-      } else if (metric === 'sleep') {
-        value = (data[dateString].hours || 0) + (data[dateString].minutes || 0) / 60;
-      } else if (metric === 'steps') {
-        value = data[dateString].steps || 0;
+      
+      // Handle new data structure with multiple entries per day
+      if (Array.isArray(data[dateString])) {
+        // Multiple entries - aggregate them
+        const values = data[dateString].map(entry => {
+          const valueData = entry.value;
+          if (metric === 'water') {
+            return valueData.amount || 0;
+          } else if (metric === 'sleep') {
+            return (valueData.hours || 0) + (valueData.minutes || 0) / 60;
+          } else if (metric === 'steps') {
+            return valueData.steps || 0;
+          } else if (metric === 'meditation') {
+            return valueData.minutes || 0;
+          } else if (metric === 'mood') {
+            return valueData.rating || 0;
+          }
+          return 0;
+        });
+        
+        if (metric === 'mood') {
+          // For mood, average the values
+          value = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        } else {
+          // For other metrics, sum the values
+          value = values.reduce((a, b) => a + b, 0);
+        }
+      } else {
+        // Single entry (backward compatibility)
+        const valueData = data[dateString].value || data[dateString];
+        if (metric === 'water') {
+          value = valueData.amount || 0;
+        } else if (metric === 'sleep') {
+          value = (valueData.hours || 0) + (valueData.minutes || 0) / 60;
+        } else if (metric === 'steps') {
+          value = valueData.steps || 0;
+        } else if (metric === 'meditation') {
+          value = valueData.minutes || 0;
+        } else if (metric === 'mood') {
+          value = valueData.rating || 0;
+        }
       }
+      
       chartData.push(value);
     } else {
       chartData.push(null); // No data for this day
@@ -70,17 +99,15 @@ const VitalsChart = ({ metric, range, data = {} }) => {
   const filteredData = chartData.filter(val => val !== null);
   const hasData = filteredData.length > 0;
 
-  // Get target value for the current metric
-  const targetValue = TARGET_VALUES[metric] || 0;
-  
-  // Create target line data (same value for all labels)
-  const targetLineData = labels.map(() => targetValue);
-
   const chartConfig = {
     labels,
     datasets: [
       {
-        label: metric === 'water' ? 'Water (L)' : metric === 'sleep' ? 'Sleep (hrs)' : 'Steps',
+        label: metric === 'water' ? 'Water (oz)' : 
+               metric === 'sleep' ? 'Sleep (hrs)' : 
+               metric === 'steps' ? 'Steps' :
+               metric === 'meditation' ? 'Meditation (min)' :
+               metric === 'mood' ? 'Mood Rating' : 'Value',
         data: chartData,
         fill: false,
         borderColor: '#4f8cff',
@@ -89,19 +116,6 @@ const VitalsChart = ({ metric, range, data = {} }) => {
         pointRadius: 3,
         pointHoverRadius: 5,
         spanGaps: true, // Connect points even with null values
-        order: 1, // Main data line appears on top
-      },
-      {
-        label: 'Target',
-        data: targetLineData,
-        fill: false,
-        borderColor: '#ff6b6b',
-        backgroundColor: '#ff6b6b',
-        borderDash: [5, 5], // Dashed line
-        tension: 0,
-        pointRadius: 0, // No points on target line
-        spanGaps: false,
-        order: 0, // Target line appears behind main data
       },
     ],
   };
@@ -122,25 +136,18 @@ const VitalsChart = ({ metric, range, data = {} }) => {
         callbacks: {
           label: function(context) {
             const value = context.parsed.y;
-            if (context.datasetIndex === 0) { // Main data
-              if (metric === 'water') {
-                return `Water: ${value} ${data.unit || 'oz'}`;
-              } else if (metric === 'sleep') {
-                return `Sleep: ${value.toFixed(1)} hours`;
-              } else if (metric === 'steps') {
-                return `Steps: ${value.toLocaleString()}`;
-              }
-              return `${context.dataset.label}: ${value}`;
-            } else { // Target line
-              if (metric === 'water') {
-                return `Target: ${value} oz`;
-              } else if (metric === 'sleep') {
-                return `Target: ${value} hours`;
-              } else if (metric === 'steps') {
-                return `Target: ${value.toLocaleString()} steps`;
-              }
-              return `Target: ${value}`;
+            if (metric === 'water') {
+              return `Water: ${value} ${data.unit || 'oz'}`;
+            } else if (metric === 'sleep') {
+              return `Sleep: ${value.toFixed(1)} hours`;
+            } else if (metric === 'steps') {
+              return `Steps: ${value.toLocaleString()}`;
+            } else if (metric === 'meditation') {
+              return `Meditation: ${value} minutes`;
+            } else if (metric === 'mood') {
+              return `Mood: ${value}/10`;
             }
+            return `${context.dataset.label}: ${value}`;
           }
         }
       },
@@ -179,7 +186,6 @@ const VitalsChart = ({ metric, range, data = {} }) => {
         <div className="vitals-no-data">
           <p>No data available for this range.</p>
           <p>Log your first {metric} entry to see your progress!</p>
-          <p>Target: {metric === 'water' ? `${targetValue} oz` : metric === 'sleep' ? `${targetValue} hours` : `${targetValue.toLocaleString()} steps`}</p>
         </div>
       )}
     </div>

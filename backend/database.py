@@ -104,7 +104,7 @@ def init_db():
         )
         """)
        
-        # Meal history (saved meals from previous days) - now uses day_number
+        # Meal history table
         c.execute("""
         CREATE TABLE IF NOT EXISTS meal_history (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,7 +124,7 @@ def init_db():
         )
         """)
        
-        # Food preferences (likes/dislikes)
+        # Food preferences table
         c.execute("""
         CREATE TABLE IF NOT EXISTS food_preferences (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -138,7 +138,7 @@ def init_db():
         )
         """)
        
-        # User custom foods table
+        # Custom foods table
         c.execute("""
         CREATE TABLE IF NOT EXISTS user_custom_foods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -155,23 +155,20 @@ def init_db():
             UNIQUE(user_id, food_name)
         )
         """)
-
-        # Add dietary restrictions columns
-        c.execute("PRAGMA table_info(users)")
-        columns = [column[1] for column in c.fetchall()]
+       
+        # Workout preferences table
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS workout_preferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            workout_name TEXT,
+            preference TEXT CHECK(preference IN ('liked', 'disliked')),
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id, workout_name)
+        )
+        """)
         
-        if 'dietary_restrictions' not in columns:
-            c.execute("ALTER TABLE users ADD COLUMN dietary_restrictions TEXT DEFAULT '[]'")
-            print("Added dietary_restrictions column to users table")
-        
-        # Check if dietary_restrictions exists in user_preferences table  
-        c.execute("PRAGMA table_info(user_preferences)")
-        pref_columns = [column[1] for column in c.fetchall()]
-        
-        if 'dietary_restrictions' not in pref_columns:
-            c.execute("ALTER TABLE user_preferences ADD COLUMN dietary_restrictions TEXT DEFAULT '[]'")
-            print("Added dietary_restrictions column to user_preferences table")
-
         # Friends and social features tables
         c.execute("""
         CREATE TABLE IF NOT EXISTS friends (
@@ -183,7 +180,7 @@ def init_db():
         )
         """)
 
-        # Challenges table (add deadline and max_progress)
+        # Challenges table
         c.execute("""
         CREATE TABLE IF NOT EXISTS challenges (
             id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -199,7 +196,7 @@ def init_db():
         )
         """)
 
-        # Friend challenges table (add deadline and progress)
+        # Friend challenges table
         c.execute("""
         CREATE TABLE IF NOT EXISTS friend_challenges (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -269,9 +266,85 @@ def init_db():
             FOREIGN KEY(friend_id) REFERENCES users(id)
         )
         """)
-       
+        
+        # VITALS TABLES
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS vitals_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            metric_type TEXT NOT NULL,
+            date_logged DATE NOT NULL,
+            value_data TEXT, -- JSON data for flexible metric storage
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+        """)
+        
+        # Migrate existing vitals_data table to remove UNIQUE constraint if it exists
+        migrate_vitals_data_table(c)
+        
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS vitals_streaks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            metric_type TEXT NOT NULL,
+            current_streak INTEGER DEFAULT 0,
+            longest_streak INTEGER DEFAULT 0,
+            last_logged_date DATE,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id, metric_type)
+        )
+        """)
+        
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS custom_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            metric_name TEXT NOT NULL,
+            metric_type TEXT CHECK(metric_type IN ('number', 'dropdown', 'boolean')),
+            unit TEXT,
+            target_value REAL,
+            options TEXT, -- JSON array for dropdown options
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id, metric_name)
+        )
+        """)
+        
         conn.commit()
         print("Database initialized successfully")
+
+def migrate_vitals_data_table(cursor):
+    """Migrate vitals_data table to remove UNIQUE constraint if it exists"""
+    try:
+        # Check if the table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='vitals_data'")
+        if cursor.fetchone():
+            # Check if the UNIQUE constraint exists
+            cursor.execute("PRAGMA index_list(vitals_data)")
+            indexes = cursor.fetchall()
+            
+            # Look for the unique constraint index
+            unique_index_name = None
+            for index in indexes:
+                index_name = index[1]
+                # SQLite auto-creates indexes for UNIQUE constraints with names like sqlite_autoindex_table_name_N
+                if index_name.startswith('sqlite_autoindex_vitals_data_'):
+                    unique_index_name = index_name
+                    break
+            
+            if unique_index_name:
+                print(f"🔄 Removing UNIQUE constraint from vitals_data table: {unique_index_name}")
+                cursor.execute(f"DROP INDEX {unique_index_name}")
+                print("✅ UNIQUE constraint removed successfully")
+            else:
+                print("ℹ️ No UNIQUE constraint found on vitals_data table")
+        else:
+            print("ℹ️ vitals_data table doesn't exist yet, no migration needed")
+    except Exception as e:
+        print(f"⚠️ Warning: Could not migrate vitals_data table: {e}")
 
 def init_fitness_tables():
     """Initialize fitness-related database tables"""
@@ -353,8 +426,51 @@ def init_fitness_tables():
         )
         """)
         
+        # VITALS TABLES
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS vitals_data (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            metric_type TEXT NOT NULL,
+            date_logged DATE NOT NULL,
+            value_data TEXT, -- JSON data for flexible metric storage
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id)
+        )
+        """)
+        
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS vitals_streaks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            metric_type TEXT NOT NULL,
+            current_streak INTEGER DEFAULT 0,
+            longest_streak INTEGER DEFAULT 0,
+            last_logged_date DATE,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id, metric_type)
+        )
+        """)
+        
+        c.execute("""
+        CREATE TABLE IF NOT EXISTS custom_metrics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT,
+            metric_name TEXT NOT NULL,
+            metric_type TEXT CHECK(metric_type IN ('number', 'dropdown', 'boolean')),
+            unit TEXT,
+            target_value REAL,
+            options TEXT, -- JSON array for dropdown options
+            is_active BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users (id),
+            UNIQUE(user_id, metric_name)
+        )
+        """)
+        
         conn.commit()
-        print("Fitness tables initialized successfully")
+        print("Fitness and vitals tables initialized successfully")
 
 
 def get_user_workout_preferences(user_id):
@@ -3002,70 +3118,447 @@ def get_dashboard_data(user_id):
     }
 
 def populate_sample_data_for_user(user_id):
-    """Add some sample data for new users to make the overview page more interesting."""
-    with sqlite3.connect(DB_PATH) as conn:
-        c = conn.cursor()
-        
-        # Add some sample badges
-        sample_badges = [
-            ("Welcome!", "Welcome to NutriFit! Your fitness journey begins here.", datetime.now().isoformat()),
-            ("First Steps", "Completed your first day of tracking. Great start!", (datetime.now() - timedelta(days=1)).isoformat()),
-        ]
-        
-        for badge, description, earned_at in sample_badges:
-            c.execute("""
-                INSERT OR IGNORE INTO friend_badges (user_id, badge, description, earned_at)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, badge, description, earned_at))
-        
-        # Add some sample activities
-        sample_activities = [
-            ("challenge", "started tracking their nutrition journey"),
-            ("workout", "completed their first workout session"),
-            ("badge", "earned the 'Welcome!' badge"),
-        ]
-        
-        for activity_type, description in sample_activities:
-            c.execute("""
-                INSERT OR IGNORE INTO friend_activities (user_id, type, description)
-                VALUES (?, ?, ?)
-            """, (user_id, activity_type, description))
-        
-        conn.commit()
+    """Populate sample data for new user"""
+    # This function can be expanded to add sample vitals data
+    pass
 
-def award_retroactive_badges():
-    """Award badges to users who completed challenges before the badge system was implemented."""
+# VITALS DATABASE FUNCTIONS
+
+def log_vitals_data(user_id, metric_type, value_data, date_logged=None):
+    """Log vitals data for a user - now allows multiple entries per day"""
+    if date_logged is None:
+        date_logged = datetime.now().date()
+    
+    current_timestamp = datetime.now()
+    
+    print(f"🗄️ Logging vitals data: user_id={user_id}, metric_type={metric_type}, value_data={value_data}, date_logged={date_logged}, timestamp={current_timestamp}")
+    
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
         
-        # Find users who have completed challenges but no First Challenge badge
+        # Store the vitals data with current timestamp - now allows multiple entries per day
         c.execute("""
-            SELECT DISTINCT c.user_id, COUNT(c.id) as completed_count
-            FROM challenges c
-            WHERE c.completed = 1
-            GROUP BY c.user_id
-            HAVING c.user_id NOT IN (
-                SELECT user_id FROM friend_badges WHERE badge = 'First Challenge'
-            )
-        """)
+        INSERT INTO vitals_data (user_id, metric_type, date_logged, value_data, created_at)
+        VALUES (?, ?, ?, ?, ?)
+        """, (user_id, metric_type, date_logged, json.dumps(value_data), current_timestamp))
         
-        users_to_award = c.fetchall()
-        
-        for user_id, completed_count in users_to_award:
-            if completed_count >= 1:
-                # Award First Challenge badge
-                c.execute("""
-                    INSERT INTO friend_badges (user_id, badge, description, earned_at)
-                    VALUES (?, ?, ?, ?)
-                """, (user_id, "First Challenge", "Completed your first challenge! Great start!", datetime.now().isoformat()))
-                
-                # Add activity for earning the badge
-                c.execute("""
-                    INSERT INTO friend_activities (user_id, type, description)
-                    VALUES (?, ?, ?)
-                """, (user_id, "badge", "earned the 'First Challenge' badge"))
-                
-                print(f"Awarded First Challenge badge to user {user_id}")
+        # Update streak using the same connection
+        update_vitals_streak(user_id, metric_type, date_logged, conn)
         
         conn.commit()
-        return len(users_to_award)
+        log_id = c.lastrowid
+        print(f"✅ Successfully stored vitals data with log_id: {log_id}")
+        return log_id
+
+def get_today_vitals_logs(user_id, metric_type):
+    """Get all vitals logs for today for a specific metric"""
+    today = datetime.now().date()
+    
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        SELECT value_data, created_at
+        FROM vitals_data
+        WHERE user_id = ? AND metric_type = ? AND date_logged = ?
+        ORDER BY created_at DESC
+        """, (user_id, metric_type, today))
+        
+        logs = []
+        for row in c.fetchall():
+            value_data = json.loads(row[0])
+            timestamp = row[1]
+            logs.append({
+                'value': value_data,
+                'timestamp': timestamp
+            })
+        
+        return logs
+
+def get_vitals_data(user_id, metric_type, start_date=None, end_date=None):
+    """Get vitals data for a user within a date range - now returns all entries per day"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        query = """
+        SELECT date_logged, value_data, created_at
+        FROM vitals_data
+        WHERE user_id = ? AND metric_type = ?
+        """
+        params = [user_id, metric_type]
+        
+        if start_date:
+            query += " AND date_logged >= ?"
+            params.append(start_date)
+        if end_date:
+            query += " AND date_logged <= ?"
+            params.append(end_date)
+        
+        query += " ORDER BY date_logged ASC, created_at ASC"
+        
+        c.execute(query, params)
+        
+        data = {}
+        for row in c.fetchall():
+            date_str = row[0]
+            value_data = json.loads(row[1])
+            timestamp = row[2]
+            
+            if date_str not in data:
+                data[date_str] = []
+            
+            data[date_str].append({
+                'value': value_data,
+                'timestamp': timestamp
+            })
+        
+        return data
+
+def update_vitals_streak(user_id, metric_type, date_logged, conn=None):
+    """Update streak for a vitals metric"""
+    if conn is None:
+        # If no connection provided, create one
+        with sqlite3.connect(DB_PATH) as db_conn:
+            return update_vitals_streak(user_id, metric_type, date_logged, db_conn)
+    
+    c = conn.cursor()
+    
+    # Get current streak info
+    c.execute("""
+    SELECT current_streak, longest_streak, last_logged_date
+    FROM vitals_streaks
+    WHERE user_id = ? AND metric_type = ?
+    """, (user_id, metric_type))
+    
+    result = c.fetchone()
+    
+    if result:
+        current_streak, longest_streak, last_logged_date = result
+        
+        if last_logged_date:
+            last_date = datetime.strptime(last_logged_date, '%Y-%m-%d').date()
+            days_diff = (date_logged - last_date).days
+            
+            if days_diff == 1:
+                # Consecutive day
+                new_streak = current_streak + 1
+            elif days_diff == 0:
+                # Same day, keep current streak
+                new_streak = current_streak
+            else:
+                # Gap in logging, reset streak
+                new_streak = 1
+        else:
+            # First time logging
+            new_streak = 1
+        
+        new_longest_streak = max(longest_streak, new_streak)
+        
+        # Update streak
+        c.execute("""
+        UPDATE vitals_streaks
+        SET current_streak = ?, longest_streak = ?, last_logged_date = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE user_id = ? AND metric_type = ?
+        """, (new_streak, new_longest_streak, date_logged, user_id, metric_type))
+    else:
+        # Create new streak record
+        c.execute("""
+        INSERT INTO vitals_streaks (user_id, metric_type, current_streak, longest_streak, last_logged_date)
+        VALUES (?, ?, 1, 1, ?)
+        """, (user_id, metric_type, date_logged))
+
+def get_vitals_streak(user_id, metric_type):
+    """Get current streak for a vitals metric"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        SELECT current_streak, longest_streak, last_logged_date
+        FROM vitals_streaks
+        WHERE user_id = ? AND metric_type = ?
+        """, (user_id, metric_type))
+        
+        result = c.fetchone()
+        if result:
+            return {
+                'current_streak': result[0],
+                'longest_streak': result[1],
+                'last_logged_date': result[2]
+            }
+        return {
+            'current_streak': 0,
+            'longest_streak': 0,
+            'last_logged_date': None
+        }
+
+def get_all_vitals_streaks(user_id):
+    """Get all vitals streaks for a user"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        SELECT metric_type, current_streak, longest_streak, last_logged_date
+        FROM vitals_streaks
+        WHERE user_id = ?
+        """, (user_id,))
+        
+        streaks = {}
+        for row in c.fetchall():
+            streaks[row[0]] = {
+                'current_streak': row[1],
+                'longest_streak': row[2],
+                'last_logged_date': row[3]
+            }
+        
+        return streaks
+
+def create_custom_metric(user_id, metric_name, metric_type, unit=None, target_value=None, options=None):
+    """Create a custom vitals metric"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        options_json = json.dumps(options) if options else None
+        
+        c.execute("""
+        INSERT INTO custom_metrics (user_id, metric_name, metric_type, unit, target_value, options)
+        VALUES (?, ?, ?, ?, ?, ?)
+        """, (user_id, metric_name, metric_type, unit, target_value, options_json))
+        
+        conn.commit()
+        return c.lastrowid
+
+def get_custom_metrics(user_id):
+    """Get all custom metrics for a user"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        SELECT id, metric_name, metric_type, unit, target_value, options, is_active
+        FROM custom_metrics
+        WHERE user_id = ? AND is_active = TRUE
+        ORDER BY created_at
+        """, (user_id,))
+        
+        metrics = []
+        for row in c.fetchall():
+            metric = {
+                'id': row[0],
+                'name': row[1],
+                'type': row[2],
+                'unit': row[3],
+                'target_value': row[4],
+                'options': json.loads(row[5]) if row[5] else None,
+                'is_active': row[6]
+            }
+            metrics.append(metric)
+        
+        return metrics
+
+def update_custom_metric(user_id, metric_id, updates):
+    """Update a custom metric"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        set_clauses = []
+        values = []
+        
+        for field, value in updates.items():
+            if field == 'options' and value is not None:
+                set_clauses.append(f"{field} = ?")
+                values.append(json.dumps(value))
+            elif field in ['metric_name', 'metric_type', 'unit', 'target_value', 'is_active']:
+                set_clauses.append(f"{field} = ?")
+                values.append(value)
+        
+        if set_clauses:
+            values.append(metric_id)
+            values.append(user_id)
+            
+            c.execute(f"""
+            UPDATE custom_metrics
+            SET {', '.join(set_clauses)}
+            WHERE id = ? AND user_id = ?
+            """, values)
+            
+            conn.commit()
+            return True
+        
+        return False
+
+def delete_custom_metric(user_id, metric_id):
+    """Delete a custom metric (soft delete by setting is_active to False)"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        c.execute("""
+        UPDATE custom_metrics
+        SET is_active = FALSE
+        WHERE id = ? AND user_id = ?
+        """, (metric_id, user_id))
+        
+        conn.commit()
+        return c.rowcount > 0
+
+def get_vitals_summary(user_id, metric_type, days_back=7):
+    """Get vitals summary for dashboard"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get recent data
+        start_date = (datetime.now() - timedelta(days=days_back)).date()
+        
+        c.execute("""
+        SELECT date_logged, value_data
+        FROM vitals_data
+        WHERE user_id = ? AND metric_type = ?
+        AND date_logged >= ?
+        ORDER BY date_logged DESC
+        """, (user_id, metric_type, start_date))
+        
+        recent_data = []
+        for row in c.fetchall():
+            recent_data.append({
+                'date': row[0],
+                'data': json.loads(row[1])
+            })
+        
+        # Get streak info
+        streak_info = get_vitals_streak(user_id, metric_type)
+        
+        # Get today's data if exists
+        today = datetime.now().date()
+        c.execute("""
+        SELECT value_data
+        FROM vitals_data
+        WHERE user_id = ? AND metric_type = ? AND date_logged = ?
+        """, (user_id, metric_type, today))
+        
+        today_data = c.fetchone()
+        today_value = json.loads(today_data[0]) if today_data else None
+        
+        return {
+            'recent_data': recent_data,
+            'streak': streak_info,
+            'today_value': today_value,
+            'days_back': days_back
+        }
+
+def get_vitals_chart_data(user_id, metric_type, range_key):
+    """Get formatted data for chart display - now handles multiple entries per day"""
+    # Calculate date range based on range_key
+    today = datetime.now().date()
+    
+    if range_key == '1w':
+        start_date = today - timedelta(days=7)
+    elif range_key == '1m':
+        start_date = today - timedelta(days=30)
+    elif range_key == '3m':
+        start_date = today - timedelta(days=90)
+    elif range_key == '6m':
+        start_date = today - timedelta(days=180)
+    elif range_key == '1y':
+        start_date = today - timedelta(days=365)
+    else:
+        start_date = today - timedelta(days=7)
+    
+    # Get data for the range
+    data = get_vitals_data(user_id, metric_type, start_date, today)
+    
+    # Format for chart display - aggregate multiple entries per day
+    chart_data = []
+    current_date = start_date
+    
+    while current_date <= today:
+        date_str = current_date.strftime('%Y-%m-%d')
+        if date_str in data:
+            # Handle multiple entries for the same day
+            day_entries = data[date_str]
+            if isinstance(day_entries, list):
+                # Multiple entries - extract numerical values and aggregate them
+                numerical_values = []
+                for entry in day_entries:
+                    value_data = entry['value']
+                    if metric_type == 'water':
+                        numerical_values.append(value_data.get('amount', 0))
+                    elif metric_type == 'mood':
+                        numerical_values.append(value_data.get('rating', 0))
+                    elif metric_type == 'sleep':
+                        numerical_values.append(value_data.get('hours', 0))
+                    elif metric_type == 'weight':
+                        numerical_values.append(value_data.get('pounds', 0))
+                    elif metric_type == 'steps':
+                        numerical_values.append(value_data.get('count', 0))
+                    else:
+                        # For custom metrics or unknown types, try to get a numerical value
+                        if isinstance(value_data, dict):
+                            # Try common keys
+                            for key in ['value', 'amount', 'count', 'rating', 'hours', 'pounds']:
+                                if key in value_data:
+                                    numerical_values.append(value_data[key])
+                                    break
+                            else:
+                                # If no common key found, try to convert the whole value
+                                try:
+                                    numerical_values.append(float(value_data))
+                                except (ValueError, TypeError):
+                                    numerical_values.append(0)
+                        else:
+                            try:
+                                numerical_values.append(float(value_data))
+                            except (ValueError, TypeError):
+                                numerical_values.append(0)
+                
+                if numerical_values:
+                    if metric_type == 'mood':
+                        # For mood, average the values
+                        aggregated_value = sum(numerical_values) / len(numerical_values)
+                    else:
+                        # For other metrics, sum the values
+                        aggregated_value = sum(numerical_values)
+                else:
+                    aggregated_value = 0
+            else:
+                # Single entry (backward compatibility)
+                value_data = day_entries['value']
+                if metric_type == 'water':
+                    aggregated_value = value_data.get('amount', 0)
+                elif metric_type == 'mood':
+                    aggregated_value = value_data.get('rating', 0)
+                elif metric_type == 'sleep':
+                    aggregated_value = value_data.get('hours', 0)
+                elif metric_type == 'weight':
+                    aggregated_value = value_data.get('pounds', 0)
+                elif metric_type == 'steps':
+                    aggregated_value = value_data.get('count', 0)
+                else:
+                    # For custom metrics or unknown types
+                    if isinstance(value_data, dict):
+                        for key in ['value', 'amount', 'count', 'rating', 'hours', 'pounds']:
+                            if key in value_data:
+                                aggregated_value = value_data[key]
+                                break
+                        else:
+                            try:
+                                aggregated_value = float(value_data)
+                            except (ValueError, TypeError):
+                                aggregated_value = 0
+                    else:
+                        try:
+                            aggregated_value = float(value_data)
+                        except (ValueError, TypeError):
+                            aggregated_value = 0
+            
+            chart_data.append({
+                'date': date_str,
+                'value': aggregated_value,
+                'has_data': True
+            })
+        else:
+            chart_data.append({
+                'date': date_str,
+                'value': None,
+                'has_data': False
+            })
+        current_date += timedelta(days=1)
+    
+    return chart_data

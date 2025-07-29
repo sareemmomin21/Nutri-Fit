@@ -31,7 +31,12 @@ from database import (
     create_challenge, update_challenge_progress, delete_challenge, delete_friend_challenge,
     get_friend_activities, get_friend_badges, get_friend_reminders, get_messages, send_message, set_friend_reminder,
     get_reminders_you_set, delete_reminder, delete_reminder_received,
-    get_user_streak, get_user_badges, get_user_stats
+    get_user_streak, get_user_badges, get_user_stats,
+    # Vitals database functions
+    log_vitals_data, get_vitals_data, get_vitals_streak, get_all_vitals_streaks,
+    create_custom_metric, get_custom_metrics, update_custom_metric, delete_custom_metric,
+    get_vitals_summary, get_vitals_chart_data,
+    get_today_vitals_logs
 )
 
 from fitness_utils import (
@@ -1916,43 +1921,295 @@ def get_friends_leaderboard_endpoint():
 
 @app.route("/api/like_workout_from_friend", methods=["POST"])
 def like_workout_from_friend_endpoint():
-    """Like a workout that a friend has liked"""
-    data = request.json or {}
+    data = request.json
     user_id = data.get("user_id")
-    friend_id = data.get("friend_id")
     workout_name = data.get("workout_name")
+    preference = data.get("preference", "liked")
     
-    if not all([user_id, friend_id, workout_name]):
-        return jsonify({"error": "user_id, friend_id, and workout_name required"}), 400
+    if not user_id or not workout_name:
+        return jsonify({"error": "Missing required fields"}), 400
     
     try:
-        # Check if they are friends
-        from database import get_user_friends
-        friends = get_user_friends(user_id)
-        friend_ids = [f['user_id'] for f in friends]
-        
-        if friend_id not in friend_ids:
-            return jsonify({"error": "Not friends with this user"}), 400
-        
-        # Check if the friend actually likes this workout
-        from database import get_user_workout_preferences
-        friend_preferences = get_user_workout_preferences(friend_id)
-        
-        if workout_name not in friend_preferences.get('liked', []):
-            return jsonify({"error": "Friend doesn't like this workout"}), 400
-        
-        # Add the workout to user's liked workouts
         from database import save_workout_preference
-        save_workout_preference(user_id, workout_name, 'liked')
-        
-        return jsonify({"success": True, "message": f"Added '{workout_name}' to your liked workouts"}), 200
-        
+        save_workout_preference(user_id, workout_name, preference)
+        return jsonify({"success": True, "message": f"Workout {preference}"})
     except Exception as e:
-        print(f"Error liking workout from friend: {e}")
-        return jsonify({"error": "Failed to like workout"}), 500
+        return jsonify({"error": str(e)}), 500
 
+# VITALS API ENDPOINTS
+
+@app.route("/api/vitals/log", methods=["POST"])
+def log_vitals_endpoint():
+    """Log vitals data for a user"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        metric_type = data.get("metric_type")
+        value_data = data.get("value_data")
+        date_logged = data.get("date_logged")
+        
+        print(f"🔍 Vitals log request: user_id={user_id}, metric_type={metric_type}, value_data={value_data}")
+        
+        if not user_id or not metric_type or value_data is None:
+            print(f"❌ Missing required fields: user_id={user_id}, metric_type={metric_type}, value_data={value_data}")
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Check if database exists and is accessible
+        try:
+            import os
+            if not os.path.exists(DB_PATH):
+                print(f"❌ Database file does not exist: {DB_PATH}")
+                return jsonify({"error": "Database not initialized"}), 500
+        except Exception as db_error:
+            print(f"❌ Database access error: {db_error}")
+            return jsonify({"error": "Database access error"}), 500
+        
+        log_id = log_vitals_data(user_id, metric_type, value_data, date_logged)
+        print(f"✅ Successfully logged vitals data with log_id: {log_id}")
+        return jsonify({
+            "success": True,
+            "log_id": log_id,
+            "message": f"{metric_type} data logged successfully"
+        })
+    except Exception as e:
+        print(f"❌ Error in log_vitals_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_data", methods=["POST"])
+def get_vitals_data_endpoint():
+    """Get vitals data for a user"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_type = data.get("metric_type")
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    
+    if not user_id or not metric_type:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        vitals_data = get_vitals_data(user_id, metric_type, start_date, end_date)
+        return jsonify({
+            "success": True,
+            "data": vitals_data
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_streak", methods=["POST"])
+def get_vitals_streak_endpoint():
+    """Get streak for a specific vitals metric"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_type = data.get("metric_type")
+    
+    if not user_id or not metric_type:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        streak_info = get_vitals_streak(user_id, metric_type)
+        return jsonify({
+            "success": True,
+            "streak": streak_info
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_all_streaks", methods=["POST"])
+def get_all_vitals_streaks_endpoint():
+    """Get all vitals streaks for a user"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        
+        print(f"🔍 Vitals get all streaks request: user_id={user_id}")
+        
+        if not user_id:
+            print(f"❌ Missing user_id: {user_id}")
+            return jsonify({"error": "Missing user_id"}), 400
+        
+        streaks = get_all_vitals_streaks(user_id)
+        print(f"✅ Successfully retrieved streaks: {streaks}")
+        return jsonify({
+            "success": True,
+            "streaks": streaks
+        })
+    except Exception as e:
+        print(f"❌ Error in get_all_vitals_streaks_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_summary", methods=["POST"])
+def get_vitals_summary_endpoint():
+    """Get vitals summary for dashboard"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        metric_type = data.get("metric_type")
+        days_back = data.get("days_back", 7)
+        
+        print(f"🔍 Vitals get summary request: user_id={user_id}, metric_type={metric_type}, days_back={days_back}")
+        
+        if not user_id or not metric_type:
+            print(f"❌ Missing required fields: user_id={user_id}, metric_type={metric_type}")
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        summary = get_vitals_summary(user_id, metric_type, days_back)
+        print(f"✅ Successfully retrieved summary: {summary}")
+        return jsonify({
+            "success": True,
+            "summary": summary
+        })
+    except Exception as e:
+        print(f"❌ Error in get_vitals_summary_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_chart_data", methods=["POST"])
+def get_vitals_chart_data_endpoint():
+    """Get formatted chart data for vitals"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        metric_type = data.get("metric_type")
+        range_key = data.get("range_key", "1w")
+        
+        print(f"🔍 Vitals chart data request: user_id={user_id}, metric_type={metric_type}, range_key={range_key}")
+        
+        if not user_id or not metric_type:
+            print(f"❌ Missing required fields: user_id={user_id}, metric_type={metric_type}")
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        chart_data = get_vitals_chart_data(user_id, metric_type, range_key)
+        print(f"✅ Successfully retrieved chart data: {len(chart_data)} data points")
+        return jsonify({
+            "success": True,
+            "chart_data": chart_data
+        })
+    except Exception as e:
+        print(f"❌ Error in get_vitals_chart_data_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/create_custom_metric", methods=["POST"])
+def create_custom_metric_endpoint():
+    """Create a custom vitals metric"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_name = data.get("metric_name")
+    metric_type = data.get("metric_type")
+    unit = data.get("unit")
+    target_value = data.get("target_value")
+    options = data.get("options")
+    
+    if not user_id or not metric_name or not metric_type:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        metric_id = create_custom_metric(user_id, metric_name, metric_type, unit, target_value, options)
+        return jsonify({
+            "success": True,
+            "metric_id": metric_id,
+            "message": "Custom metric created successfully"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_custom_metrics", methods=["POST"])
+def get_custom_metrics_endpoint():
+    """Get all custom metrics for a user"""
+    data = request.json
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+    
+    try:
+        metrics = get_custom_metrics(user_id)
+        return jsonify({
+            "success": True,
+            "metrics": metrics
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/update_custom_metric", methods=["POST"])
+def update_custom_metric_endpoint():
+    """Update a custom metric"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_id = data.get("metric_id")
+    updates = data.get("updates", {})
+    
+    if not user_id or not metric_id:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        success = update_custom_metric(user_id, metric_id, updates)
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "Custom metric updated successfully"
+            })
+        else:
+            return jsonify({"error": "Failed to update custom metric"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/delete_custom_metric", methods=["POST"])
+def delete_custom_metric_endpoint():
+    """Delete a custom metric"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_id = data.get("metric_id")
+    
+    if not user_id or not metric_id:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        success = delete_custom_metric(user_id, metric_id)
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "Custom metric deleted successfully"
+            })
+        else:
+            return jsonify({"error": "Failed to delete custom metric"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_today_logs", methods=["POST"])
+def get_today_vitals_logs_endpoint():
+    """Get today's vitals logs for a specific metric"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        metric_type = data.get("metric_type")
+        
+        print(f"🔍 Vitals get today logs request: user_id={user_id}, metric_type={metric_type}")
+        
+        if not user_id or not metric_type:
+            print(f"❌ Missing required fields: user_id={user_id}, metric_type={metric_type}")
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        logs = get_today_vitals_logs(user_id, metric_type)
+        print(f"✅ Successfully retrieved today's logs: {logs}")
+        return jsonify({
+            "success": True,
+            "logs": logs
+        })
+    except Exception as e:
+        print(f"❌ Error in get_today_vitals_logs_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     init_db()
     init_fitness_tables()
-    app.run(debug=True, port=5001)
+    app.run(debug=True, host="0.0.0.0", port=5001)
