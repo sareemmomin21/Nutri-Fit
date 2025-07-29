@@ -1,5 +1,9 @@
+<<<<<<< Updated upstream
 import React, { useState, useEffect } from "react";
 import { FaFire } from "react-icons/fa";
+=======
+import React, { useState, useEffect } from 'react';
+>>>>>>> Stashed changes
 import StreakIndicator from '../components/StreakIndicator';
 import VitalsChart from '../components/VitalsChart';
 import VitalsInputForm from '../components/VitalsInputForm';
@@ -25,11 +29,143 @@ const TIME_RANGES = [
 const VitalsPage = () => {
   const [selectedMetric, setSelectedMetric] = useState('water');
   const [selectedRange, setSelectedRange] = useState('1w');
-  const [streak, setStreak] = useState(5); // Example streak value
-  const [todayProgress, setTodayProgress] = useState('68.0 oz'); // Example progress
   const [isManageModalOpen, setIsManageModalOpen] = useState(false);
+  
+  // Data and streak state
+  const [vitalsData, setVitalsData] = useState({
+    water: {},
+    sleep: {},
+    steps: {},
+    meditation: {},
+    mood: {}
+  });
+  const [streaks, setStreaks] = useState({
+    water: 5,
+    sleep: 3,
+    steps: 7,
+    meditation: 2,
+    mood: 4
+  });
+  const [todayProgress, setTodayProgress] = useState({
+    water: '68.0 oz',
+    sleep: '7.5 hours',
+    steps: '8,500 steps',
+    meditation: '15 minutes',
+    mood: '8/10'
+  });
 
-  // THEME: Timileyin, adjust classNames and CSS variables for dark/light mode
+  // Get today's date as string for data storage
+  const getTodayString = () => {
+    const today = new Date();
+    return today.toISOString().split('T')[0]; // YYYY-MM-DD format
+  };
+
+  // Get yesterday's date as string
+  const getYesterdayString = () => {
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return yesterday.toISOString().split('T')[0];
+  };
+
+  // Check if data was logged for a specific date
+  const hasDataForDate = (metric, dateString) => {
+    return vitalsData[metric] && vitalsData[metric][dateString];
+  };
+
+  // Calculate streak for a metric
+  const calculateStreak = (metric) => {
+    let streak = 0;
+    let currentDate = new Date();
+    
+    while (true) {
+      const dateString = currentDate.toISOString().split('T')[0];
+      
+      if (hasDataForDate(metric, dateString)) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        break; // Stop counting when we find a day without data
+      }
+    }
+    
+    return streak;
+  };
+
+  // Update streak for a metric with proper logic
+  const updateStreak = (metric, date) => {
+    const yesterday = getYesterdayString();
+    const hadDataYesterday = hasDataForDate(metric, yesterday);
+    
+    setStreaks(prev => {
+      const newStreaks = { ...prev };
+      
+      if (hadDataYesterday) {
+        // If we had data yesterday, increment the streak
+        newStreaks[metric] = (prev[metric] || 0) + 1;
+      } else {
+        // If we missed yesterday, reset to 1 (for today's entry)
+        newStreaks[metric] = 1;
+      }
+      
+      return newStreaks;
+    });
+  };
+
+  // Recalculate all streaks when data changes
+  useEffect(() => {
+    const newStreaks = {};
+    METRICS.forEach(metric => {
+      newStreaks[metric.key] = calculateStreak(metric.key);
+    });
+    setStreaks(newStreaks);
+  }, [vitalsData]);
+
+  // Handle form submission and update data
+  const handleVitalsSubmit = (data) => {
+    const today = getTodayString();
+    const metric = selectedMetric;
+    
+    // Update vitals data
+    setVitalsData(prev => ({
+      ...prev,
+      [metric]: {
+        ...prev[metric],
+        [today]: data
+      }
+    }));
+
+    // Update today's progress display
+    let progressText = '';
+    if (metric === 'water') {
+      progressText = `${data.amount} ${data.unit}`;
+    } else if (metric === 'sleep') {
+      const totalHours = data.hours + (data.minutes / 60);
+      progressText = `${totalHours.toFixed(1)} hours`;
+    } else if (metric === 'steps') {
+      progressText = `${data.steps.toLocaleString()} steps`;
+    }
+    
+    setTodayProgress(prev => ({
+      ...prev,
+      [metric]: progressText
+    }));
+
+    // Update streak logic
+    updateStreak(metric, today);
+    
+    console.log('Logged vitals data:', { metric, data, date: today });
+  };
+
+  // Get current streak for selected metric
+  const getCurrentStreak = () => {
+    return streaks[selectedMetric] || 0;
+  };
+
+  // Get current progress for selected metric
+  const getCurrentProgress = () => {
+    return todayProgress[selectedMetric] || '0';
+  };
+
   return (
     <div className="vitals-page-container">
       {/* Page Title and Subtitle */}
@@ -65,15 +201,20 @@ const VitalsPage = () => {
         <div className="vitals-summary-card">
           <div className="vitals-summary-card-label">Current Streak</div>
           <div className="vitals-summary-card-value vitals-summary-streak">
+<<<<<<< Updated upstream
                             <FaFire className="vitals-summary-icon" />
             {streak} days
+=======
+            <span className="vitals-summary-icon">🔥</span>
+            {getCurrentStreak()} days
+>>>>>>> Stashed changes
           </div>
         </div>
         <div className="vitals-summary-card">
           <div className="vitals-summary-card-label">Today's Progress</div>
           <div className="vitals-summary-card-value vitals-summary-progress">
             <span className="vitals-summary-progress-badge">Today</span>
-            {todayProgress}
+            {getCurrentProgress()}
           </div>
         </div>
       </div>
@@ -98,7 +239,7 @@ const VitalsPage = () => {
           <span className="vitals-chart-title">{METRICS.find(m => m.key === selectedMetric)?.label} Tracking - {TIME_RANGES.find(r => r.key === selectedRange)?.label}</span>
         </div>
         {/* Timileyin: Add target line to chart in VitalsChart.js for future expansion */}
-        <VitalsChart metric={selectedMetric} range={selectedRange} />
+        <VitalsChart metric={selectedMetric} range={selectedRange} data={vitalsData[selectedMetric]} />
       </div>
 
       {/* Input Form Area */}
@@ -106,10 +247,7 @@ const VitalsPage = () => {
         {/* Timileyin: Adjust card layout or add theme logic here for dark/light mode */}
         <VitalsInputForm
           metric={selectedMetric}
-          onSubmit={(data) => {
-            // For now, just log the data. Later, update chart and streak.
-            console.log('Logged data:', data);
-          }}
+          onSubmit={handleVitalsSubmit}
         />
       </div>
 
