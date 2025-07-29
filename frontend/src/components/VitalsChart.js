@@ -41,8 +41,11 @@ const processVitalsData = (data, metric, range) => {
     if (data[dateString]) {
       let value = 0;
       
-      // Handle new data structure with multiple entries per day
-      if (Array.isArray(data[dateString])) {
+      // Handle aggregated data from backend
+      if (typeof data[dateString] === 'number') {
+        // Backend is returning aggregated numerical values
+        value = data[dateString];
+      } else if (Array.isArray(data[dateString])) {
         // Multiple entries - aggregate them
         const values = data[dateString].map(entry => {
           const valueData = entry.value;

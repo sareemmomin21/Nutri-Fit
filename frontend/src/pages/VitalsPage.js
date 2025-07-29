@@ -90,10 +90,10 @@ const VitalsPage = () => {
     try {
       const response = await vitalsApi.getVitalsChartData(userId, selectedMetric, selectedRange);
       if (response.success) {
-        // Convert chart data back to the format expected by the chart component
+        // Convert chart data to the format expected by the chart component
         const data = {};
         response.chart_data.forEach(item => {
-          if (item.has_data && item.value) {
+          if (item.has_data && item.value !== null && item.value !== undefined) {
             data[item.date] = item.value;
           }
         });

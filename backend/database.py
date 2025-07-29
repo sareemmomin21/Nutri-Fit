@@ -3425,16 +3425,72 @@ def get_vitals_summary(user_id, metric_type, days_back=7):
         # Get streak info
         streak_info = get_vitals_streak(user_id, metric_type)
         
-        # Get today's data if exists
+        # Get today's aggregated data
         today = datetime.now().date()
         c.execute("""
         SELECT value_data
         FROM vitals_data
         WHERE user_id = ? AND metric_type = ? AND date_logged = ?
+        ORDER BY created_at ASC
         """, (user_id, metric_type, today))
         
-        today_data = c.fetchone()
-        today_value = json.loads(today_data[0]) if today_data else None
+        today_entries = c.fetchall()
+        today_value = None
+        
+        if today_entries:
+            # Aggregate today's entries
+            numerical_values = []
+            for row in today_entries:
+                value_data = json.loads(row[0])
+                if metric_type == 'water':
+                    numerical_values.append(value_data.get('amount', 0))
+                elif metric_type == 'mood':
+                    numerical_values.append(value_data.get('rating', 0))
+                elif metric_type == 'sleep':
+                    numerical_values.append(value_data.get('hours', 0))
+                elif metric_type == 'weight':
+                    numerical_values.append(value_data.get('pounds', 0))
+                elif metric_type == 'steps':
+                    numerical_values.append(value_data.get('count', 0))
+                else:
+                    # For custom metrics or unknown types
+                    if isinstance(value_data, dict):
+                        for key in ['value', 'amount', 'count', 'rating', 'hours', 'pounds']:
+                            if key in value_data:
+                                numerical_values.append(value_data[key])
+                                break
+                        else:
+                            try:
+                                numerical_values.append(float(value_data))
+                            except (ValueError, TypeError):
+                                numerical_values.append(0)
+                    else:
+                        try:
+                            numerical_values.append(float(value_data))
+                        except (ValueError, TypeError):
+                            numerical_values.append(0)
+            
+            if numerical_values:
+                if metric_type == 'mood':
+                    # For mood, average the values
+                    aggregated_value = sum(numerical_values) / len(numerical_values)
+                else:
+                    # For other metrics, sum the values
+                    aggregated_value = sum(numerical_values)
+                
+                # Create aggregated value_data structure
+                if metric_type == 'water':
+                    today_value = {'amount': aggregated_value, 'unit': 'oz'}
+                elif metric_type == 'mood':
+                    today_value = {'rating': aggregated_value, 'note': 'Aggregated'}
+                elif metric_type == 'sleep':
+                    today_value = {'hours': aggregated_value, 'minutes': 0}
+                elif metric_type == 'weight':
+                    today_value = {'pounds': aggregated_value}
+                elif metric_type == 'steps':
+                    today_value = {'count': aggregated_value}
+                else:
+                    today_value = {'value': aggregated_value}
         
         return {
             'recent_data': recent_data,
