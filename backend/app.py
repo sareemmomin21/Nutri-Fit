@@ -1033,7 +1033,7 @@ def calculate_favorite_workout_type(workouts):
 
 @app.route("/api/get_fitness_dashboard", methods=["POST"])
 def get_fitness_dashboard_endpoint():
-    """Get fitness dashboard data with proper weekly and streak calculations"""
+    """Get fitness dashboard data with proper 14-day workout data"""
     data = request.json
     user_id = data.get("user_id")
     
@@ -1041,68 +1041,89 @@ def get_fitness_dashboard_endpoint():
         return jsonify({"error": "User ID required"}), 400
     
     try:
-        # Get workout history for calculations
+        # Get ALL workouts for the past 14 days (not just recent 5-10)
         from datetime import datetime, timedelta
         
-        # Get all workouts for calculations
-        all_workouts = get_workout_history(user_id, 365)  # Get full year
+        # Get workouts from past 14 days
+        fourteen_days_ago = datetime.now() - timedelta(days=14)
         
-        # Calculate current week stats (Monday to Sunday)
-        today = datetime.now()
-        start_of_week = today - timedelta(days=today.weekday())
-        start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
-        end_of_week = start_of_week + timedelta(days=7)
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            
+            # Get ALL workouts from past 14 days
+            c.execute("""
+            SELECT workout_name, workout_type, duration_minutes, calories_burned,
+                   difficulty_level, date_completed, notes, created_at
+            FROM workout_sessions
+            WHERE user_id = ? AND date_completed >= ?
+            ORDER BY date_completed DESC
+            """, (user_id, fourteen_days_ago.date()))
+            
+            all_workouts_14_days = []
+            for row in c.fetchall():
+                workout_date = row[5]  # date_completed
+                
+                # Handle date conversion properly
+                if isinstance(workout_date, str):
+                    try:
+                        # Parse YYYY-MM-DD format
+                        parsed_date = datetime.strptime(workout_date, '%Y-%m-%d')
+                    except ValueError:
+                        # Try other formats if needed
+                        parsed_date = datetime.fromisoformat(workout_date.replace('Z', '+00:00'))
+                else:
+                    parsed_date = datetime.strptime(str(workout_date), '%Y-%m-%d')
+                
+                all_workouts_14_days.append({
+                    'id': row[0] if len(row) > 8 else None,
+                    'name': row[0],
+                    'type': row[1],
+                    'workout_type': row[1],  # For compatibility
+                    'duration': row[2],
+                    'duration_minutes': row[2],  # For compatibility
+                    'calories_burned': row[3],
+                    'calories': row[3],  # For compatibility
+                    'difficulty_level': row[4],
+                    'intensity': row[4],  # For compatibility
+                    'date_completed': workout_date,
+                    'date': parsed_date,  # Proper date object for frontend
+                    'notes': row[6],
+                    'created_at': row[7]
+                })
         
+        # Get existing dashboard data
+        existing_dashboard = get_fitness_dashboard_data(user_id)
+        
+        # Enhance with complete 14-day workout data
+        enhanced_dashboard = {
+            **existing_dashboard,
+            'all_workouts_14_days': all_workouts_14_days,  # NEW: Complete 14-day data
+            'recent_workouts': all_workouts_14_days[:10],  # Most recent 10 for display
+            'workout_count_14_days': len(all_workouts_14_days),  # NEW: Actual count
+        }
+        
+        # Calculate enhanced weekly stats based on actual data
+        week_ago = datetime.now() - timedelta(days=7)
         weekly_workouts = [
-            w for w in all_workouts 
-            if start_of_week <= w['date'] < end_of_week
+            w for w in all_workouts_14_days 
+            if w['date'] >= week_ago
         ]
         
-        weekly_stats = {
+        enhanced_weekly_stats = {
             'workouts': len(weekly_workouts),
             'total_duration': sum(w['duration'] for w in weekly_workouts),
             'total_calories': sum(w['calories_burned'] for w in weekly_workouts),
             'avg_duration': sum(w['duration'] for w in weekly_workouts) / len(weekly_workouts) if weekly_workouts else 0
         }
         
-        # Calculate consecutive days streak
-        workout_dates = set(w['date'].date() for w in all_workouts)
-        current_streak = 0
-        longest_streak = 0
-        temp_streak = 0
+        enhanced_dashboard['weekly_stats'] = enhanced_weekly_stats
         
-        # Check from today backwards
-        check_date = today.date()
-        while check_date in workout_dates:
-            current_streak += 1
-            check_date -= timedelta(days=1)
-        
-        # Calculate longest streak
-        sorted_dates = sorted(workout_dates)
-        for i, date in enumerate(sorted_dates):
-            if i == 0 or date == sorted_dates[i-1] + timedelta(days=1):
-                temp_streak += 1
-                longest_streak = max(longest_streak, temp_streak)
-            else:
-                temp_streak = 1
-        
-        return jsonify({
-            "weekly_stats": weekly_stats,
-            "streak": {
-                "current_streak": current_streak,
-                "longest_streak": longest_streak
-            },
-            "recent_workouts": all_workouts[:5],  # Most recent 5
-            "all_time_stats": {
-                "total_workouts": len(all_workouts),
-                "total_duration": sum(w['duration'] for w in all_workouts),
-                "total_calories": sum(w['calories_burned'] for w in all_workouts),
-                "favorite_type": calculate_favorite_workout_type(all_workouts)
-            }
-        })
+        return jsonify(enhanced_dashboard)
         
     except Exception as e:
-        print(f"Error getting fitness dashboard: {e}")
+        print(f"Error getting enhanced fitness dashboard: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": "Failed to get fitness dashboard"}), 500
 
 

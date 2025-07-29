@@ -1,5 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -784,7 +793,7 @@ export default function HomePage() {
           marginBottom: "2rem",
         }}
       >
-        {/* Calorie Trend Chart */}
+        {/* Nutrition Trends Chart - Same as Fitness Dashboard */}
         <div
           style={{
             backgroundColor: "white",
@@ -793,122 +802,174 @@ export default function HomePage() {
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
-          <h3 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
-            14-Day Calorie Trend
-          </h3>
-          <div style={{ position: "relative", height: "200px" }}>
-            <svg width="100%" height="100%" viewBox="0 0 400 200">
-              {/* Grid lines */}
-              {[0, 1, 2, 3, 4].map((i) => (
-                <line
-                  key={i}
-                  x1="40"
-                  y1={40 + i * 32}
-                  x2="380"
-                  y2={40 + i * 32}
-                  stroke="#f7fafc"
-                  strokeWidth="1"
-                />
-              ))}
-
-              {/* Goal line - FIXED to use actual user calorie goal */}
-              <line
-                x1="40"
-                y1="72"
-                x2="380"
-                y2="72"
-                stroke="#48bb78"
-                strokeWidth="2"
-                strokeDasharray="5,5"
-              />
-
-              {/* Data line */}
-              {dashboardData?.daily_history &&
-                dashboardData.daily_history.length > 0 && (
-                  <polyline
-                    fill="none"
-                    stroke="#4299e1"
-                    strokeWidth="3"
-                    points={dashboardData.daily_history
-                      .slice(-14)
-                      .map((day, index) => {
-                        const x = 40 + (index * 340) / 13;
-                        const chartMax = todayProgress.calorieGoal * 1.2;
-                        const y = 168 - (day.calories / chartMax) * 128;
-
-                        return `${x},${Math.max(40, Math.min(168, y))}`;
-                      })
-                      .join(" ")}
-                  />
-                )}
-
-              {/* Data points */}
-              {dashboardData?.daily_history &&
-                dashboardData.daily_history.slice(-14).map((day, index) => {
-                  const x = 40 + (index * 340) / 13;
-                  const chartMax = todayProgress.calorieGoal * 1.2;
-                  const y = 168 - (day.calories / chartMax) * 128;
-
-                  return (
-                    <circle
-                      key={index}
-                      cx={x}
-                      cy={Math.max(40, Math.min(168, y))}
-                      r="4"
-                      fill="#4299e1"
-                    />
-                  );
-                })}
-
-              {/* Y-axis labels - FIXED to show actual user goals */}
-              <text x="35" y="45" textAnchor="end" fontSize="12" fill="#718096">
-                {Math.round(todayProgress.calorieGoal * 1.2)}
-              </text>
-              <text x="35" y="77" textAnchor="end" fontSize="12" fill="#718096">
-                {Math.round(todayProgress.calorieGoal * 1.0)}
-              </text>
-              <text
-                x="35"
-                y="109"
-                textAnchor="end"
-                fontSize="12"
-                fill="#718096"
-              >
-                {Math.round(todayProgress.calorieGoal * 0.8)}
-              </text>
-              <text
-                x="35"
-                y="141"
-                textAnchor="end"
-                fontSize="12"
-                fill="#718096"
-              >
-                {Math.round(todayProgress.calorieGoal * 0.6)}
-              </text>
-              <text
-                x="35"
-                y="173"
-                textAnchor="end"
-                fontSize="12"
-                fill="#718096"
-              >
-                0
-              </text>
-            </svg>
-          </div>
           <div
             style={{
-              fontSize: "12px",
-              color: "#718096",
-              textAlign: "center",
-              marginTop: "0.5rem",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: "1.5rem",
             }}
           >
-            Green line shows your daily calorie goal
+            <h3
+              style={{
+                margin: "0",
+                color: "#1f2937",
+                fontSize: "18px",
+                fontWeight: "600",
+              }}
+            >
+              14-Day Nutrition Trends
+            </h3>
+          </div>
+
+          {dashboardData?.daily_history &&
+          dashboardData.daily_history.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart
+                data={
+                  // Fix the ordering - reverse the array so most recent is on the right
+                  dashboardData.daily_history
+                    .slice(-14) // Get last 14 days
+                    .reverse() // Reverse so most recent is on the right
+                    .map((day, index) => ({
+                      date:
+                        day.days_ago === 0
+                          ? "Today"
+                          : day.days_ago === 1
+                          ? "Yesterday"
+                          : new Date(
+                              Date.now() - day.days_ago * 24 * 60 * 60 * 1000
+                            ).toLocaleDateString("en-US", {
+                              month: "short",
+                              day: "numeric",
+                            }),
+                      calories: day.calories,
+                      protein: day.protein,
+                      carbohydrates: day.carbohydrates,
+                      fat: day.fat,
+                      goal: todayProgress.calorieGoal, // Add goal line data
+                      fullDate: new Date(
+                        Date.now() - day.days_ago * 24 * 60 * 60 * 1000
+                      )
+                        .toISOString()
+                        .split("T")[0],
+                    }))
+                }
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis
+                  dataKey="date"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fill: "#6b7280" }}
+                  domain={[0, todayProgress.calorieGoal * 1.2]}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "white",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "8px",
+                    boxShadow: "0 10px 15px -3px rgba(0, 0, 0, 0.1)",
+                  }}
+                  formatter={(value, name) => {
+                    if (name === "calories")
+                      return [Math.round(value), "Calories"];
+                    if (name === "protein")
+                      return [Math.round(value), "Protein (g)"];
+                    if (name === "carbohydrates")
+                      return [Math.round(value), "Carbs (g)"];
+                    if (name === "fat") return [Math.round(value), "Fat (g)"];
+                    return [value, name];
+                  }}
+                  labelFormatter={(label) => `Date: ${label}`}
+                />
+
+                {/* Goal line */}
+                <Area
+                  type="monotone"
+                  dataKey="goal"
+                  stroke="#10b981"
+                  strokeWidth={2}
+                  strokeDasharray="8 4"
+                  fill="none"
+                  dot={false}
+                />
+
+                {/* Main calories area */}
+                <Area
+                  type="monotone"
+                  dataKey="calories"
+                  stroke="#3b82f6"
+                  fill="#bfdbfe"
+                  strokeWidth={2}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div
+              style={{
+                height: "280px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#6b7280",
+                fontSize: "14px",
+              }}
+            >
+              Complete your nutrition tracking to see your trends
+            </div>
+          )}
+
+          {/* Legend - same style as fitness */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              gap: "1.5rem",
+              marginTop: "1rem",
+              fontSize: "12px",
+              color: "#6b7280",
+            }}
+          >
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <div
+                style={{
+                  width: "16px",
+                  height: "3px",
+                  backgroundColor: "#3b82f6",
+                  borderRadius: "2px",
+                }}
+              />
+              <span>Daily Calories</span>
+            </div>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
+            >
+              <div
+                style={{
+                  width: "16px",
+                  height: "2px",
+                  backgroundColor: "#10b981",
+                  borderRadius: "1px",
+                  background:
+                    "repeating-linear-gradient(to right, #10b981 0, #10b981 6px, transparent 6px, transparent 10px)",
+                }}
+              />
+              <span>Daily Goal ({todayProgress.calorieGoal} cal)</span>
+            </div>
           </div>
         </div>
 
-        {/* Fitness vs Nutrition Chart */}
+        {/* Fitness vs Nutrition Chart - keep as is */}
         <div
           style={{
             backgroundColor: "white",
@@ -917,7 +978,14 @@ export default function HomePage() {
             boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
           }}
         >
-          <h3 style={{ margin: "0 0 1.5rem 0", color: "#2d3748" }}>
+          <h3
+            style={{
+              margin: "0 0 1.5rem 0",
+              color: "#2d3748",
+              fontSize: "18px",
+              fontWeight: "600",
+            }}
+          >
             Weekly Balance Overview
           </h3>
 

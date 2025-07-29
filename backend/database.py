@@ -1459,8 +1459,9 @@ def add_workout_session(user_id, workout_data):
         conn.commit()
         return workout_session_id
 
+
 def get_workout_history(user_id, days_back=30):
-    """Get user's workout history"""
+    """Get user's workout history with proper date handling"""
     with sqlite3.connect(DB_PATH) as conn:
         c = conn.cursor()
        
@@ -1471,11 +1472,31 @@ def get_workout_history(user_id, days_back=30):
                difficulty_level, date_completed, notes, created_at
         FROM workout_sessions
         WHERE user_id = ? AND date_completed >= ?
-        ORDER BY date_completed DESC
+        ORDER BY date_completed DESC, created_at DESC
         """, (user_id, cutoff_date.date()))
        
         workouts = []
         for row in c.fetchall():
+            workout_date = row[6]  # date_completed
+            
+            # Handle different date formats
+            if isinstance(workout_date, str):
+                try:
+                    if 'T' in workout_date:
+                        # Handle ISO format
+                        parsed_date = datetime.fromisoformat(workout_date.replace('Z', '+00:00'))
+                    else:
+                        # Handle YYYY-MM-DD format
+                        parsed_date = datetime.strptime(workout_date, '%Y-%m-%d')
+                except ValueError as e:
+                    print(f"Date parsing error for {workout_date}: {e}")
+                    parsed_date = datetime.now()  # Fallback
+            else:
+                try:
+                    parsed_date = datetime.strptime(str(workout_date), '%Y-%m-%d')
+                except:
+                    parsed_date = datetime.now()  # Fallback
+            
             workouts.append({
                 'id': row[0],
                 'name': row[1],
@@ -1483,7 +1504,9 @@ def get_workout_history(user_id, days_back=30):
                 'duration': row[3],
                 'calories_burned': row[4],
                 'difficulty_level': row[5],
-                'date': datetime.strptime(str(row[6]), '%Y-%m-%d'),
+                'intensity': row[5],  # For compatibility
+                'date': parsed_date,
+                'date_completed': workout_date,
                 'notes': row[7],
                 'created_at': row[8]
             })
