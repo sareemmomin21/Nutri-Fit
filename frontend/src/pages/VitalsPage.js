@@ -1,9 +1,4 @@
-<<<<<<< Updated upstream
-import React, { useState, useEffect } from "react";
-import { FaFire } from "react-icons/fa";
-=======
 import React, { useState, useEffect } from 'react';
->>>>>>> Stashed changes
 import StreakIndicator from '../components/StreakIndicator';
 import VitalsChart from '../components/VitalsChart';
 import VitalsInputForm from '../components/VitalsInputForm';
@@ -201,13 +196,8 @@ const VitalsPage = () => {
         <div className="vitals-summary-card">
           <div className="vitals-summary-card-label">Current Streak</div>
           <div className="vitals-summary-card-value vitals-summary-streak">
-<<<<<<< Updated upstream
-                            <FaFire className="vitals-summary-icon" />
-            {streak} days
-=======
             <span className="vitals-summary-icon">🔥</span>
             {getCurrentStreak()} days
->>>>>>> Stashed changes
           </div>
         </div>
         <div className="vitals-summary-card">
