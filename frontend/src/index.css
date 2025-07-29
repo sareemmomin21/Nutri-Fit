@@ -1,168 +1,115 @@
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: all 0.3s ease;
 }
 
 code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+  font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New",
     monospace;
 }
 
-/* Accessibility and Theme Styles */
+/* =================================================================
+   DARK MODE STYLES
+   ================================================================= */
+
 .dark-mode {
-  background-color: #0f172a !important;
+  background-color: #1a202c !important;
   color: #e2e8f0 !important;
 }
 
-.dark-mode * {
-  color: #e2e8f0 !important;
+/* Dark mode for main app container and body */
+.dark-mode body {
+  background-color: #1a202c !important;
 }
 
-/* Dark mode background overrides */
-.dark-mode div[style*="background-color: white"] {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
+.dark-mode #root {
+  background-color: #1a202c !important;
+  min-height: 100vh !important;
 }
 
-.dark-mode div[style*="background-color: #f7fafc"] {
-  background-color: #0f172a !important;
+/* Override inline background colors for dark mode */
+.dark-mode div,
+.dark-mode section,
+.dark-mode article,
+.dark-mode main,
+.dark-mode nav,
+.dark-mode header {
+  background-color: inherit !important;
 }
 
-.dark-mode div[style*="background-color: #F7FAFC"] {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
+/* Navbar specific styling */
+.dark-mode nav,
+.dark-mode .navbar,
+.dark-mode [style*="background-color: white"] nav {
+  background-color: #2d3748 !important;
+  border-bottom: 1px solid #4a5568 !important;
 }
 
-/* Dark mode text colors */
-.dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4 {
+/* Specific background overrides */
+.dark-mode [style*="background-color: white"],
+.dark-mode [style*="background-color: #fff"],
+.dark-mode [style*="background-color: #ffffff"] {
+  background-color: #2d3748 !important;
+  border-color: #4a5568 !important;
+}
+
+.dark-mode [style*="background-color: #f7fafc"],
+.dark-mode [style*="background-color: #F7FAFC"],
+.dark-mode [style*="background-color: #f8fafc"] {
+  background-color: #1a202c !important;
+}
+
+.dark-mode [style*="background-color: #f0fff4"] {
+  background-color: #22543d !important;
+  border-color: #38a169 !important;
+}
+
+.dark-mode [style*="background-color: #e6fffa"] {
+  background-color: #234e52 !important;
+  border-color: #4fd1c7 !important;
+}
+
+.dark-mode [style*="background-color: #EBF8FF"] {
+  background-color: #2c5282 !important;
+  border-color: #63b3ed !important;
+}
+
+/* Text color overrides */
+.dark-mode h1,
+.dark-mode h2,
+.dark-mode h3,
+.dark-mode h4,
+.dark-mode h5,
+.dark-mode h6 {
   color: #f8fafc !important;
 }
 
-.dark-mode p {
+.dark-mode p,
+.dark-mode span,
+.dark-mode div,
+.dark-mode td,
+.dark-mode th,
+.dark-mode li {
   color: #cbd5e1 !important;
 }
 
-.dark-mode span {
+.dark-mode [style*="color: #2d3748"],
+.dark-mode [style*="color: #2D3748"] {
+  color: #f8fafc !important;
+}
+
+.dark-mode [style*="color: #4a5568"],
+.dark-mode [style*="color: #4A5568"] {
   color: #cbd5e1 !important;
 }
 
-/* Dark mode buttons */
-.dark-mode button {
-  background-color: #3b82f6 !important;
-  color: #ffffff !important;
-  border-color: #3b82f6 !important;
-  transition: all 0.2s ease !important;
-}
-
-.dark-mode button:hover {
-  background-color: #2563eb !important;
-  transform: translateY(-1px) !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
-}
-
-/* Dark mode specific button styles */
-.dark-mode button[style*="background-color: #48BB78"] {
-  background-color: #10b981 !important;
-  border-color: #10b981 !important;
-}
-
-.dark-mode button[style*="background-color: #48BB78"]:hover {
-  background-color: #059669 !important;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
-}
-
-.dark-mode button[style*="background-color: #4299E1"] {
-  background-color: #3b82f6 !important;
-  border-color: #3b82f6 !important;
-}
-
-.dark-mode button[style*="background-color: #4299E1"]:hover {
-  background-color: #2563eb !important;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
-}
-
-.dark-mode button[style*="background-color: #ED8936"] {
-  background-color: #f59e0b !important;
-  border-color: #f59e0b !important;
-}
-
-.dark-mode button[style*="background-color: #ED8936"]:hover {
-  background-color: #d97706 !important;
-  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
-}
-
-.dark-mode button[style*="background-color: #e53e3e"] {
-  background-color: #ef4444 !important;
-  border-color: #ef4444 !important;
-}
-
-.dark-mode button[style*="background-color: #e53e3e"]:hover {
-  background-color: #dc2626 !important;
-  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
-}
-
-/* Dark mode navigation and tabs */
-.dark-mode nav {
-  background-color: #1e293b !important;
-  border-bottom: 1px solid #334155 !important;
-}
-
-.dark-mode .navbar {
-  background-color: #1e293b !important;
-}
-
-/* Dark mode cards and containers */
-.dark-mode .card, .dark-mode [class*="card"] {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-}
-
-/* Dark mode form elements */
-.dark-mode input, .dark-mode select, .dark-mode textarea {
-  background-color: #1e293b !important;
-  border-color: #475569 !important;
-  color: #e2e8f0 !important;
-}
-
-.dark-mode input:focus, .dark-mode select:focus, .dark-mode textarea:focus {
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
-}
-
-/* Dark mode modals */
-.dark-mode .modal, .dark-mode [class*="modal"] {
-  background-color: #1e293b !important;
-  border-color: #334155 !important;
-}
-
-/* Dark mode success/error messages */
-.dark-mode .success {
-  background-color: #065f46 !important;
-  border-color: #10b981 !important;
-  color: #d1fae5 !important;
-}
-
-.dark-mode .error {
-  background-color: #7f1d1d !important;
-  border-color: #ef4444 !important;
-  color: #fecaca !important;
-}
-
-/* Dark mode specific component overrides */
-.dark-mode [style*="background-color: #c6f6d5"] {
-  background-color: #065f46 !important;
-  border-color: #10b981 !important;
-  color: #d1fae5 !important;
-}
-
-.dark-mode [style*="background-color: #fed7d7"] {
-  background-color: #7f1d1d !important;
-  border-color: #ef4444 !important;
-  color: #fecaca !important;
+.dark-mode [style*="color: #718096"] {
+  color: #94a3b8 !important;
 }
 
 .dark-mode [style*="color: #22543d"] {
@@ -170,61 +117,196 @@ code {
 }
 
 .dark-mode [style*="color: #c53030"] {
-  color: #fecaca !important;
+  color: #fca5a5 !important;
 }
 
-/* Dark mode links */
-.dark-mode a {
-  color: #60a5fa !important;
-}
-
-.dark-mode a:hover {
+.dark-mode [style*="color: #2B6CB0"] {
   color: #93c5fd !important;
 }
 
-/* Dark mode scrollbars */
+/* Button improvements */
+.dark-mode button {
+  transition: all 0.2s ease !important;
+  border: 1px solid transparent !important;
+}
+
+.dark-mode button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+}
+
+/* Success/Error message improvements */
+.dark-mode [style*="background-color: #c6f6d5"] {
+  background-color: #22543d !important;
+  border-color: #38a169 !important;
+  color: #c6f6d5 !important;
+}
+
+.dark-mode [style*="background-color: #fed7d7"] {
+  background-color: #742a2a !important;
+  border-color: #e53e3e !important;
+  color: #fed7d7 !important;
+}
+
+/* Form elements */
+.dark-mode input,
+.dark-mode select,
+.dark-mode textarea {
+  background-color: #2d3748 !important;
+  border-color: #4a5568 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark-mode input:focus,
+.dark-mode select:focus,
+.dark-mode textarea:focus {
+  border-color: #63b3ed !important;
+  box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.1) !important;
+}
+
+/* Progress bars and charts */
+.dark-mode [style*="background-color: #e2e8f0"] {
+  background-color: #4a5568 !important;
+}
+
+/* Links */
+.dark-mode a {
+  color: #63b3ed !important;
+}
+
+.dark-mode a:hover {
+  color: #90cdf4 !important;
+}
+
+/* Modal and overlay improvements */
+.dark-mode .modal,
+.dark-mode [class*="modal"],
+.dark-mode [style*="position: fixed"],
+.dark-mode [style*="z-index"] {
+  background-color: #2d3748 !important;
+  border-color: #4a5568 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Modal backdrop */
+.dark-mode [style*="background-color: rgba(0, 0, 0"],
+.dark-mode [style*="background: rgba(0, 0, 0"] {
+  background-color: rgba(26, 32, 44, 0.8) !important;
+}
+
+/* Dropdown and select improvements */
+.dark-mode select option {
+  background-color: #2d3748 !important;
+  color: #e2e8f0 !important;
+}
+
+/* Scrollbars */
 .dark-mode ::-webkit-scrollbar {
   width: 8px;
 }
 
 .dark-mode ::-webkit-scrollbar-track {
-  background: #1e293b;
+  background: #2d3748;
 }
 
 .dark-mode ::-webkit-scrollbar-thumb {
-  background: #475569;
+  background: #4a5568;
   border-radius: 4px;
 }
 
 .dark-mode ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #718096;
 }
 
-/* High Contrast Mode */
+/* =================================================================
+   HIGH CONTRAST MODE
+   ================================================================= */
+
 .high-contrast {
-  filter: contrast(1.5) !important;
+  filter: contrast(1.8) brightness(1.1) !important;
 }
 
 .high-contrast * {
-  border: 2px solid #000000 !important;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8) !important;
 }
 
 .high-contrast button {
-  border: 3px solid #000000 !important;
+  border: 2px solid #000000 !important;
+  font-weight: bold !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5) !important;
+}
+
+.high-contrast input,
+.high-contrast select,
+.high-contrast textarea {
+  border: 2px solid #000000 !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.high-contrast h1,
+.high-contrast h2,
+.high-contrast h3,
+.high-contrast h4 {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.9) !important;
   font-weight: bold !important;
 }
 
-.high-contrast h1, .high-contrast h2, .high-contrast h3, .high-contrast h4 {
-  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8) !important;
+/* High contrast modal improvements */
+.high-contrast .modal,
+.high-contrast [class*="modal"],
+.high-contrast [style*="position: fixed"] {
+  border: 3px solid #000000 !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8) !important;
 }
 
-/* Large Font Mode */
+.high-contrast [style*="background-color: rgba(0, 0, 0"],
+.high-contrast [style*="background: rgba(0, 0, 0"] {
+  background-color: rgba(0, 0, 0, 0.9) !important;
+}
+
+/* High contrast + dark mode combination */
+.dark-mode.high-contrast {
+  filter: contrast(2) brightness(1.2) !important;
+}
+
+.dark-mode.high-contrast * {
+  text-shadow: 1px 1px 3px rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark-mode.high-contrast button {
+  border: 2px solid #ffffff !important;
+}
+
+.dark-mode.high-contrast input,
+.dark-mode.high-contrast select,
+.dark-mode.high-contrast textarea {
+  border: 2px solid #ffffff !important;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.dark-mode.high-contrast .modal,
+.dark-mode.high-contrast [class*="modal"],
+.dark-mode.high-contrast [style*="position: fixed"] {
+  border: 3px solid #ffffff !important;
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* =================================================================
+   LARGE FONT MODE
+   ================================================================= */
+
 .large-font {
-  font-size: 1.2em !important;
+  font-size: 1.25em !important;
 }
 
 .large-font * {
-  font-size: 1.2em !important;
+  font-size: inherit !important;
+  line-height: 1.6 !important;
 }
 
 .large-font h1 {
@@ -239,26 +321,96 @@ code {
   font-size: 1.5em !important;
 }
 
+.large-font h4 {
+  font-size: 1.3em !important;
+}
+
 .large-font button {
   font-size: 1.1em !important;
-  padding: 12px 24px !important;
+  padding: 14px 28px !important;
+  min-height: 48px !important;
 }
 
-/* Combined effects */
-.dark-mode.high-contrast {
-  background-color: #000000 !important;
-  color: #ffffff !important;
+.large-font input,
+.large-font select,
+.large-font textarea {
+  font-size: 1.1em !important;
+  padding: 12px !important;
+  min-height: 44px !important;
 }
 
-.dark-mode.high-contrast * {
-  background-color: #000000 !important;
-  color: #ffffff !important;
+/* Responsive adjustments for large font */
+@media (max-width: 768px) {
+  .large-font {
+    font-size: 1.15em !important;
+  }
+
+  .large-font button {
+    padding: 12px 24px !important;
+  }
 }
+
+/* =================================================================
+   COMBINED MODES
+   ================================================================= */
 
 .dark-mode.large-font {
-  font-size: 1.3em !important;
+  font-size: 1.25em !important;
 }
 
-.dark-mode.large-font * {
-  font-size: 1.3em !important;
+.high-contrast.large-font button {
+  font-size: 1.15em !important;
+  padding: 16px 32px !important;
+  font-weight: bold !important;
+}
+
+/* =================================================================
+   SMOOTH TRANSITIONS
+   ================================================================= */
+
+* {
+  transition: background-color 0.3s ease, color 0.3s ease,
+    border-color 0.3s ease !important;
+}
+
+button {
+  transition: all 0.2s ease !important;
+}
+
+/* =================================================================
+   FOCUS IMPROVEMENTS FOR ACCESSIBILITY
+   ================================================================= */
+
+button:focus,
+input:focus,
+select:focus,
+textarea:focus,
+a:focus {
+  outline: 3px solid #63b3ed !important;
+  outline-offset: 2px !important;
+}
+
+.dark-mode button:focus,
+.dark-mode input:focus,
+.dark-mode select:focus,
+.dark-mode textarea:focus,
+.dark-mode a:focus {
+  outline-color: #90cdf4 !important;
+}
+
+.high-contrast button:focus,
+.high-contrast input:focus,
+.high-contrast select:focus,
+.high-contrast textarea:focus,
+.high-contrast a:focus {
+  outline: 4px solid #000000 !important;
+  outline-offset: 2px !important;
+}
+
+.dark-mode.high-contrast button:focus,
+.dark-mode.high-contrast input:focus,
+.dark-mode.high-contrast select:focus,
+.dark-mode.high-contrast textarea:focus,
+.dark-mode.high-contrast a:focus {
+  outline: 4px solid #ffffff !important;
 }

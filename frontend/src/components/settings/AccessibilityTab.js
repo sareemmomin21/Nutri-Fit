@@ -1,5 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { toggleDarkMode, toggleHighContrast, toggleFontSize, getCurrentTheme } from "../../utils/themeUtils";
+import {
+  toggleDarkMode,
+  toggleHighContrast,
+  toggleFontSize,
+  getCurrentTheme,
+} from "../../utils/themeUtils";
+
+import { FaMoon, FaSun } from "react-icons/fa";
+import { GiNewspaper } from "react-icons/gi";
+import { MdOutlineWbSunny } from "react-icons/md";
+import { TbDisabled } from "react-icons/tb";
 
 export default function AccessibilityTab() {
   const [currentTheme, setCurrentTheme] = useState(getCurrentTheme());
@@ -12,7 +22,10 @@ export default function AccessibilityTab() {
 
     // Listen for theme changes
     const observer = new MutationObserver(updateTheme);
-    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
 
     return () => observer.disconnect();
   }, []);
@@ -31,7 +44,7 @@ export default function AccessibilityTab() {
     toggleFontSize();
     setCurrentTheme(getCurrentTheme());
   };
-  
+
   const getCurrentThemeDisplay = () => {
     return currentTheme.isDark ? "Dark" : "Light";
   };
@@ -44,160 +57,422 @@ export default function AccessibilityTab() {
     return currentTheme.isLargeFont ? "Large" : "Normal";
   };
 
+  const buttonBaseStyle = {
+    padding: "14px 28px",
+    border: "none",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "15px",
+    fontWeight: "600",
+    transition: "all 0.2s ease",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    minHeight: "50px",
+    position: "relative",
+    overflow: "hidden",
+  };
+
+  const statusBadgeStyle = {
+    padding: "4px 12px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+  };
+
+  const cardStyle = {
+    backgroundColor: "white",
+    padding: "24px",
+    borderRadius: "16px",
+    border: "1px solid #e2e8f0",
+    marginBottom: "20px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+  };
+
   return (
-    <div>
-      <h2 style={{ color: "#2D3748", marginBottom: "1rem" }}>
-        Accessibility & Theme Settings
-      </h2>
-      
-      <div style={{ marginBottom: "2rem" }}>
-        <h3 style={{ color: "#4A5568", marginBottom: "1rem" }}>Theme Settings</h3>
-        <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
+    <div style={{ maxWidth: "800px" }}>
+      <div style={{ marginBottom: "32px" }}>
+        <h2
+          style={{
+            color: "#1a202c",
+            marginBottom: "8px",
+            fontSize: "28px",
+            fontWeight: "700",
+          }}
+        >
+          Accessibility & Display
+        </h2>
+        <p
+          style={{
+            color: "#718096",
+            fontSize: "16px",
+            margin: "0",
+            lineHeight: "1.5",
+          }}
+        >
+          Customize your experience for better accessibility and comfort
+        </p>
+      </div>
+
+      {/* Theme Settings Card */}
+      <div style={cardStyle}>
+        <div style={{ marginBottom: "20px" }}>
+          <h3
+            style={{
+              color: "#2d3748",
+              marginBottom: "8px",
+              fontSize: "20px",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            Theme Settings
+          </h3>
+          <p
+            style={{
+              color: "#718096",
+              fontSize: "14px",
+              margin: "0",
+            }}
+          >
+            Switch between light and dark modes
+          </p>
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "16px",
+          }}
+        >
           <button
             onClick={handleToggleDarkMode}
             style={{
-              padding: "12px 24px",
-              backgroundColor: "#48BB78",
+              ...buttonBaseStyle,
+              backgroundColor: currentTheme.isDark ? "#4c51bf" : "#667eea",
               color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginRight: "15px",
-              fontWeight: "500",
-              transition: "all 0.2s ease",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+              flex: "1",
+              minWidth: "200px",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
             }}
           >
-            {currentTheme.isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            <span>{currentTheme.isDark ? <FaSun /> : <FaMoon />}</span>
+            {currentTheme.isDark
+              ? "Switch to Light Mode"
+              : "Switch to Dark Mode"}
           </button>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ 
-              color: "#718096", 
-              fontSize: "14px",
-              marginRight: "8px"
-            }}>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span
+              style={{
+                color: "#718096",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
               Current:
             </span>
-            <span style={{ 
-              color: currentTheme.isDark ? "#10b981" : "#48BB78",
-              fontSize: "14px",
-              fontWeight: "600"
-            }}>
+            <span
+              style={{
+                ...statusBadgeStyle,
+                backgroundColor: currentTheme.isDark ? "#553c9a" : "#667eea",
+                color: "white",
+              }}
+            >
               {getCurrentThemeDisplay()} Mode
             </span>
           </div>
         </div>
       </div>
 
-      <div style={{ marginBottom: "2rem" }}>
-        <h3 style={{ color: "#4A5568", marginBottom: "1rem" }}>Accessibility Options</h3>
-        <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
+      {/* Accessibility Options Card */}
+      <div style={cardStyle}>
+        <div style={{ marginBottom: "24px" }}>
+          <h3
+            style={{
+              color: "#2d3748",
+              marginBottom: "8px",
+              fontSize: "20px",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <TbDisabled /> Accessibility Options
+          </h3>
+          <p
+            style={{
+              color: "#718096",
+              fontSize: "14px",
+              margin: "0",
+            }}
+          >
+            Enhance visibility and readability
+          </p>
+        </div>
+
+        {/* High Contrast */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: "20px",
+            flexWrap: "wrap",
+            gap: "16px",
+          }}
+        >
           <button
             onClick={handleToggleHighContrast}
             style={{
-              padding: "12px 24px",
-              backgroundColor: "#4299E1",
+              ...buttonBaseStyle,
+              backgroundColor: currentTheme.isHighContrast
+                ? "#2b6cb0"
+                : "#4299e1",
               color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginRight: "15px",
-              fontWeight: "500",
-              transition: "all 0.2s ease",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+              flex: "1",
+              minWidth: "200px",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
             }}
           >
-            {currentTheme.isHighContrast ? "Disable High Contrast" : "Enable High Contrast"}
+            <span>
+              <MdOutlineWbSunny />
+            </span>
+            {currentTheme.isHighContrast
+              ? "Disable High Contrast"
+              : "Enable High Contrast"}
           </button>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ 
-              color: "#718096", 
-              fontSize: "14px",
-              marginRight: "8px"
-            }}>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span
+              style={{
+                color: "#718096",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
               Current:
             </span>
-            <span style={{ 
-              color: currentTheme.isHighContrast ? "#3b82f6" : "#4299E1",
-              fontSize: "14px",
-              fontWeight: "600"
-            }}>
+            <span
+              style={{
+                ...statusBadgeStyle,
+                backgroundColor: currentTheme.isHighContrast
+                  ? "#2b6cb0"
+                  : "#e2e8f0",
+                color: currentTheme.isHighContrast ? "white" : "#718096",
+              }}
+            >
               {getCurrentContrast()} Contrast
             </span>
           </div>
         </div>
-        
-        <div style={{ display: "flex", alignItems: "center", marginBottom: "1rem" }}>
+
+        {/* Large Font */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: "16px",
+          }}
+        >
           <button
             onClick={handleToggleFontSize}
             style={{
-              padding: "12px 24px",
-              backgroundColor: "#ED8936",
+              ...buttonBaseStyle,
+              backgroundColor: currentTheme.isLargeFont ? "#c05621" : "#ed8936",
               color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginRight: "15px",
-              fontWeight: "500",
-              transition: "all 0.2s ease",
-              boxShadow: "0 2px 4px rgba(0,0,0,0.1)"
+              flex: "1",
+              minWidth: "200px",
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.transform = "translateY(-2px)";
+              e.target.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.transform = "translateY(0)";
+              e.target.style.boxShadow = "0 2px 8px rgba(0,0,0,0.1)";
             }}
           >
+            <span>
+              <GiNewspaper />
+            </span>
             {currentTheme.isLargeFont ? "Use Normal Font" : "Use Large Font"}
           </button>
-          <div style={{ display: "flex", alignItems: "center" }}>
-            <span style={{ 
-              color: "#718096", 
-              fontSize: "14px",
-              marginRight: "8px"
-            }}>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            <span
+              style={{
+                color: "#718096",
+                fontSize: "14px",
+                fontWeight: "500",
+              }}
+            >
               Current:
             </span>
-            <span style={{ 
-              color: currentTheme.isLargeFont ? "#f59e0b" : "#ED8936",
-              fontSize: "14px",
-              fontWeight: "600"
-            }}>
-              {getCurrentFontSize()} Font Size
+            <span
+              style={{
+                ...statusBadgeStyle,
+                backgroundColor: currentTheme.isLargeFont
+                  ? "#c05621"
+                  : "#e2e8f0",
+                color: currentTheme.isLargeFont ? "white" : "#718096",
+              }}
+            >
+              {getCurrentFontSize()} Font
             </span>
           </div>
         </div>
       </div>
 
-      <div style={{ 
-        backgroundColor: "#F7FAFC", 
-        padding: "1.5rem", 
-        borderRadius: "12px",
-        border: "1px solid #E2E8F0",
-        marginTop: "2rem"
-      }}>
-        <h4 style={{ color: "#2D3748", marginBottom: "1rem", fontSize: "18px" }}>About These Settings</h4>
-        <ul style={{ color: "#4A5568", fontSize: "14px", margin: "0", paddingLeft: "1.5rem", lineHeight: "1.6" }}>
-          <li style={{ marginBottom: "0.5rem" }}>
-            <strong style={{ color: "#2D3748" }}>Dark Mode:</strong> Reduces eye strain in low-light environments and provides a modern, sleek interface
-          </li>
-          <li style={{ marginBottom: "0.5rem" }}>
-            <strong style={{ color: "#2D3748" }}>High Contrast:</strong> Improves readability for users with visual impairments by enhancing color differences
-          </li>
-          <li style={{ marginBottom: "0.5rem" }}>
-            <strong style={{ color: "#2D3748" }}>Large Font:</strong> Increases text size for better readability and accessibility
-          </li>
-        </ul>
-        <div style={{ 
-          backgroundColor: "#EBF8FF", 
-          padding: "1rem", 
-          borderRadius: "8px", 
-          marginTop: "1rem",
-          border: "1px solid #BEE3F8"
-        }}>
-          <p style={{ color: "#2B6CB0", fontSize: "13px", margin: "0", fontWeight: "500" }}>
-            💡 Your preferences are automatically saved and will persist across sessions.
+      {/* Information Card */}
+      <div
+        style={{
+          ...cardStyle,
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          color: "white",
+          border: "none",
+        }}
+      >
+        <h4
+          style={{
+            color: "white",
+            marginBottom: "16px",
+            fontSize: "18px",
+            fontWeight: "600",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+          }}
+        >
+          About These Settings
+        </h4>
+        <div
+          style={{
+            display: "grid",
+            gap: "12px",
+            fontSize: "14px",
+            lineHeight: "1.6",
+          }}
+        >
+          {/* Dark Mode Card - Dark themed */}
+          <div
+            style={{
+              background: "linear-gradient(135deg, #1a202c 0%, #2d3748 100%)",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "1px solid #4a5568",
+              color: "#e2e8f0",
+            }}
+          >
+            <strong style={{ color: "#90cdf4" }}>Dark Mode:</strong> Reduces eye
+            strain in low-light environments and provides a modern interface
+            that's easier on the eyes during extended use.
+          </div>
+
+          {/* High Contrast Card - High contrast styled */}
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              padding: "12px",
+              borderRadius: "8px",
+              border: "3px solid #000000",
+              color: "#000000",
+              textShadow: "1px 1px 2px rgba(0,0,0,0.3)",
+              fontWeight: "bold",
+            }}
+          >
+            <strong style={{ color: "#000000" }}>High Contrast:</strong>{" "}
+            Increases color differences and adds text shadows to improve
+            readability for users with visual impairments or in bright
+            environments.
+          </div>
+
+          {/* Large Font Card - Large font styled */}
+          <div
+            style={{
+              backgroundColor: "rgba(255,255,255,0.1)",
+              padding: "16px",
+              borderRadius: "8px",
+              backdropFilter: "blur(10px)",
+              fontSize: "16px",
+              lineHeight: "1.8",
+            }}
+          >
+            <strong style={{ fontSize: "17px" }}>Large Font:</strong> Increases
+            text size and improves spacing for better readability and
+            accessibility compliance.
+          </div>
+        </div>
+
+        <div
+          style={{
+            backgroundColor: "rgba(255,255,255,0.15)",
+            padding: "16px",
+            borderRadius: "12px",
+            marginTop: "20px",
+            backdropFilter: "blur(10px)",
+            border: "1px solid rgba(255,255,255,0.2)",
+          }}
+        >
+          <p
+            style={{
+              color: "white",
+              fontSize: "14px",
+              margin: "0",
+              fontWeight: "500",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+            }}
+          >
+            Your preferences are automatically saved and will persist across all
+            sessions and devices.
           </p>
         </div>
       </div>
     </div>
   );
-} 
+}
