@@ -6,6 +6,7 @@ import GoalsTab from "../components/settings/GoalsTab";
 import FoodPreferencesTab from "../components/settings/FoodPreferencesTab";
 import WorkoutPreferencesTab from "../components/settings/WorkoutPreferencesTab";
 import CustomWorkoutsTab from "../components/settings/CustomWorkoutsTab";
+import AccessibilityTab from "../components/settings/AccessibilityTab";
 import CustomWorkoutModal from "../components/fitness/CustomWorkoutModal";
 import { settingsAPI } from "../utils/settingsAPI";
 
@@ -306,6 +307,10 @@ export default function SettingsPage() {
             onRefresh={fetchUserData}
           />
         )}
+
+        {activeTab === "accessibility" && (
+          <AccessibilityTab />
+        )}
       </div>
 
       {/* Workout Modal */}
@@ -376,6 +381,12 @@ function SettingsTabs({ activeTab, setActiveTab }) {
           style={tabStyle(activeTab === "custom")}
         >
           Custom Workouts
+        </button>
+        <button
+          onClick={() => setActiveTab("accessibility")}
+          style={tabStyle(activeTab === "accessibility")}
+        >
+          Accessibility
         </button>
       </div>
     </div>

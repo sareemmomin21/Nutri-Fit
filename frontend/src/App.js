@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
+import { initializeTheme } from "./utils/themeUtils";
 import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
@@ -36,6 +37,11 @@ function PublicRoute({ children, allowQuestions = false }) {
 }
 
 function App() {
+  useEffect(() => {
+    // Initialize theme settings when app loads
+    initializeTheme();
+  }, []);
+
   return (
     <Router>
       <div style={{ fontFamily: "Arial, sans-serif" }}>

@@ -14,59 +14,101 @@ import './styles/Vitals.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-// Mock data for demonstration
-const MOCK_DATA = {
-  water: {
-    '1w': [2, 2.5, 3, 2.8, 2.2, 3, 2.7],
-    '1m': Array(30).fill().map(() => 2 + Math.random()),
-    '3m': Array(90).fill().map(() => 2 + Math.random()),
-    '6m': Array(180).fill().map(() => 2 + Math.random()),
-    '1y': Array(365).fill().map(() => 2 + Math.random()),
-  },
-  sleep: {
-    '1w': [7, 6.5, 8, 7.2, 7.8, 6.9, 7.5],
-    '1m': Array(30).fill().map(() => 6 + Math.random() * 2),
-    '3m': Array(90).fill().map(() => 6 + Math.random() * 2),
-    '6m': Array(180).fill().map(() => 6 + Math.random() * 2),
-    '1y': Array(365).fill().map(() => 6 + Math.random() * 2),
-  },
+// Target values for each metric
+const TARGET_VALUES = {
+  water: 64, // oz
+  sleep: 8,  // hours
+  steps: 10000, // steps
 };
 
-const getLabels = (range) => {
+// Helper function to convert vitals data to chart format
+const processVitalsData = (data, metric, range) => {
+  if (!data || Object.keys(data).length === 0) {
+    return { labels: [], data: [] };
+  }
+
   const today = new Date();
   let days = 7;
   if (range === '1m') days = 30;
   if (range === '3m') days = 90;
   if (range === '6m') days = 180;
   if (range === '1y') days = 365;
-  return Array.from({ length: days }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (days - 1 - i));
-    return `${d.getMonth() + 1}/${d.getDate()}`;
-  });
+
+  const labels = [];
+  const chartData = [];
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const dateString = date.toISOString().split('T')[0];
+    const label = `${date.getMonth() + 1}/${date.getDate()}`;
+    
+    labels.push(label);
+    
+    if (data[dateString]) {
+      let value = 0;
+      if (metric === 'water') {
+        value = data[dateString].amount || 0;
+      } else if (metric === 'sleep') {
+        value = (data[dateString].hours || 0) + (data[dateString].minutes || 0) / 60;
+      } else if (metric === 'steps') {
+        value = data[dateString].steps || 0;
+      }
+      chartData.push(value);
+    } else {
+      chartData.push(null); // No data for this day
+    }
+  }
+
+  return { labels, data: chartData };
 };
 
-const VitalsChart = ({ metric, range }) => {
-  const dataArr = MOCK_DATA[metric]?.[range] || [];
-  const labels = getLabels(range);
+const VitalsChart = ({ metric, range, data = {} }) => {
+  const { labels, data: chartData } = processVitalsData(data, metric, range);
+  
+  // Filter out null values for better chart display
+  const filteredData = chartData.filter(val => val !== null);
+  const hasData = filteredData.length > 0;
 
-  const chartData = {
+  // Get target value for the current metric
+  const targetValue = TARGET_VALUES[metric] || 0;
+  
+  // Create target line data (same value for all labels)
+  const targetLineData = labels.map(() => targetValue);
+
+  const chartConfig = {
     labels,
     datasets: [
       {
-        label: metric === 'water' ? 'Water (L)' : 'Sleep (hrs)',
-        data: dataArr,
+        label: metric === 'water' ? 'Water (L)' : metric === 'sleep' ? 'Sleep (hrs)' : 'Steps',
+        data: chartData,
         fill: false,
         borderColor: '#4f8cff',
         backgroundColor: '#4f8cff',
         tension: 0.3,
         pointRadius: 3,
+        pointHoverRadius: 5,
+        spanGaps: true, // Connect points even with null values
+        order: 1, // Main data line appears on top
+      },
+      {
+        label: 'Target',
+        data: targetLineData,
+        fill: false,
+        borderColor: '#ff6b6b',
+        backgroundColor: '#ff6b6b',
+        borderDash: [5, 5], // Dashed line
+        tension: 0,
+        pointRadius: 0, // No points on target line
+        spanGaps: false,
+        order: 0, // Target line appears behind main data
       },
     ],
   };
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         display: false,
@@ -77,6 +119,30 @@ const VitalsChart = ({ metric, range }) => {
       tooltip: {
         mode: 'index',
         intersect: false,
+        callbacks: {
+          label: function(context) {
+            const value = context.parsed.y;
+            if (context.datasetIndex === 0) { // Main data
+              if (metric === 'water') {
+                return `Water: ${value} ${data.unit || 'oz'}`;
+              } else if (metric === 'sleep') {
+                return `Sleep: ${value.toFixed(1)} hours`;
+              } else if (metric === 'steps') {
+                return `Steps: ${value.toLocaleString()}`;
+              }
+              return `${context.dataset.label}: ${value}`;
+            } else { // Target line
+              if (metric === 'water') {
+                return `Target: ${value} oz`;
+              } else if (metric === 'sleep') {
+                return `Target: ${value} hours`;
+              } else if (metric === 'steps') {
+                return `Target: ${value.toLocaleString()} steps`;
+              }
+              return `Target: ${value}`;
+            }
+          }
+        }
       },
     },
     scales: {
@@ -96,16 +162,25 @@ const VitalsChart = ({ metric, range }) => {
         ticks: {
           color: '#888',
         },
+        beginAtZero: true,
       },
+    },
+    interaction: {
+      intersect: false,
+      mode: 'index',
     },
   };
 
   return (
     <div className="vitals-chart-card">
-      {dataArr.length > 0 ? (
-        <Line data={chartData} options={options} />
+      {hasData ? (
+        <Line data={chartConfig} options={options} />
       ) : (
-        <div className="vitals-no-data">No data available for this range.</div>
+        <div className="vitals-no-data">
+          <p>No data available for this range.</p>
+          <p>Log your first {metric} entry to see your progress!</p>
+          <p>Target: {metric === 'water' ? `${targetValue} oz` : metric === 'sleep' ? `${targetValue} hours` : `${targetValue.toLocaleString()} steps`}</p>
+        </div>
       )}
     </div>
   );
