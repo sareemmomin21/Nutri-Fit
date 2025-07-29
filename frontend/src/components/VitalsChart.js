@@ -14,59 +14,118 @@ import './styles/Vitals.css';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
-// Mock data for demonstration
-const MOCK_DATA = {
-  water: {
-    '1w': [2, 2.5, 3, 2.8, 2.2, 3, 2.7],
-    '1m': Array(30).fill().map(() => 2 + Math.random()),
-    '3m': Array(90).fill().map(() => 2 + Math.random()),
-    '6m': Array(180).fill().map(() => 2 + Math.random()),
-    '1y': Array(365).fill().map(() => 2 + Math.random()),
-  },
-  sleep: {
-    '1w': [7, 6.5, 8, 7.2, 7.8, 6.9, 7.5],
-    '1m': Array(30).fill().map(() => 6 + Math.random() * 2),
-    '3m': Array(90).fill().map(() => 6 + Math.random() * 2),
-    '6m': Array(180).fill().map(() => 6 + Math.random() * 2),
-    '1y': Array(365).fill().map(() => 6 + Math.random() * 2),
-  },
-};
+// Helper function to convert vitals data to chart format
+const processVitalsData = (data, metric, range) => {
+  if (!data || Object.keys(data).length === 0) {
+    return { labels: [], data: [] };
+  }
 
-const getLabels = (range) => {
   const today = new Date();
   let days = 7;
   if (range === '1m') days = 30;
   if (range === '3m') days = 90;
   if (range === '6m') days = 180;
   if (range === '1y') days = 365;
-  return Array.from({ length: days }, (_, i) => {
-    const d = new Date(today);
-    d.setDate(today.getDate() - (days - 1 - i));
-    return `${d.getMonth() + 1}/${d.getDate()}`;
-  });
+
+  const labels = [];
+  const chartData = [];
+
+  for (let i = days - 1; i >= 0; i--) {
+    const date = new Date(today);
+    date.setDate(today.getDate() - i);
+    const dateString = date.toISOString().split('T')[0];
+    const label = `${date.getMonth() + 1}/${date.getDate()}`;
+    
+    labels.push(label);
+    
+    if (data[dateString]) {
+      let value = 0;
+      
+      // Handle aggregated data from backend
+      if (typeof data[dateString] === 'number') {
+        // Backend is returning aggregated numerical values
+        value = data[dateString];
+      } else if (Array.isArray(data[dateString])) {
+        // Multiple entries - aggregate them
+        const values = data[dateString].map(entry => {
+          const valueData = entry.value;
+          if (metric === 'water') {
+            return valueData.amount || 0;
+          } else if (metric === 'sleep') {
+            return (valueData.hours || 0) + (valueData.minutes || 0) / 60;
+          } else if (metric === 'steps') {
+            return valueData.steps || 0;
+          } else if (metric === 'meditation') {
+            return valueData.minutes || 0;
+          } else if (metric === 'mood') {
+            return valueData.rating || 0;
+          }
+          return 0;
+        });
+        
+        if (metric === 'mood') {
+          // For mood, average the values
+          value = values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0;
+        } else {
+          // For other metrics, sum the values
+          value = values.reduce((a, b) => a + b, 0);
+        }
+      } else {
+        // Single entry (backward compatibility)
+        const valueData = data[dateString].value || data[dateString];
+        if (metric === 'water') {
+          value = valueData.amount || 0;
+        } else if (metric === 'sleep') {
+          value = (valueData.hours || 0) + (valueData.minutes || 0) / 60;
+        } else if (metric === 'steps') {
+          value = valueData.steps || 0;
+        } else if (metric === 'meditation') {
+          value = valueData.minutes || 0;
+        } else if (metric === 'mood') {
+          value = valueData.rating || 0;
+        }
+      }
+      
+      chartData.push(value);
+    } else {
+      chartData.push(null); // No data for this day
+    }
+  }
+
+  return { labels, data: chartData };
 };
 
-const VitalsChart = ({ metric, range }) => {
-  const dataArr = MOCK_DATA[metric]?.[range] || [];
-  const labels = getLabels(range);
+const VitalsChart = ({ metric, range, data = {} }) => {
+  const { labels, data: chartData } = processVitalsData(data, metric, range);
+  
+  // Filter out null values for better chart display
+  const filteredData = chartData.filter(val => val !== null);
+  const hasData = filteredData.length > 0;
 
-  const chartData = {
+  const chartConfig = {
     labels,
     datasets: [
       {
-        label: metric === 'water' ? 'Water (L)' : 'Sleep (hrs)',
-        data: dataArr,
+        label: metric === 'water' ? 'Water (oz)' : 
+               metric === 'sleep' ? 'Sleep (hrs)' : 
+               metric === 'steps' ? 'Steps' :
+               metric === 'meditation' ? 'Meditation (min)' :
+               metric === 'mood' ? 'Mood Rating' : 'Value',
+        data: chartData,
         fill: false,
         borderColor: '#4f8cff',
         backgroundColor: '#4f8cff',
         tension: 0.3,
         pointRadius: 3,
+        pointHoverRadius: 5,
+        spanGaps: true, // Connect points even with null values
       },
     ],
   };
 
   const options = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         display: false,
@@ -77,6 +136,23 @@ const VitalsChart = ({ metric, range }) => {
       tooltip: {
         mode: 'index',
         intersect: false,
+        callbacks: {
+          label: function(context) {
+            const value = context.parsed.y;
+            if (metric === 'water') {
+              return `Water: ${value} ${data.unit || 'oz'}`;
+            } else if (metric === 'sleep') {
+              return `Sleep: ${value.toFixed(1)} hours`;
+            } else if (metric === 'steps') {
+              return `Steps: ${value.toLocaleString()}`;
+            } else if (metric === 'meditation') {
+              return `Meditation: ${value} minutes`;
+            } else if (metric === 'mood') {
+              return `Mood: ${value}/10`;
+            }
+            return `${context.dataset.label}: ${value}`;
+          }
+        }
       },
     },
     scales: {
@@ -96,16 +172,24 @@ const VitalsChart = ({ metric, range }) => {
         ticks: {
           color: '#888',
         },
+        beginAtZero: true,
       },
+    },
+    interaction: {
+      intersect: false,
+      mode: 'index',
     },
   };
 
   return (
     <div className="vitals-chart-card">
-      {dataArr.length > 0 ? (
-        <Line data={chartData} options={options} />
+      {hasData ? (
+        <Line data={chartConfig} options={options} />
       ) : (
-        <div className="vitals-no-data">No data available for this range.</div>
+        <div className="vitals-no-data">
+          <p>No data available for this range.</p>
+          <p>Log your first {metric} entry to see your progress!</p>
+        </div>
       )}
     </div>
   );

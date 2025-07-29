@@ -11,3 +11,254 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+/* Accessibility and Theme Styles */
+.dark-mode {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+}
+
+.dark-mode * {
+  color: #e2e8f0 !important;
+}
+
+/* Dark mode background overrides */
+.dark-mode div[style*="background-color: white"] {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+.dark-mode div[style*="background-color: #f7fafc"] {
+  background-color: #0f172a !important;
+}
+
+.dark-mode div[style*="background-color: #F7FAFC"] {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+/* Dark mode text colors */
+.dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4 {
+  color: #f8fafc !important;
+}
+
+.dark-mode p {
+  color: #cbd5e1 !important;
+}
+
+.dark-mode span {
+  color: #cbd5e1 !important;
+}
+
+/* Dark mode buttons */
+.dark-mode button {
+  background-color: #3b82f6 !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+  transition: all 0.2s ease !important;
+}
+
+.dark-mode button:hover {
+  background-color: #2563eb !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Dark mode specific button styles */
+.dark-mode button[style*="background-color: #48BB78"] {
+  background-color: #10b981 !important;
+  border-color: #10b981 !important;
+}
+
+.dark-mode button[style*="background-color: #48BB78"]:hover {
+  background-color: #059669 !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+}
+
+.dark-mode button[style*="background-color: #4299E1"] {
+  background-color: #3b82f6 !important;
+  border-color: #3b82f6 !important;
+}
+
+.dark-mode button[style*="background-color: #4299E1"]:hover {
+  background-color: #2563eb !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.dark-mode button[style*="background-color: #ED8936"] {
+  background-color: #f59e0b !important;
+  border-color: #f59e0b !important;
+}
+
+.dark-mode button[style*="background-color: #ED8936"]:hover {
+  background-color: #d97706 !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+}
+
+.dark-mode button[style*="background-color: #e53e3e"] {
+  background-color: #ef4444 !important;
+  border-color: #ef4444 !important;
+}
+
+.dark-mode button[style*="background-color: #e53e3e"]:hover {
+  background-color: #dc2626 !important;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important;
+}
+
+/* Dark mode navigation and tabs */
+.dark-mode nav {
+  background-color: #1e293b !important;
+  border-bottom: 1px solid #334155 !important;
+}
+
+.dark-mode .navbar {
+  background-color: #1e293b !important;
+}
+
+/* Dark mode cards and containers */
+.dark-mode .card, .dark-mode [class*="card"] {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+/* Dark mode form elements */
+.dark-mode input, .dark-mode select, .dark-mode textarea {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #e2e8f0 !important;
+}
+
+.dark-mode input:focus, .dark-mode select:focus, .dark-mode textarea:focus {
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+}
+
+/* Dark mode modals */
+.dark-mode .modal, .dark-mode [class*="modal"] {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+/* Dark mode success/error messages */
+.dark-mode .success {
+  background-color: #065f46 !important;
+  border-color: #10b981 !important;
+  color: #d1fae5 !important;
+}
+
+.dark-mode .error {
+  background-color: #7f1d1d !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
+/* Dark mode specific component overrides */
+.dark-mode [style*="background-color: #c6f6d5"] {
+  background-color: #065f46 !important;
+  border-color: #10b981 !important;
+  color: #d1fae5 !important;
+}
+
+.dark-mode [style*="background-color: #fed7d7"] {
+  background-color: #7f1d1d !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
+.dark-mode [style*="color: #22543d"] {
+  color: #d1fae5 !important;
+}
+
+.dark-mode [style*="color: #c53030"] {
+  color: #fecaca !important;
+}
+
+/* Dark mode links */
+.dark-mode a {
+  color: #60a5fa !important;
+}
+
+.dark-mode a:hover {
+  color: #93c5fd !important;
+}
+
+/* Dark mode scrollbars */
+.dark-mode ::-webkit-scrollbar {
+  width: 8px;
+}
+
+.dark-mode ::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 4px;
+}
+
+.dark-mode ::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+
+/* High Contrast Mode */
+.high-contrast {
+  filter: contrast(1.5) !important;
+}
+
+.high-contrast * {
+  border: 2px solid #000000 !important;
+}
+
+.high-contrast button {
+  border: 3px solid #000000 !important;
+  font-weight: bold !important;
+}
+
+.high-contrast h1, .high-contrast h2, .high-contrast h3, .high-contrast h4 {
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Large Font Mode */
+.large-font {
+  font-size: 1.2em !important;
+}
+
+.large-font * {
+  font-size: 1.2em !important;
+}
+
+.large-font h1 {
+  font-size: 2.5em !important;
+}
+
+.large-font h2 {
+  font-size: 2em !important;
+}
+
+.large-font h3 {
+  font-size: 1.5em !important;
+}
+
+.large-font button {
+  font-size: 1.1em !important;
+  padding: 12px 24px !important;
+}
+
+/* Combined effects */
+.dark-mode.high-contrast {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.dark-mode.high-contrast * {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.dark-mode.large-font {
+  font-size: 1.3em !important;
+}
+
+.dark-mode.large-font * {
+  font-size: 1.3em !important;
+}
