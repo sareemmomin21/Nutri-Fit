@@ -53,9 +53,6 @@ export default function Navbar() {
               <Link to="/fitness" style={navLinkStyle}>
                 Fitness
               </Link>
-              <Link to="/vitals" style={navLinkStyle}>
-                Vitals
-              </Link>
               <Link to="/game" style={navLinkStyle}>
                 Social
               </Link>
