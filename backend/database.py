@@ -1,8 +1,13 @@
 import sqlite3
 import json
 import os
+import sys
 from datetime import datetime, timedelta
 import hashlib
+
+# Fix Unicode emoji print statements crashing on Windows (cp1252 console)
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "nutrifit.db")
 
@@ -45,6 +50,8 @@ def init_db():
         columns = [column[1] for column in c.fetchall()]
         if 'current_day' not in columns:
             c.execute("ALTER TABLE users ADD COLUMN current_day INTEGER DEFAULT 1")
+        if 'dietary_restrictions' not in columns:
+            c.execute("ALTER TABLE users ADD COLUMN dietary_restrictions TEXT")
        
         # User preferences and goals table
         c.execute("""

@@ -77,8 +77,8 @@ export default function AuthPage() {
           console.log("Login - Profile completed:", data.profile_completed); // Debug log
           // For login, check if profile is completed
           if (data.profile_completed) {
-            console.log("Navigating to /nutrition"); // Debug log
-            navigate("/nutrition");
+            console.log("Navigating to /home"); // Debug log
+            navigate("/home");
           } else {
             console.log("Navigating to /questions"); // Debug log
             navigate("/questions", { state: { userId: data.user_id } });
