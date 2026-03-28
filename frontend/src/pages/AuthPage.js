@@ -57,7 +57,7 @@ export default function AuthPage() {
     console.log("Endpoint:", endpoint); // Debug log
 
     try {
-      const resp = await fetch(`${process.env.REACT_APP_API_URL}${endpoint}`, {
+      const resp = await fetch(`http://127.0.0.1:5001${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -77,8 +77,8 @@ export default function AuthPage() {
           console.log("Login - Profile completed:", data.profile_completed); // Debug log
           // For login, check if profile is completed
           if (data.profile_completed) {
-            console.log("Navigating to /nutrition"); // Debug log
-            navigate("/nutrition");
+            console.log("Navigating to /home"); // Debug log
+            navigate("/home");
           } else {
             console.log("Navigating to /questions"); // Debug log
             navigate("/questions", { state: { userId: data.user_id } });

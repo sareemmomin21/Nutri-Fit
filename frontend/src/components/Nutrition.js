@@ -1,4 +1,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import FoodItem from "./nutrition/FoodItem";
+import FoodModal from "./nutrition/FoodModal";
+
+const LoadingSpinner = ({ size = "20px" }) => (
+  <div
+    style={{
+      width: size,
+      height: size,
+      border: "2px solid #e2e8f0",
+      borderTop: "2px solid #48bb78",
+      borderRadius: "50%",
+      animation: "spin 1s linear infinite",
+      display: "inline-block",
+    }}
+  />
+);
 
 export default function Nutrition({ meal, onAte, userId }) {
   const [activeTab, setActiveTab] = useState("add");
@@ -103,7 +119,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
     try {
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/search_food_autocomplete`,
+        "http://127.0.0.1:5001/api/search_food_autocomplete",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -132,7 +148,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
     setIsSearching(true);
     try {
-      const response = await fetch(`${process.env.REACT_APP_API_URL}/api/search_food`, {
+      const response = await fetch("http://127.0.0.1:5001/api/search_food", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -158,7 +174,7 @@ export default function Nutrition({ meal, onAte, userId }) {
     try {
       setLoadingState("suggestions", true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/get_meal_suggestions`,
+        "http://127.0.0.1:5001/api/get_meal_suggestions",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -184,7 +200,7 @@ export default function Nutrition({ meal, onAte, userId }) {
     try {
       setLoadingState("mealItems", true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/get_current_meal`,
+        "http://127.0.0.1:5001/api/get_current_meal",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -255,7 +271,7 @@ export default function Nutrition({ meal, onAte, userId }) {
       let scaledFood = food;
       if (finalQuantity !== 1 || finalServing !== food.serving) {
         const scaleResponse = await fetch(
-          `${process.env.REACT_APP_API_URL}/api/scale_food`,
+          "http://127.0.0.1:5001/api/scale_food",
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -274,7 +290,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
       // Add to current meal
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/add_food_to_meal`,
+        "http://127.0.0.1:5001/api/add_food_to_meal",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -323,7 +339,7 @@ export default function Nutrition({ meal, onAte, userId }) {
     try {
       setLoadingState("removingFood", true);
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/remove_food_from_meal`,
+        "http://127.0.0.1:5001/api/remove_food_from_meal",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -347,7 +363,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
   const updateFoodPreference = async (food, liked) => {
     try {
-      await fetch(`${process.env.REACT_APP_API_URL}/api/update_food_preference`, {
+      await fetch("http://127.0.0.1:5001/api/update_food_preference", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -395,7 +411,7 @@ export default function Nutrition({ meal, onAte, userId }) {
 
     try {
       const addResponse = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/add_custom_food`,
+        "http://127.0.0.1:5001/api/add_custom_food",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -494,26 +510,12 @@ export default function Nutrition({ meal, onAte, userId }) {
     color: "#4a5568",
   };
 
-  const dangerButtonStyle = {
-    ...buttonStyle,
-    backgroundColor: "#e53e3e",
-    color: "white",
-  };
-
   const inputStyle = {
     width: "100%",
     padding: "10px",
     border: "2px solid #e2e8f0",
     borderRadius: "6px",
     fontSize: "16px",
-    outline: "none",
-  };
-
-  const smallInputStyle = {
-    padding: "6px 8px",
-    border: "1px solid #e2e8f0",
-    borderRadius: "4px",
-    fontSize: "14px",
     outline: "none",
   };
 
@@ -536,346 +538,6 @@ export default function Nutrition({ meal, onAte, userId }) {
     cursor: "pointer",
     borderBottom: "1px solid #f7fafc",
     fontSize: "14px",
-  };
-
-  const modalOverlayStyle = {
-    position: "fixed",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    display: "flex",
-    justifyContent: "center",
-    alignItems: "center",
-    zIndex: 2000,
-  };
-
-  const modalStyle = {
-    backgroundColor: "white",
-    borderRadius: "12px",
-    padding: "2rem",
-    maxWidth: "500px",
-    width: "90%",
-    maxHeight: "80vh",
-    overflowY: "auto",
-    position: "relative",
-  };
-
-  const LoadingSpinner = ({ size = "20px" }) => (
-    <div
-      style={{
-        width: size,
-        height: size,
-        border: "2px solid #e2e8f0",
-        borderTop: "2px solid #48bb78",
-        borderRadius: "50%",
-        animation: "spin 1s linear infinite",
-        display: "inline-block",
-      }}
-    />
-  );
-
-  const FoodItem = ({
-    food,
-    showActions = true,
-    showQuantityInfo = false,
-    isCurrentMeal = false,
-    fromSuggestion = false,
-  }) => (
-    <div
-      style={{
-        backgroundColor: "#f8f9fa",
-        padding: "1rem",
-        borderRadius: "8px",
-        border: "1px solid #e9ecef",
-        marginBottom: "1rem",
-        opacity: loadingStates.addingFood ? 0.7 : 1,
-        transition: "opacity 0.2s",
-      }}
-    >
-      <h4
-        style={{
-          margin: "0 0 0.5rem 0",
-          color: "#2d3748",
-          fontSize: "16px",
-          lineHeight: "1.3",
-        }}
-      >
-        {food.name}
-        {showQuantityInfo && food.quantity && food.serving_size && (
-          <span
-            style={{ fontSize: "14px", color: "#718096", fontWeight: "normal" }}
-          >
-            {" "}
-            ({food.quantity} {food.serving_size})
-          </span>
-        )}
-      </h4>
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))",
-          gap: "0.5rem",
-          marginBottom: showActions ? "1rem" : "0",
-          fontSize: "14px",
-        }}
-      >
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "8px",
-            borderRadius: "4px",
-            textAlign: "center",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <div style={{ fontWeight: "bold", color: "#e53e3e" }}>
-            {Math.round(food.calories)}
-          </div>
-          <div style={{ fontSize: "12px", color: "#718096" }}>cal</div>
-        </div>
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "8px",
-            borderRadius: "4px",
-            textAlign: "center",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <div style={{ fontWeight: "bold", color: "#3182ce" }}>
-            {Math.round(food.protein || 0)}g
-          </div>
-          <div style={{ fontSize: "12px", color: "#718096" }}>protein</div>
-        </div>
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "8px",
-            borderRadius: "4px",
-            textAlign: "center",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <div style={{ fontWeight: "bold", color: "#38a169" }}>
-            {Math.round(food.carbohydrates || 0)}g
-          </div>
-          <div style={{ fontSize: "12px", color: "#718096" }}>carbs</div>
-        </div>
-        <div
-          style={{
-            backgroundColor: "white",
-            padding: "8px",
-            borderRadius: "4px",
-            textAlign: "center",
-            border: "1px solid #e2e8f0",
-          }}
-        >
-          <div style={{ fontWeight: "bold", color: "#d69e2e" }}>
-            {Math.round(food.fat || 0)}g
-          </div>
-          <div style={{ fontSize: "12px", color: "#718096" }}>fat</div>
-        </div>
-      </div>
-
-      {showActions && (
-        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-          {!isCurrentMeal && (
-            <>
-              {/* Show Like/Dislike buttons for ALL suggestions and search results */}
-              <button
-                onClick={() => updateFoodPreference(food, true)}
-                style={{
-                  ...buttonStyle,
-                  backgroundColor: "#48bb78",
-                  color: "white",
-                }}
-                disabled={loadingStates.addingFood}
-              >
-                Like
-              </button>
-              <button
-                onClick={() => updateFoodPreference(food, false)}
-                style={{
-                  ...buttonStyle,
-                  backgroundColor: "#e53e3e",
-                  color: "white",
-                }}
-                disabled={loadingStates.addingFood}
-              >
-                Dislike
-              </button>
-              <button
-                onClick={() => openFoodModal(food, false)}
-                style={{
-                  ...buttonStyle,
-                  backgroundColor: "#4299e1",
-                  color: "white",
-                }}
-                disabled={loadingStates.addingFood}
-              >
-                {loadingStates.addingFood ? (
-                  <LoadingSpinner size="16px" />
-                ) : (
-                  `Add to ${meal}`
-                )}
-              </button>
-            </>
-          )}
-
-          {isCurrentMeal && (
-            <button
-              onClick={() => removeFoodFromMeal(food.id)}
-              style={{
-                ...buttonStyle,
-                backgroundColor: "#e53e3e",
-                color: "white",
-              }}
-              disabled={loadingStates.removingFood}
-            >
-              {loadingStates.removingFood ? (
-                <LoadingSpinner size="16px" />
-              ) : (
-                "Remove"
-              )}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-
-  // Food Modal Component
-  const FoodModal = () => {
-    if (!showFoodModal || !modalFood) return null;
-
-    return (
-      <div style={modalOverlayStyle} onClick={closeFoodModal}>
-        <div style={modalStyle} onClick={(e) => e.stopPropagation()}>
-          {/* Close button */}
-          <button
-            onClick={closeFoodModal}
-            style={{
-              position: "absolute",
-              top: "1rem",
-              right: "1rem",
-              background: "none",
-              border: "none",
-              fontSize: "24px",
-              cursor: "pointer",
-              color: "#718096",
-            }}
-          >
-            ×
-          </button>
-
-          {/* Food details */}
-          <div style={{ marginBottom: "2rem" }}>
-            <h3 style={{ margin: "0 0 1rem 0", color: "#2d3748" }}>
-              Add {modalFood.name}
-            </h3>
-
-            <FoodItem food={modalFood} showActions={false} />
-          </div>
-
-          {/* Quantity and serving inputs */}
-          <div style={{ marginBottom: "2rem" }}>
-            <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-              <div style={{ flex: 1 }}>
-                <label
-                  style={{
-                    display: "block",
-                    marginBottom: "4px",
-                    fontSize: "14px",
-                    fontWeight: "bold",
-                  }}
-                >
-                  Quantity
-                </label>
-                <input
-                  type="number"
-                  min="0.1"
-                  step="0.1"
-                  value={modalQuantity}
-                  onChange={(e) => setModalQuantity(e.target.value)}
-                  onFocus={(e) => e.target.select()}
-                  style={{
-                    ...smallInputStyle,
-                    width: "100%",
-                  }}
-                  placeholder="1"
-                />
-              </div>
-
-              {modalFood.available_servings &&
-                modalFood.available_servings.length > 1 && (
-                  <div style={{ flex: 2 }}>
-                    <label
-                      style={{
-                        display: "block",
-                        marginBottom: "4px",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      Serving Size
-                    </label>
-                    <select
-                      value={modalServing}
-                      onChange={(e) => setModalServing(e.target.value)}
-                      style={{
-                        ...smallInputStyle,
-                        width: "100%",
-                      }}
-                    >
-                      {modalFood.available_servings.map((serving, idx) => (
-                        <option key={idx} value={serving}>
-                          {serving}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-            </div>
-          </div>
-
-          {/* Action buttons */}
-          <div
-            style={{ display: "flex", gap: "1rem", justifyContent: "flex-end" }}
-          >
-            <button
-              onClick={closeFoodModal}
-              style={secondaryButtonStyle}
-              disabled={loadingStates.addingFood}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() =>
-                addFoodToMeal(
-                  modalFood,
-                  parseFloat(modalQuantity) || 1,
-                  modalServing
-                )
-              }
-              style={{
-                ...primaryButtonStyle,
-                padding: "12px 24px",
-              }}
-              disabled={loadingStates.addingFood}
-            >
-              {loadingStates.addingFood ? (
-                <LoadingSpinner size="16px" />
-              ) : (
-                `Add to ${meal}`
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -938,9 +600,13 @@ export default function Nutrition({ meal, onAte, userId }) {
                     <FoodItem
                       key={`suggestion-${index}`}
                       food={food}
+                      meal={meal}
                       showActions={true}
                       isCurrentMeal={false}
                       fromSuggestion={true}
+                      loadingStates={loadingStates}
+                      onAdd={openFoodModal}
+                      onUpdatePreference={updateFoodPreference}
                     />
                   ))}
                 </div>
@@ -1221,9 +887,13 @@ export default function Nutrition({ meal, onAte, userId }) {
                   <FoodItem
                     key={`search-${index}`}
                     food={food}
+                    meal={meal}
                     showActions={true}
                     isCurrentMeal={false}
                     fromSuggestion={false}
+                    loadingStates={loadingStates}
+                    onAdd={openFoodModal}
+                    onUpdatePreference={updateFoodPreference}
                   />
                 ))}
               </div>
@@ -1264,9 +934,12 @@ export default function Nutrition({ meal, onAte, userId }) {
                   <FoodItem
                     key={food.id}
                     food={food}
+                    meal={meal}
                     showActions={true}
                     showQuantityInfo={true}
                     isCurrentMeal={true}
+                    loadingStates={loadingStates}
+                    onRemove={removeFoodFromMeal}
                   />
                 ))}
 
@@ -1320,7 +993,18 @@ export default function Nutrition({ meal, onAte, userId }) {
       </div>
 
       {/* Food Modal */}
-      <FoodModal />
+      <FoodModal
+        show={showFoodModal}
+        food={modalFood}
+        meal={meal}
+        quantity={modalQuantity}
+        serving={modalServing}
+        loadingStates={loadingStates}
+        onClose={closeFoodModal}
+        onAdd={addFoodToMeal}
+        onQuantityChange={setModalQuantity}
+        onServingChange={setModalServing}
+      />
     </>
   );
 }

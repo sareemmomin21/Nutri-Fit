@@ -153,6 +153,72 @@ COMMON_FOODS = {
     "smoothie": {"calories": 180, "protein": 8.0, "carbohydrates": 35.0, "fat": 3.0, "serving": "smoothie"},
 }
 
+# Dietary restriction food filters
+DIETARY_RESTRICTIONS = {
+    'halal': {
+        'forbidden_keywords': [
+            'pork', 'bacon', 'ham', 'pepperoni', 'sausage', 'chorizo', 'prosciutto',
+            'alcohol', 'beer', 'wine', 'liquor', 'rum', 'vodka', 'whiskey',
+            'gelatin', 'marshmallow', 'gummy', 'jello',
+            'lard', 'pancetta', 'salami'
+        ],
+        'forbidden_phrases': [
+            'pork and', 'with bacon', 'beer battered', 'wine sauce',
+            'rum cake', 'gelatin capsule'
+        ]
+    },
+    'vegetarian': {
+        'forbidden_keywords': [
+            'beef', 'chicken', 'pork', 'turkey', 'lamb', 'duck', 'fish', 'salmon',
+            'tuna', 'shrimp', 'crab', 'lobster', 'meat', 'bacon', 'ham',
+            'sausage', 'pepperoni', 'anchovy', 'cod', 'tilapia', 'mahi',
+            'steak', 'ground beef', 'chicken breast', 'drumstick', 'wing'
+        ],
+        'forbidden_phrases': [
+            'chicken and', 'beef stir', 'fish taco', 'meat sauce',
+            'with chicken', 'turkey sandwich', 'salmon fillet'
+        ]
+    },
+    'vegan': {
+        'forbidden_keywords': [
+            'beef', 'chicken', 'pork', 'turkey', 'lamb', 'duck', 'fish', 'salmon',
+            'tuna', 'shrimp', 'crab', 'lobster', 'meat', 'bacon', 'ham',
+            'milk', 'cheese', 'butter', 'cream', 'yogurt', 'egg', 'honey',
+            'mayo', 'mayonnaise', 'whey', 'casein', 'gelatin'
+        ],
+        'forbidden_phrases': [
+            'with cheese', 'cream sauce', 'butter sauce', 'egg wash',
+            'honey glazed', 'milk chocolate', 'greek yogurt'
+        ]
+    },
+    'gluten_free': {
+        'forbidden_keywords': [
+            'wheat', 'bread', 'pasta', 'flour', 'barley', 'rye', 'malt',
+            'gluten', 'breaded', 'battered', 'crouton', 'noodle'
+        ],
+        'forbidden_phrases': [
+            'wheat flour', 'bread crumb', 'pasta sauce', 'beer battered'
+        ]
+    },
+    'dairy_free': {
+        'forbidden_keywords': [
+            'milk', 'cheese', 'butter', 'cream', 'yogurt', 'whey', 'casein',
+            'lactose', 'dairy', 'cheddar', 'mozzarella', 'parmesan'
+        ],
+        'forbidden_phrases': [
+            'with cheese', 'cream sauce', 'butter sauce', 'milk chocolate'
+        ]
+    },
+    'nut_free': {
+        'forbidden_keywords': [
+            'peanut', 'almond', 'walnut', 'cashew', 'pecan', 'hazelnut',
+            'pistachio', 'macadamia', 'pine nut', 'brazil nut'
+        ],
+        'forbidden_phrases': [
+            'peanut butter', 'almond milk', 'walnut oil', 'nut butter'
+        ]
+    }
+}
 
 def filter_usda_results(foods: List[Dict]) -> List[Dict]:
     """Filter out weird/unwanted USDA results and those with missing nutrition data"""
@@ -566,3 +632,211 @@ def estimate_fat_by_meal(meal_type: str) -> float:
         'snacks': random.randint(2, 12)
     }
     return float(estimates.get(meal_type, 10))
+
+
+def check_dietary_restrictions(food_name, user_restrictions):
+    """
+    Check if a food item violates any of the user's dietary restrictions
+    Returns: (is_restricted, restriction_type, reason)
+    """
+    if not user_restrictions:
+        return False, None, None
+    
+    food_name_lower = food_name.lower()
+    
+    for restriction in user_restrictions:
+        if restriction not in DIETARY_RESTRICTIONS:
+            continue
+            
+        restriction_data = DIETARY_RESTRICTIONS[restriction]
+        
+        # Check forbidden keywords
+        for keyword in restriction_data['forbidden_keywords']:
+            if keyword in food_name_lower:
+                return True, restriction, f"Contains {keyword}"
+        
+        # Check forbidden phrases
+        for phrase in restriction_data['forbidden_phrases']:
+            if phrase in food_name_lower:
+                return True, restriction, f"Contains {phrase}"
+    
+    return False, None, None
+
+def filter_foods_by_dietary_restrictions(foods, user_restrictions):
+    """
+    Filter out foods that violate dietary restrictions
+    """
+    if not user_restrictions:
+        return foods
+    
+    filtered_foods = []
+    for food in foods:
+        is_restricted, restriction_type, reason = check_dietary_restrictions(
+            food['name'], user_restrictions
+        )
+        
+        if not is_restricted:
+            filtered_foods.append(food)
+        else:
+            # Add restriction info for logging/debugging
+            food['restriction_info'] = {
+                'restricted': True,
+                'restriction_type': restriction_type,
+                'reason': reason
+            }
+    
+    return filtered_foods
+
+def get_dietary_restriction_warning(food_name, user_restrictions):
+    """
+    Get warning message if food violates dietary restrictions
+    Returns warning message or None
+    """
+    if not user_restrictions:
+        return None
+    
+    is_restricted, restriction_type, reason = check_dietary_restrictions(
+        food_name, user_restrictions
+    )
+    
+    if is_restricted:
+        restriction_names = {
+            'halal': 'Halal',
+            'vegetarian': 'Vegetarian',
+            'vegan': 'Vegan',
+            'gluten_free': 'Gluten-Free',
+            'dairy_free': 'Dairy-Free',
+            'nut_free': 'Nut-Free'
+        }
+        
+        restriction_display = restriction_names.get(restriction_type, restriction_type)
+        return f"This item may not be suitable for your {restriction_display} dietary preference"
+    
+    return None
+
+# Update the existing get_meal_suggestions function
+def get_meal_suggestions(meal_type: str, max_results: int = 10, user_restrictions=None) -> List[Dict]:
+    """Get meal-appropriate food suggestions with dietary restriction filtering"""
+    # Get suggestions from our enhanced meal database
+    meal_foods = MEAL_SUGGESTIONS.get(meal_type, MEAL_SUGGESTIONS['snacks'])
+    
+    # Shuffle for variety and take more than requested to account for filtering
+    available_foods = meal_foods.copy()
+    random.shuffle(available_foods)
+    
+    suggestions = []
+    
+    # Try to get nutrition data for each suggestion
+    for food_name in available_foods[:max_results * 3]:  # Get more to account for filtering
+        # Check dietary restrictions first
+        if user_restrictions:
+            is_restricted, _, _ = check_dietary_restrictions(food_name, user_restrictions)
+            if is_restricted:
+                continue  # Skip restricted foods
+        
+        # First check if it's in our common foods database
+        if food_name.lower() in COMMON_FOODS:
+            food_data = COMMON_FOODS[food_name.lower()]
+            suggestions.append({
+                'name': food_name.title(),
+                'calories': food_data['calories'],
+                'protein': food_data['protein'],
+                'carbohydrates': food_data['carbohydrates'],
+                'fat': food_data['fat'],
+                'serving': food_data['serving'],
+                'source': 'custom',
+                'available_servings': [food_data['serving'], 'serving', 'cup', 'piece']
+            })
+        else:
+            # Try to search for it in USDA database
+            usda_results = search_usda_foods(food_name, max_results=1)
+            if usda_results:
+                # Double-check USDA results for restrictions
+                usda_food = usda_results[0]
+                if not user_restrictions or not check_dietary_restrictions(usda_food['name'], user_restrictions)[0]:
+                    suggestions.append(usda_food)
+            else:
+                # Fallback with estimated nutrition for common items
+                suggestions.append({
+                    'name': food_name.title(),
+                    'calories': estimate_calories_by_meal(meal_type),
+                    'protein': estimate_protein_by_meal(meal_type),
+                    'carbohydrates': estimate_carbs_by_meal(meal_type),
+                    'fat': estimate_fat_by_meal(meal_type),
+                    'serving': 'serving',
+                    'source': 'estimated',
+                    'available_servings': ['serving', 'cup', 'piece']
+                })
+        
+        # Stop when we have enough good suggestions
+        if len(suggestions) >= max_results:
+            break
+    
+    return suggestions[:max_results]
+
+# Update search functions to include restriction warnings
+def search_food_comprehensive_with_warnings(query: str, user_restrictions=None) -> List[Dict]:
+    """Comprehensive food search with dietary restriction warnings"""
+    if not query.strip():
+        return []
+    
+    all_results = []
+    
+    # Search all sources
+    custom_results = search_custom_foods(query)
+    usda_results = search_usda_foods(query, max_results=12)
+    
+    # Combine with priority: custom first, then USDA
+    all_results.extend(custom_results)
+    all_results.extend(usda_results)
+    
+    # Remove duplicates
+    seen_names = set()
+    unique_results = []
+    for result in all_results:
+        name_key = result['name'].lower()
+        if name_key not in seen_names:
+            seen_names.add(name_key)
+            
+            # Add dietary restriction warning if applicable
+            if user_restrictions:
+                warning = get_dietary_restriction_warning(result['name'], user_restrictions)
+                if warning:
+                    result['dietary_warning'] = warning
+            
+            unique_results.append(result)
+    
+    return unique_results[:15]
+
+def search_food_autocomplete_with_warnings(query: str, user_restrictions=None) -> List[Dict]:
+    """Get autocomplete suggestions with dietary warnings"""
+    if len(query) < 2:
+        return []
+    
+    suggestions = []
+    
+    # Search custom foods first (fast)
+    custom_results = search_custom_foods(query)
+    suggestions.extend(custom_results[:3])
+    
+    # Search USDA (comprehensive)
+    usda_results = search_usda_foods(query, max_results=7)
+    suggestions.extend(usda_results)
+    
+    # Remove duplicates and add warnings
+    seen_names = set()
+    unique_suggestions = []
+    for suggestion in suggestions:
+        name_key = suggestion['name'].lower()
+        if name_key not in seen_names:
+            seen_names.add(name_key)
+            
+            # Add dietary restriction warning if applicable
+            if user_restrictions:
+                warning = get_dietary_restriction_warning(suggestion['name'], user_restrictions)
+                if warning:
+                    suggestion['dietary_warning'] = warning
+            
+            unique_suggestions.append(suggestion)
+    
+    return unique_suggestions[:10]

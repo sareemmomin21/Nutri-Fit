@@ -1,11 +1,18 @@
 from flask import Flask, request, jsonify
 import os
 from flask_cors import CORS
-import json
 import sqlite3
+import json
+import sys
+
+# Fix Unicode emoji print statements crashing on Windows (cp1252 console)
+if sys.stdout.encoding and sys.stdout.encoding.lower() != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+from database import DB_PATH  
 from nutrition_utils import (
     search_food_autocomplete, search_food_comprehensive, scale_food_nutrition,
-    get_meal_suggestions
+    get_meal_suggestions, search_food_comprehensive_with_warnings, 
+    search_food_autocomplete_with_warnings
 )
 from database import (
     init_db, get_user_profile, get_daily_totals, get_meal_progress,
@@ -19,7 +26,23 @@ from database import (
     add_workout_session, get_workout_history, get_exercise_performance_history,
     save_workout_plan, get_active_workout_plan, get_fitness_dashboard_data,
     get_fitness_goals, update_fitness_goal_progress, add_fitness_goal,
-    get_combined_dashboard_data, init_fitness_tables
+    get_combined_dashboard_data, init_fitness_tables,
+    #gamification functions
+    search_users, get_user_friends, add_friend, remove_friend,
+    fetch_weekly_challenges,
+    # friend challenge functions
+    create_friend_challenge, get_friend_challenges_with_progress, respond_to_friend_challenge,
+    update_friend_challenge_progress, get_friend_preferences,
+    get_friends_leaderboard,
+    create_challenge, update_challenge_progress, delete_challenge, delete_friend_challenge,
+    get_friend_activities, get_friend_badges, get_friend_reminders, get_messages, send_message, set_friend_reminder,
+    get_reminders_you_set, delete_reminder, delete_reminder_received,
+    get_user_streak, get_user_badges, get_user_stats,
+    # Vitals database functions
+    log_vitals_data, get_vitals_data, get_vitals_streak, get_all_vitals_streaks,
+    create_custom_metric, get_custom_metrics, update_custom_metric, delete_custom_metric,
+    get_vitals_summary, get_vitals_chart_data,
+    get_today_vitals_logs
 )
 
 from fitness_utils import (
@@ -31,7 +54,7 @@ from fitness_utils import (
 DB_PATH = os.path.join(os.path.dirname(__file__), "nutrifit.db")
 
 app = Flask(__name__)
-CORS(app, origins=["https://nutrifit-nine.vercel.app"])
+CORS(app)  # Enable CORS for all routes
 
 @app.route("/api/hello")
 def hello():
@@ -168,24 +191,38 @@ def search_food_autocomplete_endpoint():
         return jsonify([])
    
     try:
-        # Get autocomplete suggestions from all sources including USDA
-        suggestions = search_food_autocomplete(query)
+        # Get user's dietary restrictions
+        user_restrictions = get_user_dietary_restrictions(user_id) if user_id else []
+        
+        # Get autocomplete suggestions with warnings
+        suggestions = search_food_autocomplete_with_warnings(query, user_restrictions)
        
         # Add user's custom foods
         if user_id:
             custom_foods = get_user_custom_foods(user_id, query)
             for food in custom_foods:
-                suggestions.insert(0, {
+                # Add dietary warning for custom foods too
+                warning = None
+                if user_restrictions:
+                    from nutrition_utils import get_dietary_restriction_warning
+                    warning = get_dietary_restriction_warning(food['name'], user_restrictions)
+                
+                food_item = {
                     'name': food['name'],
                     'source': 'user_custom',
                     'serving': food['serving']
-                })
+                }
+                
+                if warning:
+                    food_item['dietary_warning'] = warning
+                
+                suggestions.insert(0, food_item)
        
         return jsonify(suggestions[:10])
     except Exception as e:
         print(f"Error in autocomplete search: {e}")
         return jsonify([])
-
+    
 @app.route("/api/search_food", methods=["POST"])
 def search_food_endpoint():
     data = request.json
@@ -196,13 +233,23 @@ def search_food_endpoint():
         return jsonify({"error": "Search query required"}), 400
    
     try:
-        # Search using comprehensive search (includes USDA)
-        results = search_food_comprehensive(query)
+        # Get user's dietary restrictions
+        user_restrictions = get_user_dietary_restrictions(user_id) if user_id else []
+        
+        # Search using comprehensive search with warnings
+        results = search_food_comprehensive_with_warnings(query, user_restrictions)
        
         # Add user's custom foods if they match
         if user_id:
             custom_foods = get_user_custom_foods(user_id, query)
             for food in custom_foods:
+                # Add dietary warning for custom foods
+                if user_restrictions:
+                    from nutrition_utils import get_dietary_restriction_warning
+                    warning = get_dietary_restriction_warning(food['name'], user_restrictions)
+                    if warning:
+                        food['dietary_warning'] = warning
+                
                 results.insert(0, food)
        
         return jsonify(results)
@@ -236,8 +283,11 @@ def get_meal_suggestions_endpoint():
     user_id = data.get("user_id")
    
     try:
+        # Get user's dietary restrictions
+        user_restrictions = get_user_dietary_restrictions(user_id) if user_id else []
+        
         # Get more suggestions initially to account for filtering
-        suggestions = get_meal_suggestions(meal_type, max_results=15)
+        suggestions = get_meal_suggestions(meal_type, max_results=15, user_restrictions=user_restrictions)
        
         # Filter based on user preferences if available
         if user_id:
@@ -270,6 +320,7 @@ def get_meal_suggestions_endpoint():
     except Exception as e:
         print(f"Error getting meal suggestions: {e}")
         return jsonify([])
+
 
 # Current meal management - OPTIMIZED
 @app.route("/api/add_food_to_meal", methods=["POST"])
@@ -800,38 +851,145 @@ def get_active_workout_plan_endpoint():
         print(f"Error getting active workout plan: {e}")
         return jsonify({"error": "Failed to get active workout plan"}), 500
 
+# Replace your existing complete_workout endpoint with this enhanced version
+
 @app.route("/api/complete_workout", methods=["POST"])
 def complete_workout_endpoint():
-    """Record a completed workout"""
+    """Record a completed workout with enhanced date debugging"""
     data = request.json
     user_id = data.get("user_id")
     workout_data = data.get("workout_data")
-   
+    
+    print(f"🔍 Complete workout called with data: {data}")
+    
     if not all([user_id, workout_data]):
         return jsonify({"error": "User ID and workout data required"}), 400
-   
+    
     try:
-        # Calculate calories burned based on user profile
+        # Handle date properly - ensure it's stored as a local date
+        date_completed = workout_data.get('date_completed')
+        print(f"🔍 Original date_completed: {date_completed} (type: {type(date_completed)})")
+        
+        if date_completed:
+            # If date includes time, strip it to get just the date
+            if 'T' in str(date_completed):
+                date_completed = str(date_completed).split('T')[0]
+                print(f"🔍 After T split: {date_completed}")
+            
+            # Ensure it's in YYYY-MM-DD format and DON'T parse it as a datetime
+            # Just validate the format and use as string
+            try:
+                from datetime import datetime
+                # Validate format but don't convert
+                datetime.strptime(date_completed, '%Y-%m-%d')
+                final_date = date_completed  # Keep as string
+                print(f"🔍 Final date (as string): {final_date}")
+            except ValueError:
+                print(f"🔍 Date format invalid, using today")
+                # If parsing fails, use today's date
+                final_date = datetime.now().date().strftime('%Y-%m-%d')
+        else:
+            print(f"🔍 No date provided, using today")
+            # If no date provided, use today
+            final_date = datetime.now().date().strftime('%Y-%m-%d')
+        
+        # Update workout_data with the final date
+        workout_data['date_completed'] = final_date
+        print(f"🔍 Workout data with final date: {workout_data}")
+        
+        # Calculate calories burned based on user profile if not provided
         profile = get_user_profile(user_id)
-        if profile and profile.get('weight_lb'):
+        if profile and profile.get('weight_lb') and not workout_data.get('calories_burned'):
             estimated_calories = calculate_calories_burned(
                 workout_data.get('duration', 30),
                 profile['weight_lb'],
                 workout_data.get('intensity', 'moderate')
             )
             workout_data['calories_burned'] = estimated_calories
-       
+        
         # Save workout session
         session_id = add_workout_session(user_id, workout_data)
-       
+        
+        print(f"🔍 Workout saved with session_id: {session_id}")
+        
         return jsonify({
             "success": True,
             "session_id": session_id,
+            "date_used": final_date,
+            "debug_info": {
+                "original_date": data.get("workout_data", {}).get('date_completed'),
+                "final_date": final_date
+            },
             "message": "Workout completed successfully!"
         })
+        
     except Exception as e:
-        print(f"Error completing workout: {e}")
-        return jsonify({"error": "Failed to record workout"}), 500
+        print(f"❌ Error completing workout: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Failed to record workout: {str(e)}"}), 500
+
+
+# Also update your add_workout_session function:
+def add_workout_session(user_id, workout_data):
+    """Add a completed workout session with enhanced date debugging"""
+    with sqlite3.connect(DB_PATH) as conn:
+        c = conn.cursor()
+        
+        # Get the date - should already be clean YYYY-MM-DD string
+        date_completed = workout_data.get('date_completed')
+        print(f"🔍 add_workout_session called with date: {date_completed}")
+        
+        # Ensure date is a string in YYYY-MM-DD format
+        if isinstance(date_completed, str):
+            # Strip any time component if present (should already be done)
+            if 'T' in date_completed:
+                date_completed = date_completed.split('T')[0]
+        
+        print(f"🔍 Final date being inserted to DB: {date_completed}")
+        
+        c.execute("""
+        INSERT INTO workout_sessions
+        (user_id, workout_name, workout_type, duration_minutes, calories_burned,
+         difficulty_level, date_completed, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id,
+            workout_data.get('name', ''),
+            workout_data.get('type', ''),
+            workout_data.get('duration', 0),
+            workout_data.get('calories_burned', 0),
+            workout_data.get('difficulty_level') or workout_data.get('intensity', 'moderate'),
+            date_completed,  # This should be YYYY-MM-DD string
+            workout_data.get('notes', '')
+        ))
+        
+        workout_session_id = c.lastrowid
+        print(f"🔍 Workout inserted with ID: {workout_session_id}")
+        
+        # Add exercise performance data if available
+        if 'exercises' in workout_data and workout_data['exercises']:
+            for exercise in workout_data['exercises']:
+                c.execute("""
+                INSERT INTO exercise_performance
+                (user_id, workout_session_id, exercise_name, sets, reps, weight_lb,
+                 rest_seconds, difficulty, date_performed, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """, (
+                    user_id,
+                    workout_session_id,
+                    exercise.get('name', ''),
+                    exercise.get('sets', 0),
+                    exercise.get('reps', 0),
+                    exercise.get('weight_lb') or exercise.get('weight', 0),
+                    int(str(exercise.get('rest', '60s')).replace('s', '')),
+                    exercise.get('difficulty', 1),
+                    date_completed,  # Use the same cleaned date
+                    exercise.get('notes', '')
+                ))
+        
+        conn.commit()
+        return workout_session_id
 
 @app.route("/api/get_workout_history", methods=["POST"])
 def get_workout_history_endpoint():
@@ -868,113 +1026,119 @@ def get_exercise_performance_endpoint():
         print(f"Error getting exercise performance: {e}")
         return jsonify({"error": "Failed to get exercise performance"}), 500
 
+# In your Flask app.py, enhance the get_fitness_dashboard endpoint
+
+def calculate_favorite_workout_type(workouts):
+    """Calculate the most frequently used workout type"""
+    if not workouts:
+        return "None"
+    
+    type_counts = {}
+    for workout in workouts:
+        workout_type = workout.get('type') or workout.get('workout_type') or 'Other'
+        type_counts[workout_type] = type_counts.get(workout_type, 0) + 1
+    
+    if not type_counts:
+        return "None"
+    
+    # Return the most common type
+    return max(type_counts.items(), key=lambda x: x[1])[0]
+
 @app.route("/api/get_fitness_dashboard", methods=["POST"])
 def get_fitness_dashboard_endpoint():
-    """Get fitness dashboard data"""
+    """Get fitness dashboard data with proper 14-day workout data"""
     data = request.json
     user_id = data.get("user_id")
-   
-    if not user_id:
-        return jsonify({"error": "User ID required"}), 400
-   
-    try:
-        dashboard_data = get_fitness_dashboard_data(user_id)
-        return jsonify(dashboard_data)
-    except Exception as e:
-        print(f"Error getting fitness dashboard: {e}")
-        return jsonify({"error": "Failed to get fitness dashboard"}), 500
-
-@app.route("/api/get_recovery_recommendations", methods=["POST"])
-def get_recovery_recommendations_endpoint():
-    """Get recovery recommendations based on workout history"""
-    data = request.json
-    user_id = data.get("user_id")
-   
-    if not user_id:
-        return jsonify({"error": "User ID required"}), 400
-   
-    try:
-        from datetime import datetime
-        history = get_workout_history(user_id, 7)  # Last 7 days
-        recommendations = get_recovery_recommendations(history, datetime.now())
-        return jsonify(recommendations)
-    except Exception as e:
-        print(f"Error getting recovery recommendations: {e}")
-        return jsonify({"error": "Failed to get recovery recommendations"}), 500
-
-@app.route("/api/get_exercise_tips", methods=["POST"])
-def get_exercise_tips_endpoint():
-    """Get form tips and safety advice for exercises"""
-    data = request.json
-    exercise_name = data.get("exercise_name")
-   
-    if not exercise_name:
-        return jsonify({"error": "Exercise name required"}), 400
-   
-    try:
-        tips = get_exercise_tips(exercise_name)
-        return jsonify(tips)
-    except Exception as e:
-        print(f"Error getting exercise tips: {e}")
-        return jsonify({"error": "Failed to get exercise tips"}), 500
-
-@app.route("/api/create_custom_workout", methods=["POST"])
-def create_custom_workout_endpoint():
-    """Create a custom workout from user input"""
-    data = request.json
-    user_id = data.get("user_id")
-    workout_name = data.get("workout_name")
-    exercises = data.get("exercises", [])
-    estimated_calories = data.get("estimated_calories")
     
-    if not all([user_id, workout_name]):
-        return jsonify({"error": "User ID and workout name required"}), 400
-   
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+    
     try:
-        profile = get_user_profile(user_id)
-        if not profile:
-            return jsonify({"error": "User profile not found"}), 404
-       
-        # Create custom workout data
-        custom_workout_data = {
-            'name': workout_name,
-            'type': 'custom',
-            'exercises': exercises,
-            'estimated_calories': estimated_calories,
-            'created_by_user': True
+        # Get ALL workouts for the past 14 days (not just recent 5-10)
+        from datetime import datetime, timedelta
+        
+        # Get workouts from past 14 days
+        fourteen_days_ago = datetime.now() - timedelta(days=14)
+        
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            
+            # Get ALL workouts from past 14 days
+            c.execute("""
+            SELECT workout_name, workout_type, duration_minutes, calories_burned,
+                   difficulty_level, date_completed, notes, created_at
+            FROM workout_sessions
+            WHERE user_id = ? AND date_completed >= ?
+            ORDER BY date_completed DESC
+            """, (user_id, fourteen_days_ago.date()))
+            
+            all_workouts_14_days = []
+            for row in c.fetchall():
+                workout_date = row[5]  # date_completed
+                
+                # Handle date conversion properly
+                if isinstance(workout_date, str):
+                    try:
+                        # Parse YYYY-MM-DD format
+                        parsed_date = datetime.strptime(workout_date, '%Y-%m-%d')
+                    except ValueError:
+                        # Try other formats if needed
+                        parsed_date = datetime.fromisoformat(workout_date.replace('Z', '+00:00'))
+                else:
+                    parsed_date = datetime.strptime(str(workout_date), '%Y-%m-%d')
+                
+                all_workouts_14_days.append({
+                    'id': row[0] if len(row) > 8 else None,
+                    'name': row[0],
+                    'type': row[1],
+                    'workout_type': row[1],  # For compatibility
+                    'duration': row[2],
+                    'duration_minutes': row[2],  # For compatibility
+                    'calories_burned': row[3],
+                    'calories': row[3],  # For compatibility
+                    'difficulty_level': row[4],
+                    'intensity': row[4],  # For compatibility
+                    'date_completed': workout_date,
+                    'date': parsed_date,  # Proper date object for frontend
+                    'notes': row[6],
+                    'created_at': row[7]
+                })
+        
+        # Get existing dashboard data
+        existing_dashboard = get_fitness_dashboard_data(user_id)
+        
+        # Enhance with complete 14-day workout data
+        enhanced_dashboard = {
+            **existing_dashboard,
+            'all_workouts_14_days': all_workouts_14_days,  # NEW: Complete 14-day data
+            'recent_workouts': all_workouts_14_days[:10],  # Most recent 10 for display
+            'workout_count_14_days': len(all_workouts_14_days),  # NEW: Actual count
         }
         
-        # If exercises provided, calculate duration and calories
-        if exercises:
-            custom_workout = create_custom_workout(exercises, profile)
-            if custom_workout:
-                custom_workout_data.update({
-                    'duration': custom_workout['duration'],
-                    'calories_burned': custom_workout['calories_burned'],
-                    'equipment': custom_workout['equipment'],
-                    'muscle_groups': custom_workout['muscle_groups']
-                })
-        else:
-            # If no exercises, use estimated calories or default values
-            custom_workout_data.update({
-                'duration': 30,  # Default duration
-                'calories_burned': estimated_calories or 200,  # Use provided or default
-                'equipment': ['none'],
-                'muscle_groups': ['full_body']
-            })
+        # Calculate enhanced weekly stats based on actual data
+        week_ago = datetime.now() - timedelta(days=7)
+        weekly_workouts = [
+            w for w in all_workouts_14_days 
+            if w['date'] >= week_ago
+        ]
         
-        # Save as workout plan for easy access
-        plan_id = save_workout_plan(user_id, f"Custom: {workout_name}", custom_workout_data)
+        enhanced_weekly_stats = {
+            'workouts': len(weekly_workouts),
+            'total_duration': sum(w['duration'] for w in weekly_workouts),
+            'total_calories': sum(w['calories_burned'] for w in weekly_workouts),
+            'avg_duration': sum(w['duration'] for w in weekly_workouts) / len(weekly_workouts) if weekly_workouts else 0
+        }
         
-        return jsonify({
-            "success": True, 
-            "workout": custom_workout_data,
-            "plan_id": plan_id,
-            "message": "Custom workout created successfully!"
-        })
+        enhanced_dashboard['weekly_stats'] = enhanced_weekly_stats
+        
+        return jsonify(enhanced_dashboard)
+        
     except Exception as e:
-        print(f"Error creating custom workout: {e}")
-        return jsonify({"error": "Failed to create custom workout"}), 500
+        print(f"Error getting enhanced fitness dashboard: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "Failed to get fitness dashboard"}), 500
+
 
 @app.route("/api/save_custom_workout", methods=["POST"])
 def save_custom_workout_endpoint():
@@ -999,41 +1163,6 @@ def save_custom_workout_endpoint():
         print(f"Error saving custom workout: {e}")
         return jsonify({"error": "Failed to save custom workout"}), 500
 
-@app.route("/api/get_user_custom_workouts", methods=["POST"])
-def get_user_custom_workouts_endpoint():
-    """Get user's saved custom workouts"""
-    data = request.json
-    user_id = data.get("user_id")
-    
-    if not user_id:
-        return jsonify({"error": "User ID required"}), 400
-   
-    try:
-        # Get all workout plans for the user (includes custom workouts)
-        with sqlite3.connect(DB_PATH) as conn:
-            c = conn.cursor()
-            c.execute("""
-            SELECT id, plan_name, plan_data, created_at, is_active
-            FROM workout_plans
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-            """, (user_id,))
-            
-            custom_workouts = []
-            for row in c.fetchall():
-                plan_data = json.loads(row[2])
-                custom_workouts.append({
-                    'id': row[0],
-                    'name': row[1],
-                    'workout_data': plan_data,
-                    'created_at': row[3],
-                    'is_active': row[4]
-                })
-            
-            return jsonify(custom_workouts)
-    except Exception as e:
-        print(f"Error getting custom workouts: {e}")
-        return jsonify({"error": "Failed to get custom workouts"}), 500
 
 @app.route("/api/get_workout_stats", methods=["POST"])
 def get_workout_stats_endpoint():
@@ -1145,13 +1274,971 @@ def get_progression_suggestions_endpoint():
         print(f"Error getting progression suggestions: {e}")
         return jsonify({"error": "Failed to get progression suggestions"}), 500
 
-@app.route("/")
-def index():
-    return "Backend is live!"
+# Custom Workout Endpoints
+@app.route("/api/create_custom_workout", methods=["POST"])
+def create_custom_workout_endpoint():
+    """Create a custom workout from user input and save it properly"""
+    data = request.json
+    user_id = data.get("user_id")
+    workout_name = data.get("workout_name")
+    exercises = data.get("exercises", [])
+    estimated_calories = data.get("estimated_calories")
+    estimated_duration = data.get("estimated_duration")
+    workout_type = data.get("workout_type", "strength")
+    intensity = data.get("intensity", "moderate")
     
+    if not all([user_id, workout_name]):
+        return jsonify({"error": "User ID and workout name required"}), 400
+    
+    try:
+        profile = get_user_profile(user_id)
+        if not profile:
+            return jsonify({"error": "User profile not found"}), 404
+        
+        # Create custom workout data with proper structure
+        custom_workout_data = {
+            'name': workout_name,
+            'type': workout_type,
+            'exercises': exercises,
+            'duration': estimated_duration or 30,
+            'calories_burned': estimated_calories or 200,
+            'intensity': intensity,
+            'equipment': ['custom'],  # Mark as custom equipment
+            'muscle_groups': ['custom'],
+            'created_by_user': True,
+            'difficulty_level': intensity
+        }
+        
+        # If exercises provided, enhance the workout data
+        if exercises:
+            from fitness_utils import create_custom_workout
+            enhanced_workout = create_custom_workout(exercises, profile)
+            if enhanced_workout:
+                # Update with calculated values but keep user's estimates as primary
+                custom_workout_data.update({
+                    'equipment': enhanced_workout.get('equipment', ['none']),
+                    'muscle_groups': enhanced_workout.get('muscle_groups', ['full_body'])
+                })
+                # Use calculated duration only if user didn't provide one
+                if not estimated_duration:
+                    custom_workout_data['duration'] = enhanced_workout.get('duration', 30)
+                # Use calculated calories only if user didn't provide them
+                if not estimated_calories:
+                    custom_workout_data['calories_burned'] = enhanced_workout.get('calories_burned', 200)
+        
+        # Save as workout plan for easy access and integration with recommendations
+        plan_id = save_workout_plan(user_id, f"Custom: {workout_name}", custom_workout_data)
+        
+        return jsonify({
+            "success": True,
+            "workout": custom_workout_data,
+            "plan_id": plan_id,
+            "message": "Custom workout created successfully! It will now appear in your workout recommendations."
+        })
+    except Exception as e:
+        print(f"Error creating custom workout: {e}")
+        return jsonify({"error": "Failed to create custom workout"}), 500
+
+
+@app.route("/api/get_user_custom_workouts", methods=["POST"])
+def get_user_custom_workouts_endpoint():
+    """Get all custom workouts for a user"""
+    data = request.json
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+    
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute("""
+            SELECT id, plan_name, plan_data, created_at, is_active
+            FROM workout_plans
+            WHERE user_id = ? AND plan_name LIKE 'Custom:%'
+            ORDER BY created_at DESC
+            """, (user_id,))
+            
+            custom_workouts = []
+            for row in c.fetchall():
+                try:
+                    plan_data = json.loads(row[2])
+                    custom_workouts.append({
+                        'id': row[0],
+                        'name': row[1].replace('Custom: ', ''),
+                        'workout_data': plan_data,
+                        'created_at': row[3],
+                        'is_active': row[4]
+                    })
+                except json.JSONDecodeError:
+                    print(f"Error parsing workout data for workout ID {row[0]}")
+                    continue
+            
+            return jsonify(custom_workouts)
+    except Exception as e:
+        print(f"Error getting custom workouts: {e}")
+        return jsonify({"error": "Failed to get custom workouts"}), 500
+
+@app.route("/api/get_quick_workout_suggestions", methods=["POST"])
+def get_quick_workout_suggestions():
+    """Get quick workout suggestions based on time, focus, and equipment with enhanced filtering"""
+    data = request.json
+    user_id = data.get("user_id")
+    duration = data.get("duration", 30)
+    focus = data.get("focus", "full_body")
+    equipment = data.get("equipment", [])
+    excluded_workouts = data.get("excluded_workouts", [])
+
+    print(f"🔍 Quick workout request:")
+    print(f"   User: {user_id}")
+    print(f"   Duration: {duration} min")
+    print(f"   Focus: {focus}")
+    print(f"   Equipment: {equipment}")
+    print(f"   Excluded: {excluded_workouts}")
+
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+
+    try:
+        from fitness_utils import get_quick_workout_suggestions
+        from database import get_user_profile
+        
+        profile = get_user_profile(user_id)
+        if not profile:
+            print(f"⚠️ No profile found for user {user_id}, using defaults")
+            profile = {"fitness_experience": "beginner"}
+        
+        suggestions = get_quick_workout_suggestions(
+            profile, duration, focus, equipment, excluded_workouts
+        )
+        
+        print(f"✅ Found {len(suggestions)} suggestions for user {user_id}")
+        
+        # Filter out any None suggestions
+        valid_suggestions = [s for s in suggestions if s and s.get('workout')]
+        
+        return jsonify(valid_suggestions)
+        
+    except Exception as e:
+        error_msg = f"Error getting suggestions: {str(e)}"
+        print(f"❌ {error_msg}")
+        return jsonify({"error": error_msg}), 500
+    
+@app.route("/api/quick_workout_feedback", methods=["POST"])
+def quick_workout_feedback():
+    """Save workout preference (liked or disliked) with enhanced handling"""
+    data = request.json
+    user_id = data.get("user_id")
+    workout_name = data.get("workout_name")
+    liked = data.get("liked")
+    
+    print(f"📝 Saving workout feedback:")
+    print(f"   User: {user_id}")
+    print(f"   Workout: {workout_name}")
+    print(f"   Liked: {liked}")
+    
+    if not all([user_id, workout_name]) or liked is None:
+        return jsonify({"error": "User ID, workout name, and preference required"}), 400
+    
+    try:
+        from database import save_workout_preference
+        
+        preference = 'liked' if liked else 'disliked'
+        save_workout_preference(user_id, workout_name, preference)
+        
+        return jsonify({
+            "success": True, 
+            "message": f"Workout {'liked' if liked else 'disliked'} successfully",
+            "workout_name": workout_name,
+            "preference": preference
+        })
+    except Exception as e:
+        print(f"❌ Error saving workout feedback: {e}")
+        return jsonify({"error": "Failed to save workout preference"}), 500
+
+@app.route("/api/remove_workout_preference", methods=["POST"])
+def remove_workout_preference():
+    """Remove a workout preference"""
+    data = request.json
+    user_id = data.get("user_id")
+    workout_name = data.get("workout_name")
+    
+    if not all([user_id, workout_name]):
+        return jsonify({"error": "User ID and workout name required"}), 400
+    
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            c.execute("""
+            DELETE FROM workout_preferences 
+            WHERE user_id = ? AND workout_name = ?
+            """, (user_id, workout_name))
+            conn.commit()
+            
+            if c.rowcount > 0:
+                return jsonify({"success": True, "message": "Preference removed"})
+            else:
+                return jsonify({"error": "Preference not found"}), 404
+    except Exception as e:
+        print(f"Error removing workout preference: {e}")
+        return jsonify({"error": "Failed to remove preference"}), 500
+    
+@app.route("/api/get_workout_preferences", methods=["POST"])
+def get_workout_preferences():
+    """Get user's workout preferences (likes/dislikes) with enhanced error handling"""
+    data = request.json
+    user_id = data.get("user_id")
+
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+
+    try:
+        from database import get_user_workout_preferences
+        preferences = get_user_workout_preferences(user_id)
+        print(f"✅ Retrieved workout preferences for user {user_id}: {len(preferences.get('liked', []))} liked, {len(preferences.get('disliked', []))} disliked")
+        return jsonify(preferences)
+    except Exception as e:
+        print(f"❌ Error fetching workout preferences: {e}")
+        # Return empty preferences instead of error to not break the UI
+        return jsonify({"liked": [], "disliked": []})
+
+
+@app.route("/api/delete_custom_workout", methods=["POST"])
+def delete_custom_workout():
+    """Delete a user's custom workout"""
+    data = request.json
+    user_id = data.get("user_id")
+    workout_id = data.get("workout_id")
+    
+    if not all([user_id, workout_id]):
+        return jsonify({"error": "User ID and workout ID required"}), 400
+    
+    try:
+        with sqlite3.connect(DB_PATH) as conn:
+            c = conn.cursor()
+            
+            # Verify the workout belongs to the user before deleting
+            c.execute("""
+            DELETE FROM workout_plans 
+            WHERE id = ? AND user_id = ? AND plan_name LIKE 'Custom:%'
+            """, (workout_id, user_id))
+            
+            if c.rowcount == 0:
+                return jsonify({"error": "Workout not found or not authorized"}), 404
+            
+            conn.commit()
+        
+        return jsonify({"success": True, "message": "Custom workout deleted successfully"})
+    except Exception as e:
+        print(f"Error deleting custom workout: {e}")
+        return jsonify({"error": "Failed to delete custom workout"}), 500
+    
+# Helper function to get user dietary restrictions
+def get_user_dietary_restrictions(user_id):
+    """Get user's dietary restrictions from their profile"""
+    try:
+        profile = get_user_profile(user_id)
+        if profile and profile.get('dietary_restrictions'):
+            restrictions = profile['dietary_restrictions']
+            if isinstance(restrictions, list):
+                return restrictions
+            elif isinstance(restrictions, str):
+                import json
+                return json.loads(restrictions)
+        return []
+    except Exception as e:
+        print(f"Error getting dietary restrictions: {e}")
+        return []
+
+@app.route("/api/get_dietary_restrictions", methods=["POST"])
+def get_dietary_restrictions_endpoint():
+    """Get user's dietary restrictions"""
+    data = request.json
+    user_id = data.get("user_id")
+   
+    if not user_id:
+        return jsonify({"error": "User ID required"}), 400
+   
+    try:
+        restrictions = get_user_dietary_restrictions(user_id)
+        return jsonify({"dietary_restrictions": restrictions})
+    except Exception as e:
+        print(f"Error getting dietary restrictions: {e}")
+        return jsonify({"dietary_restrictions": []})
+
+
+# ---------------------------
+# FRIENDS / SOCIAL ENDPOINTS
+# ---------------------------
+
+@app.route("/api/search_users", methods=["POST"])
+def search_users_endpoint():
+    data    = request.json or {}
+    user_id = data.get("user_id")
+    query   = data.get("query", "").strip()
+
+    if not user_id:
+        return jsonify([]), 400
+
+    raw = search_users(user_id, query)
+    users = []
+    for u in raw:
+        users.append({
+            "id":         u["user_id"],
+            "username":   u["username"],
+            "first_name": u["first_name"],
+            "last_name":  u["last_name"]
+        })
+    return jsonify(users)
+
+
+@app.route("/api/get_friends", methods=["POST"])
+def get_friends_endpoint():
+    data    = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify([]), 400
+
+    raw = get_user_friends(user_id)
+    friends = []
+    for f in raw:
+        friends.append({
+            "id":         f["user_id"],
+            "username":   f["username"],
+            "first_name": f["first_name"],
+            "last_name":  f["last_name"]
+        })
+    return jsonify(friends)
+
+
+@app.route("/api/add_friend", methods=["POST"])
+def add_friend_endpoint():
+    data      = request.json or {}
+    user_id   = data.get("user_id")
+    friend_id = data.get("friend_id")
+    if not user_id or not friend_id:
+        return jsonify({"error": "user_id & friend_id required"}), 400
+
+    ok, msg = add_friend(user_id, friend_id)
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/remove_friend", methods=["POST"])
+def remove_friend_endpoint():
+    data      = request.json or {}
+    user_id   = data.get("user_id")
+    friend_id = data.get("friend_id")
+    if not user_id or not friend_id:
+        return jsonify({"error": "user_id & friend_id required"}), 400
+
+    ok, msg = remove_friend(user_id, friend_id)
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/create_friend_challenge", methods=["POST"])
+def create_friend_challenge_endpoint():
+    data = request.json or {}
+    creator_id = data.get("user_id")
+    target_friend_id = data.get("friend_id")
+    title = (data.get("title") or "").strip()
+    description = (data.get("description") or "").strip()
+    max_progress = data.get("max_progress", 100)
+    deadline = data.get("deadline")
+    
+    if not creator_id or not target_friend_id or not title:
+        return jsonify({"error": "user_id, friend_id, and title required"}), 400
+    
+    if not deadline:
+        return jsonify({"error": "deadline required"}), 400
+    
+    ok, msg = create_friend_challenge(creator_id, target_friend_id, title, description, max_progress, deadline)
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/get_friend_challenges", methods=["POST"])
+def get_friend_challenges_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    
+    challenges = get_friend_challenges_with_progress(user_id)
+    return jsonify(challenges), 200
+
+
+@app.route("/api/respond_friend_challenge", methods=["POST"])
+def respond_friend_challenge_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    challenge_id = data.get("challenge_id")
+    response = data.get("response")
+    
+    if not user_id or not challenge_id or not response:
+        return jsonify({"error": "user_id, challenge_id, and response required"}), 400
+    
+    ok, msg = respond_to_friend_challenge(user_id, challenge_id, response)
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+
+@app.route("/api/update_challenge_progress", methods=["POST"])
+def update_challenge_progress_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    challenge_id = data.get("challenge_id")
+    progress = data.get("progress")
+    
+    if not user_id or not challenge_id or progress is None:
+        return jsonify({"error": "user_id, challenge_id, and progress required"}), 400
+    
+    ok, msg = update_challenge_progress(user_id, challenge_id, int(progress))
+    return jsonify({"success": ok, "message": msg}), (200 if ok else 400)
+
+@app.route("/api/delete_challenge", methods=["POST"])
+def delete_challenge_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    challenge_id = data.get("challenge_id")
+    
+    if not user_id or not challenge_id:
+        return jsonify({"error": "user_id and challenge_id required"}), 400
+    
+    success = delete_challenge(user_id, challenge_id)
+    return jsonify({"success": success, "message": "Challenge deleted" if success else "Challenge not found"}), (200 if success else 404)
+
+@app.route("/api/delete_friend_challenge", methods=["POST"])
+def delete_friend_challenge_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    challenge_id = data.get("challenge_id")
+    
+    if not user_id or not challenge_id:
+        return jsonify({"error": "user_id and challenge_id required"}), 400
+    
+    success = delete_friend_challenge(user_id, challenge_id)
+    return jsonify({"success": success, "message": "Challenge deleted" if success else "Challenge not found"}), (200 if success else 404)
+
+
+@app.route("/api/get_friend_preferences", methods=["POST"])
+def get_friend_preferences_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+    
+    if not user_id or not friend_id:
+        return jsonify({"error": "user_id and friend_id required"}), 400
+    
+    preferences, msg = get_friend_preferences(user_id, friend_id)
+    if preferences is None:
+        return jsonify({"error": msg}), 400
+    
+    return jsonify(preferences), 200
+
+
+# ---------------------------
+# GAMIFICATION ENDPOINTS
+# ---------------------------
+
+@app.route("/api/get_streak", methods=["POST"])
+def get_streak():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    
+    try:
+        streak_data = get_user_streak(user_id)
+        return jsonify(streak_data), 200
+    except Exception as e:
+        print(f"Error fetching streak: {e}")
+        return jsonify({"error": "Failed to fetch streak"}), 500
+
+@app.route("/api/get_badges", methods=["POST"])
+def get_badges():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+
+    try:
+        badges = get_user_badges(user_id)
+        return jsonify(badges), 200
+    except Exception as e:
+        print(f"Error fetching badges: {e}")
+        return jsonify({"error": "Failed to fetch badges"}), 500
+
+@app.route("/api/get_user_stats", methods=["POST"])
+def get_user_stats_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+
+    try:
+        stats = get_user_stats(user_id)
+        return jsonify(stats), 200
+    except Exception as e:
+        print(f"Error fetching user stats: {e}")
+        return jsonify({"error": "Failed to fetch user stats"}), 500
+
+@app.route("/api/get_weekly_challenges", methods=["POST"])
+def get_weekly_challenges_endpoint():
+    data    = request.json or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+
+    # fetch all challenges (including custom) for this user
+    challenges = fetch_weekly_challenges(user_id)
+    return jsonify(challenges), 200
+
+
+@app.route("/api/add_custom_challenge", methods=["POST"])
+def add_custom_challenge_endpoint():
+    data        = request.json or {}
+    user_id     = data.get("user_id")
+    title       = (data.get("title") or "").strip()
+    description = (data.get("description") or "").strip()
+    deadline    = data.get("deadline")
+    max_progress = data.get("max_progress", 100)
+
+    if not user_id or not title:
+        return jsonify({"error": "user_id & title required"}), 400
+
+    # Use the new create_challenge function
+    challenge_id = create_challenge(user_id, title, description, deadline, max_progress)
+    return jsonify({"id": challenge_id, "success": True}), 200
+
+
+# ---------------------------
+# MESSAGING ENDPOINTS
+# ---------------------------
+
+@app.route("/api/send_message", methods=["POST"])
+def send_message_endpoint():
+    data = request.json or {}
+    sender_id = data.get("user_id")
+    receiver_id = data.get("friend_id")
+    content = (data.get("content") or "").strip()
+    if not sender_id or not receiver_id or not content:
+        return jsonify({"error": "user_id, friend_id, and content required"}), 400
+    try:
+        msg_id = send_message(sender_id, receiver_id, content)
+        return jsonify({"success": True, "message_id": msg_id})
+    except Exception as e:
+        print(f"Error sending message: {e}")
+        return jsonify({"error": "Failed to send message"}), 500
+
+@app.route("/api/get_messages", methods=["POST"])
+def get_messages_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+    limit = int(data.get("limit", 50))
+    if not user_id or not friend_id:
+        return jsonify({"error": "user_id and friend_id required"}), 400
+    try:
+        messages = get_messages(user_id, friend_id, limit)
+        return jsonify(messages)
+    except Exception as e:
+        print(f"Error fetching messages: {e}")
+        return jsonify({"error": "Failed to fetch messages"}), 500
+
+
+# ---------------------------
+# ADVANCED FRIENDS FEATURES ENDPOINTS
+# ---------------------------
+
+@app.route("/api/get_friend_activities", methods=["POST"])
+def get_friend_activities_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    limit = int(data.get("limit", 20))
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    try:
+        activities = get_friend_activities(user_id, limit)
+        return jsonify(activities)
+    except Exception as e:
+        print(f"Error fetching friend activities: {e}")
+        return jsonify({"error": "Failed to fetch activities"}), 500
+
+@app.route("/api/get_friend_badges", methods=["POST"])
+def get_friend_badges_endpoint():
+    data = request.json or {}
+    friend_id = data.get("friend_id")
+    if not friend_id:
+        return jsonify({"error": "friend_id required"}), 400
+    try:
+        badges = get_friend_badges(friend_id)
+        return jsonify(badges)
+    except Exception as e:
+        print(f"Error fetching friend badges: {e}")
+        return jsonify({"error": "Failed to fetch badges"}), 500
+
+@app.route("/api/set_friend_reminder", methods=["POST"])
+def set_friend_reminder_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+    message = data.get("message", "")
+    remind_at = data.get("remind_at")
+    if not user_id or not friend_id or not remind_at:
+        return jsonify({"error": "user_id, friend_id, and remind_at required"}), 400
+    try:
+        reminder_id = set_friend_reminder(user_id, friend_id, message, remind_at)
+        return jsonify({"success": True, "reminder_id": reminder_id})
+    except Exception as e:
+        print(f"Error setting friend reminder: {e}")
+        return jsonify({"error": "Failed to set reminder"}), 500
+
+@app.route("/api/get_friend_reminders", methods=["POST"])
+def get_friend_reminders_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    friend_id = data.get("friend_id")
+    if not user_id and not friend_id:
+        return jsonify({"error": "user_id or friend_id required"}), 400
+    try:
+        if user_id:
+            reminders = get_friend_reminders(user_id)
+        else:
+            reminders = get_reminders_you_set(friend_id)
+        return jsonify(reminders)
+    except Exception as e:
+        print(f"Error fetching friend reminders: {e}")
+        return jsonify({"error": "Failed to fetch reminders"}), 500
+
+@app.route("/api/delete_reminder", methods=["POST"])
+def delete_reminder_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    reminder_id = data.get("reminder_id")
+    
+    if not user_id or not reminder_id:
+        return jsonify({"error": "user_id and reminder_id required"}), 400
+    
+    success = delete_reminder(reminder_id, user_id)
+    return jsonify({"success": success, "message": "Reminder deleted" if success else "Reminder not found"}), (200 if success else 404)
+
+@app.route("/api/delete_reminder_received", methods=["POST"])
+def delete_reminder_received_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    reminder_id = data.get("reminder_id")
+    
+    if not user_id or not reminder_id:
+        return jsonify({"error": "user_id and reminder_id required"}), 400
+    
+    success = delete_reminder_received(reminder_id, user_id)
+    return jsonify({"success": success, "message": "Reminder deleted" if success else "Reminder not found"}), (200 if success else 404)
+
+@app.route("/api/get_friends_leaderboard", methods=["POST"])
+def get_friends_leaderboard_endpoint():
+    data = request.json or {}
+    user_id = data.get("user_id")
+    metric = data.get("metric", "streak")
+    limit = int(data.get("limit", 10))
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    try:
+        leaderboard = get_friends_leaderboard(user_id, metric, limit)
+        return jsonify(leaderboard)
+    except Exception as e:
+        print(f"Error fetching leaderboard: {e}")
+        return jsonify({"error": "Failed to fetch leaderboard"}), 500
+
+@app.route("/api/like_workout_from_friend", methods=["POST"])
+def like_workout_from_friend_endpoint():
+    data = request.json
+    user_id = data.get("user_id")
+    workout_name = data.get("workout_name")
+    preference = data.get("preference", "liked")
+    
+    if not user_id or not workout_name:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        from database import save_workout_preference
+        save_workout_preference(user_id, workout_name, preference)
+        return jsonify({"success": True, "message": f"Workout {preference}"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# VITALS API ENDPOINTS
+
+@app.route("/api/vitals/log", methods=["POST"])
+def log_vitals_endpoint():
+    """Log vitals data for a user"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        metric_type = data.get("metric_type")
+        value_data = data.get("value_data")
+        date_logged = data.get("date_logged")
+        
+        print(f"🔍 Vitals log request: user_id={user_id}, metric_type={metric_type}, value_data={value_data}")
+        
+        if not user_id or not metric_type or value_data is None:
+            print(f"❌ Missing required fields: user_id={user_id}, metric_type={metric_type}, value_data={value_data}")
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        # Check if database exists and is accessible
+        try:
+            import os
+            if not os.path.exists(DB_PATH):
+                print(f"❌ Database file does not exist: {DB_PATH}")
+                return jsonify({"error": "Database not initialized"}), 500
+        except Exception as db_error:
+            print(f"❌ Database access error: {db_error}")
+            return jsonify({"error": "Database access error"}), 500
+        
+        log_id = log_vitals_data(user_id, metric_type, value_data, date_logged)
+        print(f"✅ Successfully logged vitals data with log_id: {log_id}")
+        return jsonify({
+            "success": True,
+            "log_id": log_id,
+            "message": f"{metric_type} data logged successfully"
+        })
+    except Exception as e:
+        print(f"❌ Error in log_vitals_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_data", methods=["POST"])
+def get_vitals_data_endpoint():
+    """Get vitals data for a user"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_type = data.get("metric_type")
+    start_date = data.get("start_date")
+    end_date = data.get("end_date")
+    
+    if not user_id or not metric_type:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        vitals_data = get_vitals_data(user_id, metric_type, start_date, end_date)
+        return jsonify({
+            "success": True,
+            "data": vitals_data
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_streak", methods=["POST"])
+def get_vitals_streak_endpoint():
+    """Get streak for a specific vitals metric"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_type = data.get("metric_type")
+    
+    if not user_id or not metric_type:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        streak_info = get_vitals_streak(user_id, metric_type)
+        return jsonify({
+            "success": True,
+            "streak": streak_info
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_all_streaks", methods=["POST"])
+def get_all_vitals_streaks_endpoint():
+    """Get all vitals streaks for a user"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        
+        print(f"🔍 Vitals get all streaks request: user_id={user_id}")
+        
+        if not user_id:
+            print(f"❌ Missing user_id: {user_id}")
+            return jsonify({"error": "Missing user_id"}), 400
+        
+        streaks = get_all_vitals_streaks(user_id)
+        print(f"✅ Successfully retrieved streaks: {streaks}")
+        return jsonify({
+            "success": True,
+            "streaks": streaks
+        })
+    except Exception as e:
+        print(f"❌ Error in get_all_vitals_streaks_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_summary", methods=["POST"])
+def get_vitals_summary_endpoint():
+    """Get vitals summary for dashboard"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        metric_type = data.get("metric_type")
+        days_back = data.get("days_back", 7)
+        
+        print(f"🔍 Vitals get summary request: user_id={user_id}, metric_type={metric_type}, days_back={days_back}")
+        
+        if not user_id or not metric_type:
+            print(f"❌ Missing required fields: user_id={user_id}, metric_type={metric_type}")
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        summary = get_vitals_summary(user_id, metric_type, days_back)
+        print(f"✅ Successfully retrieved summary: {summary}")
+        return jsonify({
+            "success": True,
+            "summary": summary
+        })
+    except Exception as e:
+        print(f"❌ Error in get_vitals_summary_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_chart_data", methods=["POST"])
+def get_vitals_chart_data_endpoint():
+    """Get formatted chart data for vitals"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        metric_type = data.get("metric_type")
+        range_key = data.get("range_key", "1w")
+        
+        print(f"🔍 Vitals chart data request: user_id={user_id}, metric_type={metric_type}, range_key={range_key}")
+        
+        if not user_id or not metric_type:
+            print(f"❌ Missing required fields: user_id={user_id}, metric_type={metric_type}")
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        chart_data = get_vitals_chart_data(user_id, metric_type, range_key)
+        print(f"✅ Successfully retrieved chart data: {len(chart_data)} data points")
+        return jsonify({
+            "success": True,
+            "chart_data": chart_data
+        })
+    except Exception as e:
+        print(f"❌ Error in get_vitals_chart_data_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/create_custom_metric", methods=["POST"])
+def create_custom_metric_endpoint():
+    """Create a custom vitals metric"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_name = data.get("metric_name")
+    metric_type = data.get("metric_type")
+    unit = data.get("unit")
+    target_value = data.get("target_value")
+    options = data.get("options")
+    
+    if not user_id or not metric_name or not metric_type:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        metric_id = create_custom_metric(user_id, metric_name, metric_type, unit, target_value, options)
+        return jsonify({
+            "success": True,
+            "metric_id": metric_id,
+            "message": "Custom metric created successfully"
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_custom_metrics", methods=["POST"])
+def get_custom_metrics_endpoint():
+    """Get all custom metrics for a user"""
+    data = request.json
+    user_id = data.get("user_id")
+    
+    if not user_id:
+        return jsonify({"error": "Missing user_id"}), 400
+    
+    try:
+        metrics = get_custom_metrics(user_id)
+        return jsonify({
+            "success": True,
+            "metrics": metrics
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/update_custom_metric", methods=["POST"])
+def update_custom_metric_endpoint():
+    """Update a custom metric"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_id = data.get("metric_id")
+    updates = data.get("updates", {})
+    
+    if not user_id or not metric_id:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        success = update_custom_metric(user_id, metric_id, updates)
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "Custom metric updated successfully"
+            })
+        else:
+            return jsonify({"error": "Failed to update custom metric"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/delete_custom_metric", methods=["POST"])
+def delete_custom_metric_endpoint():
+    """Delete a custom metric"""
+    data = request.json
+    user_id = data.get("user_id")
+    metric_id = data.get("metric_id")
+    
+    if not user_id or not metric_id:
+        return jsonify({"error": "Missing required fields"}), 400
+    
+    try:
+        success = delete_custom_metric(user_id, metric_id)
+        if success:
+            return jsonify({
+                "success": True,
+                "message": "Custom metric deleted successfully"
+            })
+        else:
+            return jsonify({"error": "Failed to delete custom metric"}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/vitals/get_today_logs", methods=["POST"])
+def get_today_vitals_logs_endpoint():
+    """Get today's vitals logs for a specific metric"""
+    try:
+        data = request.json
+        user_id = data.get("user_id")
+        metric_type = data.get("metric_type")
+        
+        print(f"🔍 Vitals get today logs request: user_id={user_id}, metric_type={metric_type}")
+        
+        if not user_id or not metric_type:
+            print(f"❌ Missing required fields: user_id={user_id}, metric_type={metric_type}")
+            return jsonify({"error": "Missing required fields"}), 400
+        
+        logs = get_today_vitals_logs(user_id, metric_type)
+        print(f"✅ Successfully retrieved today's logs: {logs}")
+        return jsonify({
+            "success": True,
+            "logs": logs
+        })
+    except Exception as e:
+        print(f"❌ Error in get_today_vitals_logs_endpoint: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     init_db()
     init_fitness_tables()
-    port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
-    app.run(host="0.0.0.0", port=port, debug=debug)
+    app.run(debug=True, host="0.0.0.0", port=5001)

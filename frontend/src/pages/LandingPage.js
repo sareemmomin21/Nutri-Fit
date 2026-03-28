@@ -8,7 +8,7 @@ export default function LandingPage() {
     // Check if user is already logged in
     const userId = localStorage.getItem("nutrifit_user_id");
     if (userId) {
-      navigate("/nutrition");
+      navigate("/home");
     }
   }, [navigate]);
 

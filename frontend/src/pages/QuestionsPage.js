@@ -198,7 +198,7 @@ export default function QuestionsPage() {
       }
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_URL}/api/complete_profile`,
+        "http://127.0.0.1:5001/api/complete_profile",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

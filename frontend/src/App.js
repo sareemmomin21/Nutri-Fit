@@ -1,10 +1,11 @@
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
 } from "react-router-dom";
+import { initializeTheme } from "./utils/themeUtils";
 import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
 import HomePage from "./pages/HomePage";
@@ -13,6 +14,7 @@ import FitnessPage from "./pages/FitnessPage";
 import SettingsPage from "./pages/SettingsPage";
 import AuthPage from "./pages/AuthPage";
 import QuestionsPage from "./pages/QuestionsPage";
+import GamePage from "./pages/GamePage";
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -34,6 +36,11 @@ function PublicRoute({ children, allowQuestions = false }) {
 }
 
 function App() {
+  useEffect(() => {
+    // Initialize theme settings when app loads
+    initializeTheme();
+  }, []);
+
   return (
     <Router>
       <div style={{ fontFamily: "Arial, sans-serif" }}>
@@ -97,6 +104,15 @@ function App() {
             element={
               <ProtectedRoute>
                 <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/game"
+            element={
+              <ProtectedRoute>
+                <GamePage />
               </ProtectedRoute>
             }
           />
